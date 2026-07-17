@@ -1,0 +1,54 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/player.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/player_placeholder.svg" id="2_texture"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape_player"]
+radius = 0.38
+height = 1.55
+
+[sub_resource type="CylinderShape3D" id="CylinderShape_interaction"]
+radius = 1.5
+height = 1.4
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_player"]
+animations = [{
+"frames": [{"duration": 1.0, "texture": ExtResource("2_texture")}], "loop": true, "name": &"idle_down", "speed": 5.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("2_texture")}], "loop": true, "name": &"idle_up", "speed": 5.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("2_texture")}], "loop": true, "name": &"idle_left", "speed": 5.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("2_texture")}], "loop": true, "name": &"idle_right", "speed": 5.0
+}, {
+"frames": [{"duration": 0.5, "texture": ExtResource("2_texture")}, {"duration": 0.5, "texture": ExtResource("2_texture")}], "loop": true, "name": &"walk_down", "speed": 8.0
+}, {
+"frames": [{"duration": 0.5, "texture": ExtResource("2_texture")}, {"duration": 0.5, "texture": ExtResource("2_texture")}], "loop": true, "name": &"walk_up", "speed": 8.0
+}, {
+"frames": [{"duration": 0.5, "texture": ExtResource("2_texture")}, {"duration": 0.5, "texture": ExtResource("2_texture")}], "loop": true, "name": &"walk_left", "speed": 8.0
+}, {
+"frames": [{"duration": 0.5, "texture": ExtResource("2_texture")}, {"duration": 0.5, "texture": ExtResource("2_texture")}], "loop": true, "name": &"walk_right", "speed": 8.0
+}]
+
+[node name="Player" type="CharacterBody3D"]
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.775, 0)
+shape = SubResource("CapsuleShape_player")
+
+[node name="Avatar" type="AnimatedSprite3D" parent="."]
+position = Vector3(0, 1.18, 0)
+sprite_frames = SubResource("SpriteFrames_player")
+animation = &"idle_down"
+billboard = 1
+pixel_size = 0.012
+
+[node name="InteractionArea" type="Area3D" parent="."]
+position = Vector3(0, 0.7, 0)
+monitoring = true
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InteractionArea"]
+shape = SubResource("CylinderShape_interaction")

@@ -1,0 +1,327 @@
+[gd_scene format=3 uid="uid://c6pcttft6tcx4"]
+
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1_player"]
+[ext_resource type="Script" uid="uid://dg2a1smdmh5tc" path="res://scripts/world_demo.gd" id="2_world"]
+[ext_resource type="Script" uid="uid://bnmup8wxee1x" path="res://scripts/player_follow_camera.gd" id="3_camera"]
+[ext_resource type="Script" uid="uid://ckqwko765wi11" path="res://scripts/virtual_joystick.gd" id="5_joystick"]
+[ext_resource type="Script" uid="uid://c8g8f8n6wn1oe" path="res://scripts/dialogue_interactable.gd" id="6_dialogue"]
+[ext_resource type="Script" uid="uid://dkqhw5c4lhmsj" path="res://scripts/door_interactable.gd" id="7_door"]
+[ext_resource type="Script" uid="uid://dov71n0j2nrdg" path="res://scripts/collectible_interactable.gd" id="8_collectible"]
+
+[sub_resource type="Environment" id="Environment_world"]
+background_mode = 1
+background_color = Color(0.12, 0.17, 0.27, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.57, 0.68, 0.91, 1)
+ambient_light_energy = 0.65
+tonemap_mode = 2
+
+[sub_resource type="StandardMaterial3D" id="Material_floor"]
+albedo_color = Color(0.13, 0.42, 0.39, 1)
+roughness = 0.9
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
+material = SubResource("Material_floor")
+size = Vector2(30, 30)
+
+[sub_resource type="BoxShape3D" id="BoxShape_floor"]
+size = Vector3(31.569214, 0.2, 30)
+
+[sub_resource type="StandardMaterial3D" id="Material_path"]
+albedo_color = Color(0.72, 0.75, 0.67, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_path"]
+material = SubResource("Material_path")
+size = Vector3(5, 0.1, 8.054443)
+
+[sub_resource type="StandardMaterial3D" id="Material_pillar"]
+albedo_color = Color(0.23, 0.3, 0.42, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pillar"]
+material = SubResource("Material_pillar")
+top_radius = 0.22
+bottom_radius = 0.3
+height = 3.0
+
+[sub_resource type="StandardMaterial3D" id="Material_terminal"]
+albedo_color = Color(0.15, 0.72, 0.95, 1)
+emission_enabled = true
+emission = Color(0.04, 0.36, 0.72, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_terminal"]
+material = SubResource("Material_terminal")
+size = Vector3(1.1, 1.4, 0.45)
+
+[sub_resource type="BoxShape3D" id="BoxShape_terminal"]
+size = Vector3(2.4, 2, 2.4)
+
+[sub_resource type="StandardMaterial3D" id="Material_sign"]
+albedo_color = Color(0.95, 0.78, 0.21, 1)
+emission_enabled = true
+emission = Color(0.22, 0.14, 0.01, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_sign"]
+material = SubResource("Material_sign")
+size = Vector3(1.7, 1.05, 0.15)
+
+[sub_resource type="BoxShape3D" id="BoxShape_sign"]
+size = Vector3(2.3, 2, 1.4)
+
+[sub_resource type="StandardMaterial3D" id="Material_door"]
+albedo_color = Color(0.46, 0.22, 0.12, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_door"]
+material = SubResource("Material_door")
+size = Vector3(1.3, 2.5, 0.15)
+
+[sub_resource type="BoxShape3D" id="BoxShape_door"]
+size = Vector3(2.2, 2.7, 1.8)
+
+[sub_resource type="StandardMaterial3D" id="Material_badge"]
+albedo_color = Color(0.93, 0.35, 0.77, 1)
+emission_enabled = true
+emission = Color(0.32, 0.03, 0.2, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_badge"]
+material = SubResource("Material_badge")
+radius = 0.38
+height = 0.76
+
+[sub_resource type="SphereShape3D" id="SphereShape_badge"]
+radius = 1.15
+
+[sub_resource type="StandardMaterial3D" id="Material_npc"]
+albedo_color = Color(0.88, 0.34, 0.42, 1)
+roughness = 0.75
+
+[sub_resource type="BoxMesh" id="BoxMesh_npc_body"]
+material = SubResource("Material_npc")
+size = Vector3(0.8, 1.3, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="Material_npc_head"]
+albedo_color = Color(1, 0.76, 0.56, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_npc_head"]
+material = SubResource("Material_npc_head")
+radius = 0.36
+height = 0.72
+
+[sub_resource type="SphereShape3D" id="SphereShape_npc"]
+radius = 1.25
+
+[sub_resource type="LabelSettings" id="LabelSettings_hud"]
+font_size = 22
+outline_size = 6
+outline_color = Color(0.02, 0.04, 0.08, 0.85)
+
+[node name="WorldDemo" type="Node3D" unique_id=1084654144]
+script = ExtResource("2_world")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1987943974]
+environment = SubResource("Environment_world")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=2113804476]
+transform = Transform3D(0.81915206, 0.46984634, -0.32898995, 0, 0.57357645, 0.81915206, 0.57357645, -0.6710101, 0.46984634, 0, 0, 0)
+light_color = Color(1, 0.91, 0.73, 1)
+light_energy = 1.3
+shadow_enabled = true
+
+[node name="Floor" type="StaticBody3D" parent="." unique_id=149241761]
+transform = Transform3D(2.011048, 0, 0, 0, 1, 0, 0, 0, 0.53810775, 0, 0, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Floor" unique_id=1012183578]
+transform = Transform3D(1.0552804, 0, 0, 0, 1, 0, 0, 0, 1, 0.042801335, -1.05966, -0.4153366)
+mesh = SubResource("PlaneMesh_floor")
+
+[node name="Collision" type="CollisionShape3D" parent="Floor" unique_id=135751045]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.044372626, -0.9431466, 0)
+shape = SubResource("BoxShape_floor")
+
+[node name="Path" type="MeshInstance3D" parent="." unique_id=1677917294]
+transform = Transform3D(11.328075, 0, 0, 0, 1.0101519, 0, 0, 0, 1.0101519, 0, -0.9021942, -0.16831756)
+mesh = SubResource("BoxMesh_path")
+
+[node name="PillarLeft" type="MeshInstance3D" parent="." unique_id=1393277542]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 1.5, -4)
+mesh = SubResource("CylinderMesh_pillar")
+
+[node name="PillarRight" type="MeshInstance3D" parent="." unique_id=1869473752]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1.5, -4)
+mesh = SubResource("CylinderMesh_pillar")
+
+[node name="WelcomeTerminal" type="Area3D" parent="." unique_id=1151544859]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -2.34032)
+collision_layer = 2
+script = ExtResource("6_dialogue")
+dialogue_id = "terminal_welcome"
+prompt_title = "Orientation Terminal"
+interaction_button_text = "Read"
+interaction_message = "Welcome to EMC Simulator! Explore the campus to discover each multimedia laboratory."
+
+[node name="Mesh" type="MeshInstance3D" parent="WelcomeTerminal" unique_id=1348715790]
+mesh = SubResource("BoxMesh_terminal")
+
+[node name="InteractionBounds" type="CollisionShape3D" parent="WelcomeTerminal" unique_id=2100091555]
+shape = SubResource("BoxShape_terminal")
+
+[node name="CampusSign" type="Area3D" parent="." unique_id=319676958]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.4, 1.2, -1.8)
+collision_layer = 2
+script = ExtResource("6_dialogue")
+dialogue_id = "orientation_sign"
+prompt_title = "EMC Campus Map"
+interaction_button_text = "Read"
+
+[node name="SignMesh" type="MeshInstance3D" parent="CampusSign" unique_id=1705704694]
+mesh = SubResource("BoxMesh_sign")
+
+[node name="InteractionBounds" type="CollisionShape3D" parent="CampusSign" unique_id=221438806]
+shape = SubResource("BoxShape_sign")
+
+[node name="AnimationLabDoor" type="Area3D" parent="." unique_id=1744150643]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.6, 1.25, -2)
+collision_layer = 2
+script = ExtResource("7_door")
+prompt_title = "Animation Laboratory"
+interaction_button_text = "Open"
+
+[node name="DoorMesh" type="MeshInstance3D" parent="AnimationLabDoor" unique_id=1381911210]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.65, 0, 0)
+mesh = SubResource("BoxMesh_door")
+
+[node name="InteractionBounds" type="CollisionShape3D" parent="AnimationLabDoor" unique_id=1484339287]
+shape = SubResource("BoxShape_door")
+
+[node name="ExplorerBadge" type="Area3D" parent="." unique_id=1523501407]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.3276653, 0.6, -1.976758)
+collision_layer = 2
+script = ExtResource("8_collectible")
+prompt_title = "Explorer Badge"
+interaction_button_text = "Collect"
+interaction_message = "You found an EMC Explorer Badge!"
+
+[node name="BadgeMesh" type="MeshInstance3D" parent="ExplorerBadge" unique_id=132880714]
+mesh = SubResource("SphereMesh_badge")
+
+[node name="InteractionBounds" type="CollisionShape3D" parent="ExplorerBadge" unique_id=419144667]
+shape = SubResource("SphereShape_badge")
+
+[node name="CampusGuideMika" type="Area3D" parent="." unique_id=704027513]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.1659036, 1, -1.8891845)
+collision_layer = 2
+script = ExtResource("6_dialogue")
+dialogue_id = "npc_campus_guide"
+prompt_title = "Mika — Campus Guide"
+interaction_button_text = "Talk"
+use_dialogue_sequence = true
+
+[node name="Body" type="MeshInstance3D" parent="CampusGuideMika" unique_id=1924560566]
+mesh = SubResource("BoxMesh_npc_body")
+
+[node name="Head" type="MeshInstance3D" parent="CampusGuideMika" unique_id=1225371472]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+mesh = SubResource("SphereMesh_npc_head")
+
+[node name="InteractionBounds" type="CollisionShape3D" parent="CampusGuideMika" unique_id=30662593]
+shape = SubResource("SphereShape_npc")
+
+[node name="Player" parent="." unique_id=610752537 instance=ExtResource("1_player")]
+
+[node name="PlayerFollowCamera" type="Camera3D" parent="." unique_id=686606015]
+transform = Transform3D(1, 0, 0, 0, 0.96118987, 0.27588773, 0, -0.27588773, 0.96118987, 0, 2.5616713, 5.5040054)
+fov = 57.5
+script = ExtResource("3_camera")
+target_path = NodePath("../Player")
+follow_offset = Vector3(9, 10, 0)
+camera_fov = 62.0
+
+[node name="Interface" type="CanvasLayer" parent="." unique_id=1924827742]
+
+[node name="Status" type="Label" parent="Interface" unique_id=580074634]
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 760.0
+offset_bottom = 100.0
+text = "EMC Simulator — 2.5D Character Prototype"
+label_settings = SubResource("LabelSettings_hud")
+
+[node name="VirtualJoystick" type="Control" parent="Interface" unique_id=2127169484]
+layout_mode = 3
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 26.0
+offset_top = -190.0
+offset_right = 174.0
+offset_bottom = -42.0
+grow_vertical = 0
+script = ExtResource("5_joystick")
+
+[node name="InteractionPrompt" type="PanelContainer" parent="Interface" unique_id=1578404546]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -310.0
+offset_top = -190.0
+offset_right = -28.0
+offset_bottom = -42.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="Content" type="VBoxContainer" parent="Interface/InteractionPrompt" unique_id=1605544264]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Interface/InteractionPrompt/Content" unique_id=560791216]
+layout_mode = 2
+text = "Interact"
+autowrap_mode = 2
+
+[node name="Content" type="Label" parent="Interface/InteractionPrompt/Content"]
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="InteractButton" type="Button" parent="Interface/InteractionPrompt/Content" unique_id=1411982315]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "Interact"
+
+[node name="DialoguePanel" type="PanelContainer" parent="Interface"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = -270.0
+offset_right = 520.0
+offset_bottom = -42.0
+grow_vertical = 0
+
+[node name="Content" type="VBoxContainer" parent="Interface/DialoguePanel"]
+theme_override_constants/separation = 8
+
+[node name="Speaker" type="Label" parent="Interface/DialoguePanel/Content"]
+layout_mode = 2
+
+[node name="Text" type="Label" parent="Interface/DialoguePanel/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+autowrap_mode = 2
+
+[node name="ContinueButton" type="Button" parent="Interface/DialoguePanel/Content"]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+text = "Continue"
+
+[node name="Feedback" type="Label" parent="Interface" unique_id=213187913]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 145.0
+offset_top = 112.0
+offset_right = -145.0
+offset_bottom = 190.0
+grow_horizontal = 2
+label_settings = SubResource("LabelSettings_hud")
+horizontal_alignment = 1
+autowrap_mode = 2
