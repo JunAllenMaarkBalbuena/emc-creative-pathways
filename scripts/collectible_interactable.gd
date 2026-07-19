@@ -4,7 +4,7 @@ extends Interactable
 @export var dialogue_id := "collectible_badge"
 var collected := false
 
-func interact(player: PlayerController) -> String:
+func interact(_player: PlayerController) -> String:
 	if collected:
 		return "This item has already been collected."
 	collected = true

@@ -3,35 +3,48 @@
     "speaker": "EMC Guide",
     "prompt_title": "EMC Campus Map",
     "prompt_content": "Read a short introduction to the EMC campus.",
-    "text": "Welcome to the EMC campus. Follow the path to explore the Animation, Game Development, and Multimedia laboratories."
+    "text": "Welcome to the EMC campus. Follow the path to explore the Animation, Game Development, and Multimedia laboratories.",
+    "portrait_player": "",
+    "portrait_npc": ""
   },
   "terminal_welcome": {
     "speaker": "Orientation Terminal",
     "prompt_title": "Orientation Terminal",
     "prompt_content": "Use this terminal to begin your campus orientation.",
-    "text": "Your first task is to explore the campus and interact with its learning stations."
+    "text": "Your first task is to explore the campus and interact with its learning stations.",
+    "portrait_player": "",
+    "portrait_npc": ""
   },
   "library_door_locked": {
     "speaker": "Laboratory Door",
     "prompt_title": "Animation Laboratory",
     "prompt_content": "Enter the Animation Laboratory.",
-    "text": "Access granted. The Animation Laboratory is now open."
+    "text": "Access granted. The Animation Laboratory is now open.",
+    "portrait_player": "",
+    "portrait_npc": ""
   },
   "collectible_badge": {
     "speaker": "Achievement",
     "prompt_title": "Explorer Badge",
     "prompt_content": "Pick up this glowing Explorer Badge.",
-    "text": "You found an EMC Explorer Badge!"
+    "text": "You found an EMC Explorer Badge!",
+    "portrait_player": "",
+    "portrait_npc": ""
   },
   "npc_campus_guide": {
-    "speaker": "Mika — Campus Guide",
+    "speaker": "Mika",
     "prompt_title": "Mika — Campus Guide",
     "prompt_content": "Talk to Mika for instructions on how to begin your EMC campus tour.",
-    "text": "Hi! Start by reading the orientation terminal, then visit the campus sign and Animation Laboratory. Each station introduces a different part of Entertainment and Multimedia Computing.",
+    "text": "Hi! Start by reading the orientation terminal, then visit the campus sign and Animation Laboratory.",
+    "portrait_player": "",
+    "portrait_npc": "",
     "dialogue": [
       {"speaker": "Player", "side": "left", "text": "Hi Mika, how do I begin the campus tour?"},
-      {"speaker": "Mika", "side": "right", "text": "Start with the orientation terminal, then visit the campus sign and Animation Laboratory."},
-      {"speaker": "Mika", "side": "right", "text": "Each station introduces a different part of Entertainment and Multimedia Computing."}
+      {"speaker": "Mika", "side": "right", "text": "Would you like a quick overview or should I explain everything step by step?"},
+      {"speaker": "Mika", "side": "right", "text": "Each station introduces a different part of Entertainment and Multimedia Computing.", "choices": [
+        {"text": "Quick overview, please!", "next": ""},
+        {"text": "Step by step sounds good.", "next": ""}
+      ]}
     ]
   }
 }

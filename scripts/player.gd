@@ -1,8 +1,6 @@
 class_name PlayerController
 extends CharacterBody3D
 
-## Inspector-facing 2.5D character controller. It accepts keyboard and gamepad
-## input through named actions, keeping future mobile controls independent.
 @export_category("Movement")
 @export_range(0.1, 20.0, 0.1, "suffix:m/s") var movement_speed := 4.5
 @export_range(0.1, 30.0, 0.1, "suffix:m/s") var sprint_speed := 7.0
@@ -22,6 +20,7 @@ var _facing := "down"
 var _was_moving := false
 var _virtual_move := Vector2.ZERO
 var _current_interactable: Interactable
+var _nearby_interactables: Array = []
 
 signal interaction_target_changed(target: Interactable)
 signal interaction_triggered(target: Interactable)
@@ -34,8 +33,6 @@ func _ready() -> void:
 	interaction_area.area_exited.connect(_on_interaction_area_exited)
 	_update_animation(false)
 
-## Defines default keyboard/gamepad bindings once. If designers later create
-## these actions in Project Settings, their bindings remain untouched.
 func _ensure_input_actions() -> void:
 	_add_key_action("move_left", [KEY_A, KEY_LEFT])
 	_add_key_action("move_right", [KEY_D, KEY_RIGHT])
@@ -123,13 +120,29 @@ func try_interact() -> void:
 		return
 	interaction_triggered.emit(_current_interactable)
 	interaction_performed.emit(_current_interactable.interact(self))
+	if not is_instance_valid(_current_interactable) or not _current_interactable.monitoring:
+		_current_interactable = null
+		interaction_target_changed.emit(null)
 
 func _on_interaction_area_entered(area: Area3D) -> void:
 	if area is Interactable:
-		_current_interactable = area
-		interaction_target_changed.emit(_current_interactable)
+		_nearby_interactables.append(area)
+		_update_closest_target()
 
 func _on_interaction_area_exited(area: Area3D) -> void:
-	if area == _current_interactable:
-		_current_interactable = null
-		interaction_target_changed.emit(null)
+	_nearby_interactables.erase(area)
+	_update_closest_target()
+
+func _update_closest_target() -> void:
+	var closest: Interactable = null
+	var closest_dist := INF
+	for inter in _nearby_interactables:
+		if not is_instance_valid(inter) or not inter.monitoring:
+			continue
+		var dist = global_position.distance_to(inter.global_position)
+		if dist < closest_dist:
+			closest_dist = dist
+			closest = inter
+	if closest != _current_interactable:
+		_current_interactable = closest
+		interaction_target_changed.emit(_current_interactable)

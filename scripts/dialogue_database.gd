@@ -1,8 +1,6 @@
 class_name DialogueDatabase
 extends RefCounted
 
-## Central JSON dialogue loader. Keep game text outside scenes so it is easy
-## to organize, localize, and reuse across levels.
 const DIALOGUE_PATH := "res://data/dialogue.json"
 static var _entries: Dictionary = {}
 static var _is_loaded := false
@@ -30,6 +28,17 @@ static func get_dialogue_lines(dialogue_id: String) -> Array:
 	_load_if_needed()
 	var entry: Dictionary = _entries.get(dialogue_id, {})
 	return entry.get("dialogue", [])
+
+static func get_portrait(dialogue_id: String, side: String) -> Texture2D:
+	_load_if_needed()
+	var entry: Dictionary = _entries.get(dialogue_id, {})
+	var path := String(entry.get("portrait_" + side, ""))
+	if path.is_empty():
+		return null
+	return load(path) as Texture2D
+
+static func get_choices(line: Dictionary) -> Array:
+	return line.get("choices", [])
 
 static func _load_if_needed() -> void:
 	if _is_loaded:

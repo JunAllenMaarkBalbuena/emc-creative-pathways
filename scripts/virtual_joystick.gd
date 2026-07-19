@@ -6,6 +6,7 @@ signal value_changed(value: Vector2)
 @export_range(40.0, 180.0, 1.0) var radius := 74.0
 @export_range(12.0, 80.0, 1.0) var knob_radius := 31.0
 @export_range(0.0, 0.8, 0.01) var deadzone := 0.12
+@export var mouse_enabled := true
 
 var _dragging := false
 var _value := Vector2.ZERO
@@ -21,15 +22,15 @@ func _gui_input(event: InputEvent) -> void:
 		_update_value(event.position if event.pressed else size * 0.5)
 	elif event is InputEventScreenDrag and _dragging:
 		_update_value(event.position)
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+	elif mouse_enabled and event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		_dragging = event.pressed
 		_update_value(event.position if event.pressed else size * 0.5)
-	elif event is InputEventMouseMotion and _dragging:
+	elif mouse_enabled and event is InputEventMouseMotion and _dragging:
 		_update_value(event.position)
 
-func _update_value(position: Vector2) -> void:
+func _update_value(touch_position: Vector2) -> void:
 	var center := size * 0.5
-	_value = ((position - center) / radius).limit_length()
+	_value = ((touch_position - center) / radius).limit_length()
 	if _value.length() < deadzone:
 		_value = Vector2.ZERO
 	value_changed.emit(_value)

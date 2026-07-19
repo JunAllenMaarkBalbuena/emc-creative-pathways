@@ -10,8 +10,8 @@ config_version=5
 
 [application]
 
-config/name="level system"
-run/main_scene="res://scenes/world_demo.tscn"
+config/name="Emc sem progress 1"
+run/main_scene="uid://c6pcttft6tcx4"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
