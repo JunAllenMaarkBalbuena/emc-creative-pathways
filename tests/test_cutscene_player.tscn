@@ -1,0 +1,6 @@
+[gd_scene load_steps=2]
+
+[ext_resource type="Script" path="res://tests/test_cutscene_player.gd" id="1"]
+
+[node name="TestCutscenePlayer" type="Node"]
+script = ExtResource("1")

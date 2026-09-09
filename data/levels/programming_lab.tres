@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="LevelDefinition" format=3 uid="uid://b12i5wl1rhjvp"]
+
+[ext_resource type="Script" uid="uid://dv2icf1h8wfrx" path="res://scripts/level_definition.gd" id="1_level"]
+[ext_resource type="Script" uid="uid://duw58fjwso4xo" path="res://scripts/flowchart_puzzle_data.gd" id="1_ttdar"]
+
+[resource]
+script = ExtResource("1_level")
+level_id = "programming_lab"
+display_name = "Programming Logic Lab"
+description = "Learn programming logic through interactive flowchart puzzles."
+starts_unlocked = true
+next_level_id = "3d_design_lab"
+completion_message = "Programming Lab Complete! The 3D Design Lab is now open."

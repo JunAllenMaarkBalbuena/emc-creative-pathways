@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="PuzzleSequence" format=3 uid="uid://knme4fe7s7vv"]
+
+[ext_resource type="Script" uid="uid://duw58fjwso4xo" path="res://scripts/flowchart_puzzle_data.gd" id="1_hwpbj"]
+[ext_resource type="Script" uid="uid://bgnnecf4mch4e" path="res://scripts/puzzle_sequence.gd" id="1_ps"]
+[ext_resource type="Resource" uid="uid://cjt7vq5r8mblw" path="res://data/puzzles/puzzle_1.tres" id="2_p1"]
+[ext_resource type="Resource" path="res://data/puzzles/puzzle_2.tres" id="3_p2"]
+[ext_resource type="Resource" path="res://data/puzzles/puzzle_3.tres" id="4_p3"]
+[ext_resource type="Resource" path="res://data/puzzles/puzzle_4.tres" id="5_p4"]
+[ext_resource type="Resource" path="res://data/puzzles/puzzle_5.tres" id="6_p5"]
+[ext_resource type="Resource" path="res://data/puzzles/puzzle_6.tres" id="7_p6"]
+[ext_resource type="Resource" path="res://data/puzzles/puzzle_7.tres" id="8_p7"]
+
+[resource]
+script = ExtResource("1_ps")
+puzzle_order = Array[ExtResource("1_hwpbj")]([ExtResource("2_p1"), ExtResource("3_p2"), ExtResource("4_p3"), ExtResource("5_p4"), ExtResource("6_p5"), ExtResource("7_p6"), ExtResource("8_p7")])

@@ -1,3 +1,8 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Runtime-generated data (created by in-game save/export managers)
+/data/player_models/
+/data/player_drawings/
+/data/Exported_drawings/

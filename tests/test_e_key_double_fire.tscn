@@ -1,0 +1,6 @@
+[gd_scene load_steps=2]
+
+[ext_resource type="Script" path="res://tests/test_e_key_double_fire.gd" id="1"]
+
+[node name="TestEKeyDoubleFire" type="Node"]
+script = ExtResource("1")
