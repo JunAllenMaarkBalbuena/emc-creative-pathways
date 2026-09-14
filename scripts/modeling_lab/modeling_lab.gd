@@ -197,7 +197,7 @@ func _setup_assignment(data: AssignmentData):
 	_update_assignment_ui()
 	camera_controller.fit_all(_player_objects)
 	_hide_all_dialogs()
-	_rebuild_hierarchy()
+	_rebuild_hierarchy_request()
 
 func _clear_objects():
 	if selection_manager:
@@ -338,7 +338,7 @@ func _enter_creative_studio():
 	%Assignment/LessonTitle.text = "Creative Studio"
 	%Assignment/Instructions.text = "Spawn primitives, edit materials, and save your creations!"
 	_hide_all_dialogs()
-	_rebuild_hierarchy()
+	_rebuild_hierarchy_request()
 
 	# Build spawn menu
 	var popup: PopupMenu = %SpawnBtn.get_popup()
@@ -353,6 +353,7 @@ func _on_spawn_selected(id: int):
 		mi.position = Vector3(0, 0.5, 0)
 		selection_manager.select(mi)
 		camera_controller.fit_all([mi])
+		_rebuild_hierarchy_request()
 
 
 func _on_tool_selected(tool: int):
@@ -513,7 +514,7 @@ func _on_duplicate():
 	var copy := transform_manager.duplicate_selected()
 	if copy:
 		undo_manager.push_duplicate(copy.get_path())
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 
 
 func _on_delete():
@@ -521,7 +522,7 @@ func _on_delete():
 	if sel:
 		undo_manager.push_delete(sel.get_path(), {name = sel.name})
 		transform_manager.delete_selected()
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 
 
 func _on_reset():
@@ -586,6 +587,25 @@ func _on_preset_pressed(preset_name: String):
 
 # ── Hierarchy ──────────────────────────────────────────────────
 
+var _hierarchy_refresh_queued := false
+
+# Rebuilds are deferred so they (a) run after queue_free() deletions from this
+# frame actually remove their nodes, and (b) never execute synchronously inside
+# a Tree mouse-selection handler (Godot blocks clear()/create_item() there).
+func _rebuild_hierarchy_request():
+	if _hierarchy_refresh_queued:
+		return
+	_hierarchy_refresh_queued = true
+	call_deferred("_flush_hierarchy_rebuild")
+
+
+func _flush_hierarchy_rebuild():
+	await get_tree().process_frame
+	_hierarchy_refresh_queued = false
+	if is_inside_tree():
+		_rebuild_hierarchy()
+
+
 func _rebuild_hierarchy():
 	var tree: Tree = %Tree
 	tree.clear()
@@ -603,7 +623,7 @@ func _on_hierarchy_selected():
 		return
 	var meta: Variant = item.get_metadata(0)
 	if not is_instance_valid(meta):
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 		return
 	var node := meta as Node3D
 	if node is MeshInstance3D:
@@ -616,11 +636,11 @@ func _on_hierarchy_rename():
 		return
 	var meta: Variant = item.get_metadata(0)
 	if not is_instance_valid(meta):
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 		return
 	var node := meta as Node3D
 	if hierarchy_manager.rename(node, node.name + "_renamed"):
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 
 
 func _on_hierarchy_parent():
@@ -629,12 +649,12 @@ func _on_hierarchy_parent():
 		return
 	var meta: Variant = item.get_metadata(0)
 	if not is_instance_valid(meta):
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 		return
 	var child := meta as Node3D
 	if child.get_parent() != object_container:
 		hierarchy_manager.reparent(child, object_container)
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 
 
 func _on_hierarchy_unparent():
@@ -643,11 +663,11 @@ func _on_hierarchy_unparent():
 		return
 	var meta: Variant = item.get_metadata(0)
 	if not is_instance_valid(meta):
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 		return
 	var node := meta as Node3D
 	if hierarchy_manager.reparent(node, object_container):
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 
 
 func _on_hierarchy_selected_in_tree(node_path: NodePath):
@@ -662,7 +682,7 @@ func _on_inspector_name_changed(new_name: String):
 	var sel := selection_manager.get_selected()
 	if sel:
 		hierarchy_manager.rename(sel, new_name)
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 
 
 func _on_inspector_pos_changed(val: float, axis: String):
@@ -765,7 +785,7 @@ func _on_model_opened(data: ModelData, _path: String):
 	if _mode == LabMode.CREATIVE_STUDIO:
 		_clear_objects()
 		save_manager.restore_model(object_container, data, spawner)
-		_rebuild_hierarchy()
+		_rebuild_hierarchy_request()
 		var objects: Array[Node3D] = []
 		for child in object_container.get_children():
 			if child is MeshInstance3D:

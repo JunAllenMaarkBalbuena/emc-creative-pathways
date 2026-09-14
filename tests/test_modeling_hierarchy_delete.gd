@@ -43,8 +43,7 @@ func _ready() -> void:
 
 	# Switching to Creative Studio must leave no stale rows behind.
 	lab._enter_creative_studio()
-	await tree.process_frame
-	var remaining := tree_ui.get_root().get_child_count()
+	var remaining := await _await_row_count(tree_ui, 0)
 	if remaining != 0:
 		_fail += 1
 		print("FAIL: creative studio left %d stale hierarchy rows" % remaining)
@@ -52,6 +51,14 @@ func _ready() -> void:
 	if _fail == 0:
 		print("PASS: stale hierarchy rows cannot crash selection and are cleared on studio switch")
 	_quit()
+
+func _await_row_count(tree_ui: Tree, expected: int) -> int:
+	var root := tree_ui.get_root()
+	for i in 40:
+		if root == null or root.get_child_count() == expected:
+			return root.get_child_count() if root else 0
+		await get_tree().process_frame
+	return root.get_child_count() if root else 0
 
 func _find_row_for(tree_ui: Tree, node: Node) -> TreeItem:
 	var root_item := tree_ui.get_root()
