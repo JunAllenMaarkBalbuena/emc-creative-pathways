@@ -36,7 +36,6 @@ var _dragging: bool = false
 var _drag_axis: Vector3 = Vector3.ZERO
 var _drag_uniform: bool = true
 var _drag_start_mouse: Vector2 = Vector2.ZERO
-var _drag_origin_screen: Vector2 = Vector2.ZERO
 var _drag_axis_screen: Vector2 = Vector2.RIGHT
 var _drag_axis_perp: Vector2 = Vector2.UP
 
@@ -396,13 +395,12 @@ func _on_viewport_gui_input(event: InputEvent):
 				_drag_axis = pick.get("axis", Vector3.ZERO)
 				_drag_uniform = pick.get("uniform", true)
 				_drag_start_mouse = mouse_pos
-				var sel := selection_manager.get_selected()
-				var origin := camera_controller.camera.unproject_position(sel.global_position)
-				_drag_origin_screen = origin
 				if _drag_uniform:
-					_drag_axis_screen = Vector2.ONE.normalized()
+					_drag_axis_screen = Vector2.RIGHT
 					_drag_axis_perp = Vector2.UP
 				else:
+					var sel := selection_manager.get_selected()
+					var origin := camera_controller.camera.unproject_position(sel.global_position)
 					var tip := camera_controller.camera.unproject_position(sel.global_position + _drag_axis)
 					_drag_axis_screen = (tip - origin).normalized()
 					_drag_axis_perp = Vector2(-_drag_axis_screen.y, _drag_axis_screen.x)
@@ -438,10 +436,9 @@ func _on_viewport_gui_input(event: InputEvent):
 				transform_manager.apply_rotate(_drag_axis, tangential * 0.001)
 			Tool.SCALE:
 				if _drag_uniform:
-					var radial: float = (mouse_pos - _drag_origin_screen).length() - (_drag_start_mouse - _drag_origin_screen).length()
-					transform_manager.apply_scale(_drag_axis, radial * 0.02, true)
+					transform_manager.apply_scale(_drag_axis, _scale_delta(mouse_pos, _drag_start_mouse, _drag_axis_screen), true)
 				else:
-					transform_manager.apply_scale(_drag_axis, dist * 0.02, false)
+					transform_manager.apply_scale(_drag_axis, _scale_delta(mouse_pos, _drag_start_mouse, _drag_axis_screen), false)
 		_update_inspector(selection_manager.get_selected())
 
 	# Keyboard shortcuts
@@ -460,6 +457,13 @@ func _on_viewport_gui_input(event: InputEvent):
 			KEY_Y: if event.ctrl_pressed: _on_redo()
 			KEY_S: if event.ctrl_pressed: _on_save()
 			KEY_O: if event.ctrl_pressed: _on_load()
+
+
+# Signed projection of a screen-space drag onto the scale direction. Positive
+# grows, negative shrinks — both uniform (center handle, right = grow) and
+# axial handles use this formula.
+func _scale_delta(mouse_now: Vector2, grab_start: Vector2, screen_axis: Vector2) -> float:
+	return (mouse_now - grab_start).dot(screen_axis)
 
 
 func _update_gizmo_drag():
