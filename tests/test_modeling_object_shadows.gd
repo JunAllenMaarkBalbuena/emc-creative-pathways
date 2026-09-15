@@ -53,6 +53,13 @@ func _run() -> void:
 		fail += 1
 		print("FAIL: no grid plane (shadow receiver floor)")
 	else:
+		# Overlap guard: the opaque grid surface must sit BELOW the object
+		# resting line (objects spawn with their bottom at workspace y=0). If the
+		# grid sits AT that line, a spawned object's bottom face is coplanar with
+		# the opaque floor and the floor visibly overlaps the selected object.
+		if grid_mesh.position.y > -0.001:
+			fail += 1
+			print("FAIL: opaque grid must sit below the object resting line so it cannot overlap spawned objects (grid y=%.4f)" % grid_mesh.position.y)
 		var gm := grid_mesh.material_override as ShaderMaterial
 		if gm == null or gm.shader == null:
 			fail += 1

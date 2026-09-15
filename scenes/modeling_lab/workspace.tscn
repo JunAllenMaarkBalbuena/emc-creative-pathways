@@ -29,6 +29,7 @@ fov = 45.11566
 [node name="ObjectContainer" type="Node3D" parent="." unique_id=1605086525]
 
 [node name="GridPlane" type="MeshInstance3D" parent="." unique_id=1735948212]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.005, 0)
 mesh = SubResource("PlaneMesh_7v3k9")
 material_override = SubResource("ShaderMaterial_grid")
 
