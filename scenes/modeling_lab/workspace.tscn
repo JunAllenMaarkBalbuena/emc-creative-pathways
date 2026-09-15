@@ -11,7 +11,7 @@ size = Vector2(20, 20)
 shader = ExtResource("4_grid")
 shader_parameter/grid_minor = 1.0
 shader_parameter/grid_major = 5.0
-shader_parameter/base_color = Color(0.06, 0.075, 0.095, 0.55)
+shader_parameter/base_color = Color(0.055, 0.07, 0.09, 1.0)
 
 [sub_resource type="Environment" id="Environment_v5u26"]
 background_mode = 1
@@ -42,6 +42,10 @@ environment = SubResource("Environment_v5u26")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=426699901]
 transform = Transform3D(0.9009434, -0.19907434, 0.178886, 0, 0.40207168, 0.17714061, -0.9009434, -0.19907434, 0.178886, 0, 0, 0)
+shadow_enabled = true
+shadow_blur = 2.0
+directional_shadow_blend_splits = true
+shadow_normal_bias = 0.6
 
 [node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=2034506630]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)

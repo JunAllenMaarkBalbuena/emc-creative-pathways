@@ -1,8 +1,9 @@
 shader_type spatial;
-render_mode unshaded, cull_back;
+render_mode cull_back;
 
-/** Faint translucent ground tint. */
-uniform vec4 base_color : source_color = vec4(0.06, 0.075, 0.095, 0.55);
+/** Opaque ground tint. The grid must be opaque and lit so it receives the
+ * dropped shadows of the objects sitting on it. */
+uniform vec4 base_color : source_color = vec4(0.055, 0.07, 0.09, 1.0);
 /** Color of the minor grid lines. */
 uniform vec4 line_color : source_color = vec4(0.5, 0.56, 0.64, 1.0);
 /** Color of the major grid lines (every grid_major units). */
@@ -56,9 +57,8 @@ void fragment() {
 	col = mix(col, axis_color_x.rgb, x_axis * fader);
 	col = mix(col, axis_color_z.rgb, z_axis * fader);
 
-	float alpha = base_color.a * fader;
-	alpha = mix(alpha, max(alpha, 0.85), max(minor_both, max(major_both, max(x_axis, z_axis))) * fader);
-
 	ALBEDO = col;
-	ALPHA = alpha;
+	ROUGHNESS = 1.0;
+	METALLIC = 0.0;
+	ALPHA = 1.0;
 }

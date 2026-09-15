@@ -48,9 +48,9 @@ func _run() -> void:
 		print("FAIL: grid_major should be 5.0 on the scene material")
 
 	var base_col: Color = mat.get_shader_parameter("base_color")
-	if base_col.a >= 1.0:
+	if base_col.a < 1.0:
 		fail += 1
-		print("FAIL: grid base should be translucent so objects read clearly")
+		print("FAIL: grid base should be opaque so it receives drop shadows")
 
 	if fail == 0:
 		print("PASS: GridPlane renders a real ground grid (shader + tuning uniforms)")
