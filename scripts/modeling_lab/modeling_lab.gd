@@ -45,6 +45,7 @@ var object_container: Node3D
 var ghost_container: Node3D
 var gizmo: Gizmo3D
 var camera_controller: CameraController
+var grid_plane: MeshInstance3D
 
 # Called by main menu
 static func launch():
@@ -57,8 +58,10 @@ func _ready():
 	ghost_container = workspace.get_node("GhostContainer")
 	gizmo = workspace.get_node("Gizmo3D")
 	camera_controller = workspace.get_node("CameraController")
+	grid_plane = workspace.get_node("GridPlane")
 
 	snap_settings = SnapSettings.new()
+	grid_plane.visible = snap_settings.grid_visible
 	spawner = PrimitiveSpawner.new()
 	selection_manager = SelectionManager.new(object_container)
 	transform_manager = TransformManager.new(selection_manager, snap_settings)
@@ -544,6 +547,7 @@ func _on_center():
 
 func _on_grid_toggled(val: bool):
 	snap_settings.grid_visible = val
+	grid_plane.visible = val
 
 
 func _on_snap_toggled(val: bool):

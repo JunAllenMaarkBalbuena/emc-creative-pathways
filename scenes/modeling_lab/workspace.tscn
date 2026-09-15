@@ -1,0 +1,47 @@
+[gd_scene format=3 uid="uid://cbdanxiec00r2"]
+
+[ext_resource type="Script" path="res://scripts/modeling_lab/camera_controller.gd" id="2_1qofw"]
+[ext_resource type="Script" path="res://scripts/modeling_lab/gizmo_3d.gd" id="3_s6jf8"]
+[ext_resource type="Shader" path="res://scripts/modeling_lab/grid_shader.gdshader" id="4_grid"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_7v3k9"]
+size = Vector2(20, 20)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_grid"]
+shader = ExtResource("4_grid")
+shader_parameter/grid_minor = 1.0
+shader_parameter/grid_major = 5.0
+shader_parameter/base_color = Color(0.06, 0.075, 0.095, 0.55)
+
+[sub_resource type="Environment" id="Environment_v5u26"]
+background_mode = 1
+
+[node name="Workspace" type="Node3D" unique_id=1645449839]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.092357635, 0)
+
+[node name="CameraController" type="Node3D" parent="." unique_id=696826935]
+script = ExtResource("2_1qofw")
+
+[node name="Camera3D" type="Camera3D" parent="CameraController" unique_id=901129000]
+current = true
+fov = 45.11566
+
+[node name="ObjectContainer" type="Node3D" parent="." unique_id=1605086525]
+
+[node name="GridPlane" type="MeshInstance3D" parent="." unique_id=1735948212]
+mesh = SubResource("PlaneMesh_7v3k9")
+material_override = SubResource("ShaderMaterial_grid")
+
+[node name="GhostContainer" type="Node3D" parent="." unique_id=1222487981]
+
+[node name="Gizmo3D" type="Node3D" parent="." unique_id=2127473958]
+script = ExtResource("3_s6jf8")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=875443251]
+environment = SubResource("Environment_v5u26")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=426699901]
+transform = Transform3D(0.9009434, -0.19907434, 0.178886, 0, 0.40207168, 0.17714061, -0.9009434, -0.19907434, 0.178886, 0, 0, 0)
+
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=2034506630]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
