@@ -120,6 +120,7 @@ func _connect_ui_signals():
 	%DeleteBtn.pressed.connect(_on_delete)
 	%ResetBtn.pressed.connect(_on_reset)
 	%CenterBtn.pressed.connect(_on_center)
+	%FocusBtn.pressed.connect(_focus_selected)
 
 	# Toggles
 	%GridToggle.toggled.connect(_on_grid_toggled)

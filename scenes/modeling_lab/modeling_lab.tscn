@@ -1,0 +1,784 @@
+[gd_scene format=3 uid="uid://dcl1xvl5gvo3r"]
+
+[ext_resource type="Script" uid="uid://dklc2hgtjkbma" path="res://scripts/modeling_lab/modeling_lab.gd" id="1_lab"]
+[ext_resource type="PackedScene" uid="uid://cbdanxiec00r2" path="res://scenes/modeling_lab/workspace.tscn" id="2_workspace"]
+[ext_resource type="Script" uid="uid://chkamti3u2epn" path="res://scripts/modeling_lab/view_orbit_gizmo.gd" id="3_1a6yg"]
+
+[sub_resource type="StyleBoxFlat" id="SBF_bg"]
+bg_color = Color(0.1, 0.1, 0.14, 1)
+
+[sub_resource type="StyleBoxFlat" id="SBF_close"]
+bg_color = Color(0.6, 0.15, 0.15, 0.8)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.8, 0.2, 0.2, 0.6)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="SBF_toolbtn"]
+bg_color = Color(0.15, 0.15, 0.2, 0.8)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.2, 0.28, 0.5)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="SBF_toolbtn_active"]
+bg_color = Color(0.29, 0.62, 1, 0.4)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.29, 0.62, 1, 0.8)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="SBF_toast"]
+bg_color = Color(0.29, 0.62, 1, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="ModelingLab" type="CanvasLayer" unique_id=1114419269]
+script = ExtResource("1_lab")
+
+[node name="Background" type="Panel" parent="." unique_id=1229953882]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("SBF_bg")
+
+[node name="TopBar" type="HBoxContainer" parent="." unique_id=1679622991]
+unique_name_in_owner = true
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -11.0
+offset_bottom = 52.0
+grow_horizontal = 2
+
+[node name="BackBtn" type="Button" parent="TopBar" unique_id=1876228961]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 36)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "←"
+
+[node name="TitleLabel" type="Label" parent="TopBar" unique_id=499780436]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 18
+text = "3D Modeling Laboratory"
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="TopBar" unique_id=1683488401]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LessonLabel" type="Label" parent="TopBar" unique_id=1239971514]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.7, 1)
+theme_override_font_sizes/font_size = 14
+text = "Lesson 1: Move & Scale"
+vertical_alignment = 1
+
+[node name="Spacer2" type="Control" parent="TopBar" unique_id=1519030157]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SpawnBtn" type="MenuButton" parent="TopBar" unique_id=1705842338]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(100, 36)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "+ Spawn"
+
+[node name="HintBtn" type="Button" parent="TopBar" unique_id=2135994430]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "?"
+
+[node name="CloseBtn" type="Button" parent="TopBar" unique_id=1288186544]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("SBF_close")
+text = "✕"
+
+[node name="LeftToolbar" type="VBoxContainer" parent="." unique_id=1355233393]
+unique_name_in_owner = true
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 60.0
+offset_right = 68.0
+offset_bottom = -8.0
+grow_vertical = 2
+
+[node name="MoveBtn" type="Button" parent="LeftToolbar" unique_id=1099014827]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 40)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_styles/normal = SubResource("SBF_toolbtn")
+theme_override_styles/pressed = SubResource("SBF_toolbtn_active")
+theme_override_styles/hover = SubResource("SBF_toolbtn_active")
+toggle_mode = true
+text = "Move"
+
+[node name="RotateBtn" type="Button" parent="LeftToolbar" unique_id=515064158]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 40)
+layout_mode = 2
+theme_override_styles/normal = SubResource("SBF_toolbtn")
+theme_override_styles/pressed = SubResource("SBF_toolbtn_active")
+theme_override_styles/hover = SubResource("SBF_toolbtn_active")
+toggle_mode = true
+text = "Rotate"
+
+[node name="ScaleBtn" type="Button" parent="LeftToolbar" unique_id=1315685006]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 40)
+layout_mode = 2
+theme_override_styles/normal = SubResource("SBF_toolbtn")
+theme_override_styles/pressed = SubResource("SBF_toolbtn_active")
+theme_override_styles/hover = SubResource("SBF_toolbtn_active")
+toggle_mode = true
+text = "Scale"
+
+[node name="HSep1" type="HSeparator" parent="LeftToolbar" unique_id=2133114923]
+layout_mode = 2
+
+[node name="DuplicateBtn" type="Button" parent="LeftToolbar" unique_id=1352826412]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 36)
+layout_mode = 2
+text = "Dup"
+
+[node name="DeleteBtn" type="Button" parent="LeftToolbar" unique_id=1578675277]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 36)
+layout_mode = 2
+text = "Del"
+
+[node name="ResetBtn" type="Button" parent="LeftToolbar" unique_id=880495655]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 36)
+layout_mode = 2
+text = "Reset"
+
+[node name="CenterBtn" type="Button" parent="LeftToolbar" unique_id=1534663381]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 36)
+layout_mode = 2
+text = "Center"
+
+[node name="FocusBtn" type="Button" parent="LeftToolbar" unique_id=1534663382]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 36)
+layout_mode = 2
+text = "Focus"
+
+[node name="HSep2" type="HSeparator" parent="LeftToolbar" unique_id=1927420602]
+layout_mode = 2
+
+[node name="GridToggle" type="CheckButton" parent="LeftToolbar" unique_id=1861678653]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Grid"
+
+[node name="SnapToggle" type="CheckButton" parent="LeftToolbar" unique_id=817278859]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Snap"
+
+[node name="SnapSize" type="SpinBox" parent="LeftToolbar" unique_id=69785322]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 30)
+layout_mode = 2
+min_value = 0.01
+max_value = 10.0
+step = 0.01
+value = 0.25
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="." unique_id=1608512776]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 96.0
+offset_top = 60.0
+offset_right = -373.0
+offset_bottom = -44.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="SubViewportContainer" unique_id=1529761496]
+unique_name_in_owner = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(811, 616)
+render_target_update_mode = 4
+
+[node name="Workspace" parent="SubViewportContainer/SubViewport" unique_id=338960204 instance=ExtResource("2_workspace")]
+
+[node name="ViewOrbitGizmo" type="Control" parent="SubViewportContainer" unique_id=1929070225]
+custom_minimum_size = Vector2(120, 120)
+layout_mode = 2
+script = ExtResource("3_1a6yg")
+
+[node name="RightPanel" type="VBoxContainer" parent="." unique_id=1908973647]
+unique_name_in_owner = true
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -373.0
+offset_top = 60.0
+offset_right = -13.0
+offset_bottom = -44.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 0
+
+[node name="TabContainer" type="TabContainer" parent="RightPanel" unique_id=1680385849]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="Hierarchy" type="VBoxContainer" parent="RightPanel/TabContainer" unique_id=959023226]
+unique_name_in_owner = true
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="Tree" type="Tree" parent="RightPanel/TabContainer/Hierarchy" unique_id=979740732]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+hide_root = true
+
+[node name="HBox" type="HBoxContainer" parent="RightPanel/TabContainer/Hierarchy" unique_id=1927978585]
+layout_mode = 2
+
+[node name="RenameBtn" type="Button" parent="RightPanel/TabContainer/Hierarchy/HBox" unique_id=2076718923]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 30)
+layout_mode = 2
+text = "Rename"
+
+[node name="ParentBtn" type="Button" parent="RightPanel/TabContainer/Hierarchy/HBox" unique_id=430517310]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 30)
+layout_mode = 2
+text = "Parent"
+
+[node name="UnparentBtn" type="Button" parent="RightPanel/TabContainer/Hierarchy/HBox" unique_id=1156571849]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 30)
+layout_mode = 2
+text = "Unparent"
+
+[node name="Inspector" type="VBoxContainer" parent="RightPanel/TabContainer" unique_id=869916201]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="Grid" type="GridContainer" parent="RightPanel/TabContainer/Inspector" unique_id=531170908]
+layout_mode = 2
+columns = 2
+
+[node name="NameLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=1342358291]
+layout_mode = 2
+text = "Name:"
+
+[node name="NodeName" type="LineEdit" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=230144444]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Selected object name"
+
+[node name="PosLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=415123395]
+layout_mode = 2
+text = "Position:"
+
+[node name="PosContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=247989525]
+layout_mode = 2
+
+[node name="PosX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/PosContainer" unique_id=541202019]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -100.0
+step = 0.01
+
+[node name="PosY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/PosContainer" unique_id=2146106461]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -100.0
+step = 0.01
+
+[node name="PosZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/PosContainer" unique_id=416290087]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -100.0
+step = 0.01
+
+[node name="RotLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=696444760]
+layout_mode = 2
+text = "Rotation:"
+
+[node name="RotContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=574630923]
+layout_mode = 2
+
+[node name="RotX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/RotContainer" unique_id=1756608392]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+suffix = "°"
+
+[node name="RotY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/RotContainer" unique_id=305723135]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+suffix = "°"
+
+[node name="RotZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/RotContainer" unique_id=2106851695]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+suffix = "°"
+
+[node name="ScaleLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=1129608229]
+layout_mode = 2
+text = "Scale:"
+
+[node name="ScaleContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=1785715629]
+layout_mode = 2
+
+[node name="ScaleX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/ScaleContainer" unique_id=1348524792]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.01
+step = 0.01
+value = 1.0
+
+[node name="ScaleY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/ScaleContainer" unique_id=1226793437]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.01
+step = 0.01
+value = 1.0
+
+[node name="ScaleZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/ScaleContainer" unique_id=553893658]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.01
+step = 0.01
+value = 1.0
+
+[node name="Materials" type="VBoxContainer" parent="RightPanel/TabContainer" unique_id=809192407]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="ColorLabel" type="Label" parent="RightPanel/TabContainer/Materials" unique_id=1174249946]
+layout_mode = 2
+text = "Base Color:"
+
+[node name="ColorSwatch" type="ColorRect" parent="RightPanel/TabContainer/Materials" unique_id=1341748190]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="MetallicSlider" type="HSlider" parent="RightPanel/TabContainer/Materials" unique_id=1109477310]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+
+[node name="RoughnessSlider" type="HSlider" parent="RightPanel/TabContainer/Materials" unique_id=270199069]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 0.5
+
+[node name="PresetsLabel" type="Label" parent="RightPanel/TabContainer/Materials" unique_id=434102473]
+layout_mode = 2
+text = "Presets:"
+
+[node name="PresetRow" type="HBoxContainer" parent="RightPanel/TabContainer/Materials" unique_id=902405222]
+layout_mode = 2
+
+[node name="PlasticBtn" type="Button" parent="RightPanel/TabContainer/Materials/PresetRow" unique_id=299892993]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "Plastic"
+
+[node name="MetalBtn" type="Button" parent="RightPanel/TabContainer/Materials/PresetRow" unique_id=1939056501]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "Metal"
+
+[node name="WoodBtn" type="Button" parent="RightPanel/TabContainer/Materials/PresetRow" unique_id=1799024783]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "Wood"
+
+[node name="StoneBtn" type="Button" parent="RightPanel/TabContainer/Materials/PresetRow" unique_id=38760549]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "Stone"
+
+[node name="GlassBtn" type="Button" parent="RightPanel/TabContainer/Materials/PresetRow" unique_id=1153989287]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "Glass"
+
+[node name="Assignment" type="VBoxContainer" parent="RightPanel/TabContainer" unique_id=70401354]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+metadata/_tab_index = 3
+
+[node name="LessonTitle" type="Label" parent="RightPanel/TabContainer/Assignment" unique_id=1199014708]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.29, 0.62, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "Lesson 1: Wooden Crate"
+
+[node name="Instructions" type="RichTextLabel" parent="RightPanel/TabContainer/Assignment" unique_id=202496354]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+size_flags_vertical = 3
+text = "Move and scale the cube to match the ghost guide."
+autowrap_mode = 2
+
+[node name="AccuracyGroup" type="VBoxContainer" parent="RightPanel/TabContainer/Assignment" unique_id=650095366]
+layout_mode = 2
+
+[node name="PosAcc" type="ProgressBar" parent="RightPanel/TabContainer/Assignment/AccuracyGroup" unique_id=73985959]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RotAcc" type="ProgressBar" parent="RightPanel/TabContainer/Assignment/AccuracyGroup" unique_id=1413135199]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ScaleAcc" type="ProgressBar" parent="RightPanel/TabContainer/Assignment/AccuracyGroup" unique_id=644551308]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BottomBar" type="HBoxContainer" parent="." unique_id=36088938]
+unique_name_in_owner = true
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 76.0
+offset_top = -36.0
+offset_right = -8.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="ToolLabel" type="Label" parent="BottomBar" unique_id=1828540654]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.7, 1)
+text = "Tool: Move"
+
+[node name="VSep1" type="VSeparator" parent="BottomBar" unique_id=2021959534]
+layout_mode = 2
+
+[node name="TransformLabel" type="Label" parent="BottomBar" unique_id=1022556868]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.6, 0.6, 0.7, 1)
+text = "X: 0.00  Y: 0.00  Z: 0.00"
+
+[node name="VSep2" type="VSeparator" parent="BottomBar" unique_id=738286849]
+layout_mode = 2
+
+[node name="ModeBtn" type="Button" parent="BottomBar" unique_id=701769208]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "World"
+flat = true
+
+[node name="VSep3" type="VSeparator" parent="BottomBar" unique_id=2072799154]
+layout_mode = 2
+
+[node name="ZoomLabel" type="Label" parent="BottomBar" unique_id=1293488029]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.7, 1)
+text = "Zoom: 100%"
+
+[node name="SaveDialog" type="Panel" parent="." unique_id=1593357659]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -100.0
+offset_right = 150.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="SaveDialog" unique_id=1742966017]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="SaveDialog/VBox" unique_id=1975436508]
+layout_mode = 2
+text = "Save Model"
+
+[node name="NameEdit" type="LineEdit" parent="SaveDialog/VBox" unique_id=1650049091]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Model name"
+
+[node name="HBox" type="HBoxContainer" parent="SaveDialog/VBox" unique_id=1259007700]
+layout_mode = 2
+
+[node name="SaveBtn" type="Button" parent="SaveDialog/VBox/HBox" unique_id=727201693]
+layout_mode = 2
+text = "Save"
+
+[node name="CancelBtn" type="Button" parent="SaveDialog/VBox/HBox" unique_id=1676692669]
+layout_mode = 2
+text = "Cancel"
+
+[node name="ErrorLabel" type="Label" parent="SaveDialog/VBox" unique_id=450846499]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
+text = "Save failed!"
+
+[node name="LoadDialog" type="Panel" parent="." unique_id=988006773]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -150.0
+offset_right = 200.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="LoadDialog" unique_id=1737122251]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="LoadDialog/VBox" unique_id=1888082503]
+layout_mode = 2
+text = "Portfolio"
+
+[node name="ItemList" type="ItemList" parent="LoadDialog/VBox" unique_id=128396483]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="HBox" type="HBoxContainer" parent="LoadDialog/VBox" unique_id=775692357]
+layout_mode = 2
+
+[node name="OpenBtn" type="Button" parent="LoadDialog/VBox/HBox" unique_id=5011969]
+layout_mode = 2
+text = "Open"
+
+[node name="DeleteBtn" type="Button" parent="LoadDialog/VBox/HBox" unique_id=491604122]
+layout_mode = 2
+text = "Delete"
+
+[node name="CancelBtn" type="Button" parent="LoadDialog/VBox/HBox" unique_id=200722516]
+layout_mode = 2
+text = "Cancel"
+
+[node name="CompletionPanel" type="Panel" parent="." unique_id=547892622]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -80.0
+offset_right = 150.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CompletionPanel" unique_id=1670024158]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MsgLabel" type="Label" parent="CompletionPanel/VBox" unique_id=134533965]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Assignment Complete!"
+horizontal_alignment = 1
+
+[node name="ScoreLabel" type="Label" parent="CompletionPanel/VBox" unique_id=191938770]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Score: 0%"
+horizontal_alignment = 1
+
+[node name="GradeLabel" type="Label" parent="CompletionPanel/VBox" unique_id=1509650863]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "Grade: -"
+horizontal_alignment = 1
+
+[node name="ContBtn" type="Button" parent="CompletionPanel/VBox" unique_id=1580963359]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Continue"
+
+[node name="CreativeStudioUnlockPanel" type="Panel" parent="." unique_id=472351949]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -80.0
+offset_right = 200.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CreativeStudioUnlockPanel" unique_id=711128120]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="CreativeStudioUnlockPanel/VBox" unique_id=1942233512]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Creative Studio Unlocked!"
+horizontal_alignment = 1
+
+[node name="SubLabel" type="Label" parent="CreativeStudioUnlockPanel/VBox" unique_id=1943074841]
+layout_mode = 2
+text = "You've completed all 7 lessons. You can now freely build and save 3D models."
+horizontal_alignment = 1
+autowrap_mode = 1
+
+[node name="OkBtn" type="Button" parent="CreativeStudioUnlockPanel/VBox" unique_id=109519670]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Enter Creative Studio"
+
+[node name="Toast" type="Panel" parent="." unique_id=1591590577]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_top = 70.0
+offset_right = 150.0
+offset_bottom = 110.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("SBF_toast")
+
+[node name="Label" type="Label" parent="Toast" unique_id=1568224034]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "Saved!"
+horizontal_alignment = 1
+vertical_alignment = 1
