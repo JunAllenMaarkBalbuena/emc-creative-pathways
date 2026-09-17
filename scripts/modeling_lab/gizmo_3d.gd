@@ -95,11 +95,11 @@ func _build_handles():
 
 func _make_material(color: Color) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(color.r, color.g, color.b, 0.5)
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.35)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.emission_enabled = true
 	mat.emission = color
-	mat.emission_energy_multiplier = 0.6
+	mat.emission_energy_multiplier = 0.45
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.no_depth_test = true
 	return mat
@@ -163,10 +163,10 @@ func _build_rotate():
 		_handle_root.add_child(group)
 
 		var torus_mesh := TorusMesh.new()
-		torus_mesh.inner_radius = 0.75
-		torus_mesh.outer_radius = 1.05
-		torus_mesh.rings = 32
-		torus_mesh.ring_segments = 16
+		torus_mesh.inner_radius = 0.85
+		torus_mesh.outer_radius = 1.0
+		torus_mesh.rings = 64
+		torus_mesh.ring_segments = 8
 		var ring := MeshInstance3D.new()
 		ring.mesh = torus_mesh
 		ring.material_override = _make_material(color)

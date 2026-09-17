@@ -86,10 +86,11 @@ func _select_highlight(mi: MeshInstance3D):
 		_base_materials[id] = mi.get_surface_override_material(0)
 	var mat := StandardMaterial3D.new()
 	mat.set_meta("gizmo_highlight", true)
-	mat.albedo_color = Color(0.7, 0.85, 1.0)
-	mat.emission_enabled = true
-	mat.emission = Color(0.3, 0.45, 0.6)
-	mat.emission_energy_multiplier = 1.2
+	var base_albedo := Color(0.5, 0.5, 0.5)
+	var base_mat: Material = _base_materials.get(id)
+	if base_mat is StandardMaterial3D:
+		base_albedo = (base_mat as StandardMaterial3D).albedo_color
+	mat.albedo_color = base_albedo.lerp(Color(0.72, 0.84, 1.0), 0.35)
 	mat.no_depth_test = true
 	mi.set_surface_override_material(0, mat)
 

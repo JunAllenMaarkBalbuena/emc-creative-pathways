@@ -46,6 +46,32 @@ func _run() -> void:
 		fail += 1
 		print("FAIL: spawned cube material is transparent; it cannot receive/render shadows cleanly")
 
+	# Selection must not wipe the object's lit/shadowed shading: the highlight
+	# replaces the base material, so if it is strongly emissive the whole
+	# surface goes flat-bright and the object's visible shadow is lost when
+	# selected. It must stay a light tint that keeps per-face lighting.
+	var base_surface_mat: Material = cube.get_surface_override_material(0)
+	var sel := SelectionManager.new(container)
+	sel.select(cube)
+	var hl := cube.get_surface_override_material(0) as StandardMaterial3D
+	if hl == null or not hl.no_depth_test:
+		fail += 1
+		print("FAIL: selection highlight must still render on top")
+	elif hl.emission_enabled:
+		var glow: float = hl.emission.get_luminance() * hl.emission_energy_multiplier
+		if glow > 0.06:
+			fail += 1
+			print("FAIL: selection highlight emission too strong (%.2f); it washes out the object's shading/shadow" % glow)
+	# Highlight must not emit light: emission flattens the lit/shadowed
+	# contrast on the object's surface, making its own shading/shadow vanish.
+	if hl != null and hl.emission_enabled:
+		fail += 1
+		print("FAIL: selection highlight uses emission which destroys the object's per-face shading")
+	sel.deselect_all()
+	if cube.get_surface_override_material(0) != base_surface_mat:
+		fail += 1
+		print("FAIL: deselect must restore the object's base material (and its shading)")
+
 	# Floor: the grid must be an opaque, lit surface so the drop shadow shows
 	# under objects instead of falling on a shadow-ignoring overlay.
 	var grid_mesh := ws.get_node_or_null("GridPlane") as MeshInstance3D

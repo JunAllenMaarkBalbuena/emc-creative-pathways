@@ -37,6 +37,11 @@ func _run() -> void:
 			if mat == null or mat.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA or mat.albedo_color.a >= 1.0:
 				fail += 1
 				print("FAIL: handle '%s' (mode %d) is not semi-transparent" % [mi.name, mode])
+			if mi.mesh is TorusMesh:
+				var torus := mi.mesh as TorusMesh
+				if torus.outer_radius - torus.inner_radius > 0.25:
+					fail += 1
+					print("FAIL: rotate ring '%s' (mode %d) band too thick (%.2f); it reads as a flat plane laid over the object" % [mi.name, mode, torus.outer_radius - torus.inner_radius])
 
 	var container := Node3D.new()
 	root.add_child(container)
