@@ -15,11 +15,32 @@ var current_mode: int = Mode.TRANSLATE
 var _target: Node3D = null
 var _dragging: bool = false
 var _drag_axis: Vector3 = Vector3.ZERO
+var _camera: Camera3D = null
+
+## Distance at which the handles are built at their native 1.0 scale. The
+## gizmo is constant-on-screen: it scales up with camera distance so the
+## 0.04-radius shafts never alias below a pixel when you zoom out (previously
+## it "slowly disappeared" in the snap/zoom views — the thin cylinders became
+## sub-pixel wide and faded away while the grid stayed crisp and read as
+## overlapping it).
+const NATIVE_DISTANCE := 8.0
+const MIN_SCALE := 0.5
+const MAX_SCALE := 60.0
 
 signal transform_began(axis: Vector3)
 signal transform_ended
 
 var _handle_root: Node3D
+
+func set_camera(camera: Camera3D):
+	_camera = camera
+
+# NOTE(regression): the constant-on-screen scaling in _process only activates
+# when set_camera() has been called. modeling_lab.gd MUST wire this exactly
+# like view_orbit_gizmo.set_camera(camera_controller.camera) — otherwise the
+# gizmo stays fixed-world-size and "slowly disappears / overlaps the grid"
+# as you zoom out (the thin 0.04-radius shafts go sub-pixel while the grid
+# stays crisp and reads as overlapping the gizmo).
 
 func _ready():
 	_handle_root = Node3D.new()
@@ -249,3 +270,26 @@ func _build_scale():
 func _process(_delta):
 	if _target and visible:
 		global_position = _target.global_position
+
+	# Constant-screen-size: the gizmo used to be a FIXED world-size object
+	# (0.04-radius shafts, ~1 unit tall), so it shrank to sub-pixel width as
+	# you zoomed out to place/fit whole scenes — the thin shafts aliased, then
+	# faded entirely, while the near-infinite grid stayed crisp and read as
+	# overlapping the gizmo. Real editors (Blender, Unity, Godot's own outline
+	# gizmos) keep the transform gizmo at constant screen size by scaling it
+	# with camera distance. Inject the camera distance here and scale the
+	# handle root so the projected size of every handle stays constant.
+	if _camera and _target:
+		var d := _camera.global_position.distance_to(global_position)
+		if d > 0.0:
+			var s := clampf(
+				d / NATIVE_DISTANCE,
+				MIN_SCALE,
+				MAX_SCALE,
+			)
+			# Uniform scale so axes keep their exact screen direction — and
+			# scale the whole handle tree (shafts + pick collision shapes
+			# scale together; the drag axis / uniform flags live in Area meta,
+			# so picking and drags keep working at any zoom).
+			_handle_root.scale = Vector3.ONE * s
+	visible = _target != null

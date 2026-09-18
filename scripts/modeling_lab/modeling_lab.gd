@@ -94,6 +94,14 @@ func _ready():
 		view_orbit_gizmo.view_axis_requested.connect(camera_controller.set_view_axis)
 		view_orbit_gizmo.view_reset_requested.connect(_on_gizmo_reset_view)
 		view_orbit_gizmo.set_camera(camera_controller.camera)
+		# Wire the transform gizmo's camera too — Gizmo3D keeps handles
+		# constant-on-screen by scaling with camera distance (NATIVE_DISTANCE
+		# etc. in gizmo_3d.gd). Without set_camera the gizmo stays fixed
+		# world-size and its 0.04-radius shafts go sub-pixel as you zoom out to
+		# fit the scene ("slowly disappears while the grid stays crisp and
+		# reads as overlapping it").
+		gizmo.set_camera(camera_controller.camera)
+
 
 
 func _find_ui_nodes():
