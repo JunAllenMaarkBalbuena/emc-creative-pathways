@@ -381,8 +381,13 @@ func _on_selection_changed(node: MeshInstance3D):
 	if node:
 		gizmo.set_target(node)
 		gizmo.visible = (_mode == LabMode.CREATIVE_STUDIO) or (_mode == LabMode.LESSON)
-		_update_inspector(node)
 	else:
+		# REGRESSION: deselect MUST also clear the gizmo's target, not just hide
+		# it. gizmo_3d.gd:_process runs `visible = _target != null` every frame,
+		# so a stale `_target` here makes the gizmo resurrect itself the next
+		# frame — it "remains" floating over the empty scene when nothing is
+		# selected (only visible, not <null>, is what actually keeps it hidden).
+		gizmo.set_target(null)
 		gizmo.visible = false
 
 
