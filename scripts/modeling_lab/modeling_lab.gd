@@ -93,6 +93,7 @@ func _ready():
 		view_orbit_gizmo.orbit_by.connect(camera_controller.orbit_by)
 		view_orbit_gizmo.view_axis_requested.connect(camera_controller.set_view_axis)
 		view_orbit_gizmo.view_reset_requested.connect(_on_gizmo_reset_view)
+		view_orbit_gizmo.set_camera(camera_controller.camera)
 
 
 func _find_ui_nodes():
