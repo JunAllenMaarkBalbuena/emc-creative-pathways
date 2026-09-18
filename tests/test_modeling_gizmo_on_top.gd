@@ -1,8 +1,15 @@
 extends SceneTree
 
-## Regression test: transform gizmo handles and the selection highlight must
-## render on top of occluding objects (no_depth_test = true) so they stay
-## visible even when the selected object is under/behind another one.
+## Regression test: transform gizmo handles must render on top of occluding
+## objects (no_depth_test = true) so they stay visible even when the selected
+## object is under/behind another one. Handles must NOT cast shadows:
+## translucent arrows/rings casting opaque shadows onto the workspace floor
+## ruins the selected objects' soft drop shadow and, from certain camera
+## angles, reads as the grid overlapping the object.
+##
+## The selection highlight material must keep depth testing ENABLED: disabling
+## it drops the selected object from the shadow pass, so its soft drop shadow
+## disappears on selection. The highlight tints the albedo instead.
 
 func _initialize() -> void:
 	_run()
@@ -37,6 +44,9 @@ func _run() -> void:
 			if mat == null or mat.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA or mat.albedo_color.a >= 1.0:
 				fail += 1
 				print("FAIL: handle '%s' (mode %d) is not semi-transparent" % [mi.name, mode])
+			if mi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+				fail += 1
+				print("FAIL: handle '%s' (mode %d) casts shadows on the workspace floor; it destroys the object's soft drop shadow on selection" % [mi.name, mode])
 			if mi.mesh is TorusMesh:
 				var torus := mi.mesh as TorusMesh
 				if torus.outer_radius - torus.inner_radius > 0.25:
@@ -50,10 +60,11 @@ func _run() -> void:
 	var cube := spawner.spawn(PrimitiveDef.Type.CUBE, container)
 	selection.select(cube)
 	var highlight := cube.get_surface_override_material(0) as StandardMaterial3D
-	if highlight == null or not highlight.no_depth_test:
+	if highlight != null and highlight.no_depth_test:
 		fail += 1
-		print("FAIL: selection highlight does not render on top")
+		print("FAIL: selection highlight disables depth test; the selected object is dropped "
+				+ "from the shadow pass and its soft drop shadow vanishes on selection")
 
 	if fail == 0:
-		print("PASS: all gizmo handles and the selection highlight render on top")
+		print("PASS: gizmo handles render on top without casting shadows; highlight keeps depth test on")
 	quit(1 if fail > 0 else 0)

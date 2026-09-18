@@ -54,16 +54,15 @@ func _run() -> void:
 	var sel := SelectionManager.new(container)
 	sel.select(cube)
 	var hl := cube.get_surface_override_material(0) as StandardMaterial3D
-	if hl == null or not hl.no_depth_test:
+	# The highlight must NOT disable the depth test: that would drop the
+	# selected object out of the shadow pass, making its soft drop shadow on
+	# the floor vanish while selected (and return on deselect).
+	if hl == null:
 		fail += 1
-		print("FAIL: selection highlight must still render on top")
-	elif hl.emission_enabled:
-		var glow: float = hl.emission.get_luminance() * hl.emission_energy_multiplier
-		if glow > 0.06:
-			fail += 1
-			print("FAIL: selection highlight emission too strong (%.2f); it washes out the object's shading/shadow" % glow)
-	# Highlight must not emit light: emission flattens the lit/shadowed
-	# contrast on the object's surface, making its own shading/shadow vanish.
+		print("FAIL: selection did not apply a highlight material")
+	elif hl.no_depth_test:
+		fail += 1
+		print("FAIL: selection highlight disables depth test; the selected object stops casting its drop shadow")
 	if hl != null and hl.emission_enabled:
 		fail += 1
 		print("FAIL: selection highlight uses emission which destroys the object's per-face shading")

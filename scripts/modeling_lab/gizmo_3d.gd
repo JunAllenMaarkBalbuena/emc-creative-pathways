@@ -125,6 +125,7 @@ func _build_translate():
 		var shaft := MeshInstance3D.new()
 		shaft.mesh = shaft_mesh
 		shaft.material_override = _make_material(color)
+		shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		shaft.position = Vector3(0, 0.55, 0)
 		group.add_child(shaft)
 
@@ -135,6 +136,7 @@ func _build_translate():
 		var head := MeshInstance3D.new()
 		head.mesh = head_mesh
 		head.material_override = _make_material(color)
+		head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		head.position = Vector3(0, 1.25, 0)
 		group.add_child(head)
 
@@ -170,6 +172,7 @@ func _build_rotate():
 		var ring := MeshInstance3D.new()
 		ring.mesh = torus_mesh
 		ring.material_override = _make_material(color)
+		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		group.add_child(ring)
 
 		var area := Area3D.new()
@@ -197,6 +200,7 @@ func _build_scale():
 		var cube := MeshInstance3D.new()
 		cube.mesh = box_mesh
 		cube.material_override = _make_material(color)
+		cube.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		cube.position = Vector3(0, 1.25, 0)
 		group.add_child(cube)
 
@@ -222,6 +226,7 @@ func _build_scale():
 	var center_cube := MeshInstance3D.new()
 	center_cube.mesh = center_mesh
 	center_cube.material_override = _make_material(Color(1.0, 1.0, 1.0))
+	center_cube.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	center_group.add_child(center_cube)
 
 	var center_area := Area3D.new()

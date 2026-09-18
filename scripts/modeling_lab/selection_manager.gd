@@ -91,7 +91,9 @@ func _select_highlight(mi: MeshInstance3D):
 	if base_mat is StandardMaterial3D:
 		base_albedo = (base_mat as StandardMaterial3D).albedo_color
 	mat.albedo_color = base_albedo.lerp(Color(0.72, 0.84, 1.0), 0.35)
-	mat.no_depth_test = true
+	# IMPORTANT: do NOT set no_depth_test here. Disabling the depth test on the
+	# highlight material removes the selected object from the shadow pass, so
+	# its soft drop shadow disappears while selected (and returns on deselect).
 	mi.set_surface_override_material(0, mat)
 
 func _deselect_highlight(mi: MeshInstance3D):
