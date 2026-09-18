@@ -95,7 +95,11 @@ func _build_handles():
 
 func _make_material(color: Color) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(color.r, color.g, color.b, 0.35)
+	# Opacity matters: at low alpha the bright grid lines show through the
+	# handle bodies and read as the grid overlapping the gizmo (worst in the
+	# orthographic snap views, where the red X arrow sits on the grid's red
+	# X axis line). Keep it near-opaque so the handles hold their color.
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.9)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.emission_enabled = true
 	mat.emission = color

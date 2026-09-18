@@ -41,9 +41,9 @@ func _run() -> void:
 			if mat == null or not mat.no_depth_test:
 				fail += 1
 				print("FAIL: handle '%s' (mode %d) does not render on top" % [mi.name, mode])
-			if mat == null or mat.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA or mat.albedo_color.a >= 1.0:
+			if mat == null or mat.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA or mat.albedo_color.a < 0.85:
 				fail += 1
-				print("FAIL: handle '%s' (mode %d) is not semi-transparent" % [mi.name, mode])
+				print("FAIL: handle '%s' (mode %d) is too translucent; bright grid lines bleed through its body and read as the grid overlapping the gizmo (alpha=%.2f)" % [mi.name, mode, mat.albedo_color.a if mat else -1.0])
 			if mi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 				fail += 1
 				print("FAIL: handle '%s' (mode %d) casts shadows on the workspace floor; it destroys the object's soft drop shadow on selection" % [mi.name, mode])
