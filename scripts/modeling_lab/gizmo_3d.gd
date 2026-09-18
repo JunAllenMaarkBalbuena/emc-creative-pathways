@@ -127,6 +127,13 @@ func _make_material(color: Color) -> StandardMaterial3D:
 	mat.emission_energy_multiplier = 0.45
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.no_depth_test = true
+	# UI-level guarantee: gizmo materials sort DEAD-LAST in the transparent
+	# pass (render_priority > everything, including any other transparent
+	# surface). Combined with no_depth_test + alpha this makes the gizmo draw
+	# over *everything* — grid, other handles, any transparent object — at
+	# every camera angle, exactly like a UI overlay. The opaque grid can never
+	# win a pixel, and no transparent sibling can sort after it either.
+	mat.render_priority = 10
 	return mat
 
 func _orientation_for_axis(axis: Vector3) -> Basis:
