@@ -30,7 +30,7 @@ state, and the game is not damaged in the process.
 - Absolute paths in tracked files: 6, all inside the third-party `addons/godot_ai/` addon
   (fallback strings and probes, not locks). No project source hardcodes a machine path.
 
-## Three traps worth remembering
+## Four traps worth remembering
 
 **1. `vendor/` must carry a `.gdignore`, and it is the single most dangerous thing in this
 repo.** The vendored skills live *inside* the Godot project. Without `.gdignore`, Godot
@@ -59,6 +59,30 @@ check Godot by hand from PowerShell, capture stderr to a file instead:
 and `SceneTransition` only exist when the project actually runs, so per-file checking reports
 spurious `Identifier not found` for any script that touches them. That is a limit of the check,
 not a defect in the script.
+
+**4. A fresh clone has no `.godot/`, so it has no class cache, and `--quit` will not build
+one.** `.godot/global_script_class_cache.cfg` is what lets GDScript resolve `class_name`
+types. It is gitignored, correctly, because it is machine state. Without it every
+`class_name` fails to resolve and the suite reports a wall of invented failures:
+
+```
+Could not find type "LevelDefinition" in the current scope
+Identifier "PrimitiveSpawner" not declared in the current scope
+Failed to instantiate an autoload, script 'res://scripts/level_progression.gd' does not inherit from 'Node'
+```
+
+None of that indicates broken code. Only `godot --headless --import` builds the cache;
+`--headless --quit` boots without scanning for scripts and leaves the file absent.
+
+This was live for one commit: the first version of `verify-project.ps1` warmed with
+`--quit`, which passed on the author's machine (where `.godot/` already existed) and
+failed **19 of 20 tests** on a clean clone. Author-machine testing cannot see this class
+of bug, because the machine already has the cache. Always validate a handoff from a
+fresh clone, never from the working tree.
+
+First import of a fresh clone takes ~5 minutes (288 s here) because it imports 5,054
+assets. `verify-project.ps1` does it automatically and hard-fails if the cache does not
+appear, rather than reporting the cascade as test failures.
 
 **Also note:** exit code 0 does not mean the tests passed. The suite signals through printed
 `PASS:`/`FAIL:` markers and several tests exit 0 while printing errors. Never gate CI on the

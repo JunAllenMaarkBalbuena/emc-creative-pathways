@@ -5,16 +5,17 @@
 .DESCRIPTION
     Three gates, in order:
 
-      1. Warm  - boots once so .godot/global_script_class_cache.cfg exists.
-      2. Boot  - boots again and asserts a clean exit with no engine errors.
-      3. Tests - runs every tests\*.gd that extends SceneTree and reports PASS/FAIL.
+      1. Import - runs --headless --import so .godot/ and the class cache exist.
+      2. Boot   - boots and asserts a clean exit with no engine errors.
+      3. Tests  - runs every tests\*.gd that extends SceneTree, reports PASS/FAIL.
 
-    The warm-up in step 1 is not optional. On a fresh clone the class cache does
-    not exist, so class_name types cannot resolve and GDScript misreports calls as
-    returning void - player.gd reports "Cannot get return value of call to
-    interact()" and six other scripts report phantom parse errors. None of those
-    are real. They vanish once the cache exists. Skipping the warm-up makes this
-    script report failures that do not exist.
+    Step 1 is not optional and --quit is not a substitute for --import. On a fresh
+    clone .godot/ does not exist, so .godot/global_script_class_cache.cfg does not
+    exist either, and every class_name fails to resolve. The suite then reports a
+    wall of invented failures - "Could not find type LevelDefinition", "Identifier
+    PrimitiveSpawner not declared", "Failed to instantiate an autoload" - none of
+    which indicate broken code. Only --import builds the cache. If step 1 cannot
+    build it, this script stops rather than reporting those as test failures.
 
     Exit code is NOT a test signal. The suite communicates through printed
     PASS:/FAIL: markers and several tests exit 0 while printing errors, so this
@@ -36,6 +37,10 @@
 .NOTES
     Baseline on 2026-10-04: boot exits 0 with zero errors; 19-20 of 20 SceneTree
     tests clean. test_full_lab_sweep.gd is flaky and is reported as WARN, not FAIL.
+
+    The first run on a fresh clone imports every asset and takes minutes. Later
+    runs are fast. The editor does this same import the first time it opens a
+    project, so a collaborator who opens Godot first will not notice it.
 #>
 [CmdletBinding()]
 param(
@@ -125,16 +130,31 @@ $failed = $false
 $bootGateRan = $false
 
 # ------------------------------------------------------------------ 1. warm up
-Write-Host "`n[1/3] warming class cache" -ForegroundColor Cyan
-$warm = Invoke-Godot @('--quit')
-if ($warm.Exit -ne 0) {
-    Write-Warning "warm-up exited $($warm.Exit); continuing anyway"
-}
+Write-Host "`n[1/3] importing (builds .godot/ and the class cache)" -ForegroundColor Cyan
+$sw = [Diagnostics.Stopwatch]::StartNew()
+# --import, not --quit. --quit boots without scanning for scripts, so it never
+# creates .godot/global_script_class_cache.cfg. On a fresh clone that file does
+# not exist, every class_name then fails to resolve, and the whole suite fails
+# with phantom errors ("Could not find type LevelDefinition", "Identifier
+# PrimitiveSpawner not declared"). Those look like broken code but are only a
+# missing cache. --import is what actually builds it.
+$warm = Invoke-Godot @('--import')
 $cache = Join-Path $Root '.godot\global_script_class_cache.cfg'
+
 if (Test-Path $cache) {
-    Write-Host "      cache present" -ForegroundColor DarkGray
+    Write-Host ("      cache built ({0:N1} KB) in {1:N0}s" -f ((Get-Item $cache).Length / 1KB), $sw.Elapsed.TotalSeconds) -ForegroundColor DarkGray
 } else {
-    Write-Warning "      no class cache at .godot\global_script_class_cache.cfg"
+    # Hard fail. Every later gate depends on this file, and continuing produces
+    # a wall of invented errors that hides whatever is genuinely wrong.
+    Write-Host "      no class cache at .godot\global_script_class_cache.cfg" -ForegroundColor Red
+    if ($warm.Lines) {
+        Write-Host '      import said:' -ForegroundColor Red
+        $warm.Lines | Select-Object -Last 15 | ForEach-Object { Write-Host "        $_" -ForegroundColor Red }
+    }
+    Write-Host ''
+    Write-Host 'VERIFY FAILED - the class cache could not be built, so no later' -ForegroundColor Red
+    Write-Host 'result would be meaningful. Check the import output above.' -ForegroundColor Red
+    exit 1
 }
 
 # --------------------------------------------------------------------- 2. boot

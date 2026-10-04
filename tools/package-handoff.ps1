@@ -132,6 +132,11 @@ Commit or stash first, or pass -AllowDirty if you know the difference is safe.
     Write-Host '  2. install Godot 4.7.2-stable (the _console build is handy for CLI use)' -ForegroundColor DarkGray
     Write-Host '  3. powershell -ExecutionPolicy Bypass -File tools\verify-project.ps1' -ForegroundColor DarkGray
     Write-Host ''
+    Write-Host 'Step 3 imports every asset, which takes about 5 minutes on a first run' -ForegroundColor DarkGray
+    Write-Host 'and builds the class cache. That import is not optional: without it every' -ForegroundColor DarkGray
+    Write-Host 'class_name fails to resolve and the suite reports failures that are not real.' -ForegroundColor DarkGray
+    Write-Host 'Opening the project in the editor does the same import automatically.' -ForegroundColor DarkGray
+    Write-Host ''
     Write-Host 'The Godot skills are not in the archive (vendor/ is a build artifact).' -ForegroundColor DarkGray
     Write-Host 'To restore them: powershell -ExecutionPolicy Bypass -File tools\setup-godot-skills.ps1' -ForegroundColor DarkGray
 }
