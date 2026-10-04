@@ -58,9 +58,20 @@ Adding it properly means either a new centred `Label` node with its own
 are real layout changes to a hand-maintained `.tscn`, so they are deferred rather
 than done blind. The formal title lives here in the meantime.
 
-## Still pending
+## Repository renamed
 
-The GitHub repository is still `progress_2_EMC_simulator`. Renaming it to
-`emc-creative-pathways` needs the web UI (GitHub CLI is not installed here). GitHub
-redirects the old URL, so existing links keep working. `origin` and the handoff docs
-need updating once that is done.
+The GitHub repository was renamed from `progress_2_EMC_simulator` to
+`emc-creative-pathways`. `origin` was updated to match.
+
+```
+https://github.com/JunAllenMaarkBalbuena/emc-creative-pathways.git
+```
+
+GitHub keeps redirecting the old URL, so any link already shared still resolves.
+Verified after the rename: the new remote serves both `main` and
+`progress-two-emcsem`.
+
+The local folder is still named `progress-4-bs-emc-sem`. It does not have to match
+the repository name — git does not care — but `tools/package-handoff.ps1` derives the
+zip filename from the folder name, so a handoff zip will still read
+`progress-4-bs-emc-sem-<sha>.zip` until the folder is renamed too.
