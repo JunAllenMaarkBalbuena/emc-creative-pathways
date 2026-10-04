@@ -1,5 +1,5 @@
 @tool
-extends RefCounted
+extends "res://addons/godot_ai/handlers/command_handler.gd"
 
 const ErrorCodes := preload("res://addons/godot_ai/utils/error_codes.gd")
 const VariantSerializer := preload("res://addons/godot_ai/utils/variant_serializer.gd")
@@ -148,21 +148,31 @@ func reparent_node(params: Dictionary) -> Dictionary:
 
 	var old_parent := node.get_parent()
 	var old_idx := node.get_index()
+	## Ported from upstream PR #927 at
+	## 1a95bcca51d81d29de925c2f636814eaa037c1c2 (issue #904). Snapshot
+	## descendants before commit: remove_child clears owner on any child whose
+	## owner sits outside the pruned subtree, so both do and undo must restore
+	## those owners as part of the recorded action.
+	var descendants := _collect_descendants(node)
 
 	_undo_redo.create_action("MCP: Reparent %s" % node.name)
 	_undo_redo.add_do_method(old_parent, "remove_child", node)
 	_undo_redo.add_do_method(new_parent, "add_child", node, true)
 	_undo_redo.add_do_method(node, "set_owner", scene_root)
+	for child in descendants:
+		_undo_redo.add_do_method(child, "set_owner", scene_root)
 	_undo_redo.add_do_reference(node)
 	_undo_redo.add_undo_method(new_parent, "remove_child", node)
 	_undo_redo.add_undo_method(old_parent, "add_child", node, true)
 	_undo_redo.add_undo_method(old_parent, "move_child", node, old_idx)
 	_undo_redo.add_undo_method(node, "set_owner", scene_root)
+	for child in descendants:
+		## Keep a null owner as null. Substituting scene_root would make an
+		## intentionally unowned descendant scene-owned on undo (#904).
+		var prior_owner: Node = child.owner
+		_undo_redo.add_undo_method(child, "set_owner", prior_owner)
 	_undo_redo.add_undo_reference(node)
 	_undo_redo.commit_action()
-
-	# Re-set owner for all descendants (reparent can break ownership chain)
-	_set_owner_recursive(node, scene_root)
 
 	return {
 		"data": {
@@ -381,15 +391,20 @@ func duplicate_node(params: Dictionary) -> Dictionary:
 	if not new_name.is_empty():
 		dup.name = new_name
 
+	## Ported from upstream PR #927 (issue #904). Record descendant owners
+	## inside the action so redo restores them. Undo is just remove_child of
+	## the copy; descendants live on `dup` via add_do_reference and do not need
+	## their own undo set_owner.
+	var descendants := _collect_descendants(dup)
+
 	_undo_redo.create_action("MCP: Duplicate %s" % node.name)
 	_undo_redo.add_do_method(parent, "add_child", dup, true)
 	_undo_redo.add_do_method(dup, "set_owner", scene_root)
+	for child in descendants:
+		_undo_redo.add_do_method(child, "set_owner", scene_root)
 	_undo_redo.add_do_reference(dup)
 	_undo_redo.add_undo_method(parent, "remove_child", dup)
 	_undo_redo.commit_action()
-
-	# Set owner for all descendants of the duplicate
-	_set_owner_recursive(dup, scene_root)
 
 	return {
 		"data": {
@@ -536,10 +551,15 @@ func set_selection(params: Dictionary) -> Dictionary:
 	}
 
 
-func _set_owner_recursive(node: Node, owner: Node) -> void:
+## All descendants of `node` (not including `node` itself), depth-first.
+## Used to record per-child set_owner inside an undo action without targeting
+## the handler as an UndoRedo receiver (upstream PR #927 / issue #904).
+static func _collect_descendants(node: Node) -> Array[Node]:
+	var out: Array[Node] = []
 	for child in node.get_children():
-		child.set_owner(owner)
-		_set_owner_recursive(child, owner)
+		out.append(child)
+		out.append_array(_collect_descendants(child))
+	return out
 
 
 ## Canonical dict-key sets for dict→Variant coercion. Alpha on `COLOR_KEYS`
@@ -746,6 +766,14 @@ static func _coerce_value(value: Variant, target_type: int) -> Variant:
 		TYPE_FLOAT:
 			if value is int:
 				return float(value)
+			if value is String:
+				## #964: some MCP clients stringify float arguments ("4.0").
+				## Accept strictly-numeric strings; unparseable ones flow
+				## through unchanged so _check_coerced raises the typed
+				## WRONG_TYPE error instead of a silent zero/null write.
+				var parsed: Variant = McpJsonValues.parse_float(value)
+				if parsed != null:
+					return parsed
 		TYPE_STRING_NAME:
 			if value is String:
 				return StringName(value)
@@ -1277,23 +1305,31 @@ func get_node_properties(params: Dictionary) -> Dictionary:
 
 	var properties: Array[Dictionary] = []
 	var editor_property_count := 0
+	var matched_fields := {}
 	for prop in node.get_property_list():
 		var usage: int = prop.get("usage", 0)
 		if not (usage & PROPERTY_USAGE_EDITOR):
 			continue
 		editor_property_count += 1
-		if use_field_filter and not field_filter.has(prop.name):
-			continue
-		# Safe read: custom script getters can error; skip bad properties
-		# rather than letting one bad read timeout the entire request.
-		var value = node.get(prop.name)
-		if value == null and prop.type != TYPE_NIL:
-			continue
+		if use_field_filter:
+			if not field_filter.has(prop.name):
+				continue
+			matched_fields[prop.name] = true
+		# Null reads are values, not omissions: `script` on an unscripted node
+		# and unset Resource slots (mesh, material, …) read back null and must
+		# appear as "value": null with their declared type, so callers can tell
+		# "Object-typed, currently unset" from "doesn't exist" (#771).
 		properties.append({
 			"name": prop.name,
 			"type": type_string(prop.type),
-			"value": _serialize_value(value),
+			"value": _serialize_value(node.get(prop.name)),
 		})
+	# Requested names that matched no editor-visible property — distinguishes
+	# "you asked for something that doesn't exist" from "exists and is null".
+	var unknown_fields: Array[String] = []
+	for f in field_filter:
+		if not matched_fields.has(f):
+			unknown_fields.append(f)
 	return {
 		"data": {
 			"path": node_path,
@@ -1302,7 +1338,11 @@ func get_node_properties(params: Dictionary) -> Dictionary:
 			"count": properties.size(),
 			# Total editor-visible properties before field filtering, so a
 			# caller that passed `fields` knows how many were withheld.
+			# Invariant: an unfiltered call returns every editor-visible
+			# property, so count == total_count; only the `fields` filter
+			# can make count < total_count.
 			"total_count": editor_property_count,
+			"unknown_fields": unknown_fields,
 		}
 	}
 
