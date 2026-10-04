@@ -1,0 +1,66 @@
+[gd_resource type="Resource" script_class="FlowchartPuzzleData" format=3 uid="uid://cjt7vq5r8mblw"]
+
+[ext_resource type="Script" uid="uid://duw58fjwso4xo" path="res://scripts/programming_lab/flowchart_puzzle_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+puzzle_id = "hello_world"
+title = "Hello World"
+problem_description = "Create a simple program that displays a greeting.
+You have all the pieces — just put them in order."
+ipo_input = "Input: None"
+ipo_process = "Process: Begin and display greeting"
+ipo_output = "Output: A friendly message"
+slots = Array[Dictionary]([{
+&"correct_type": 0,
+&"height": 50,
+&"id": "s1",
+&"label": "Start",
+&"no_port": 2,
+&"pos_x": 340,
+&"pos_y": 120,
+&"prefilled": true,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 2,
+&"height": 50,
+&"id": "s2",
+&"label": "Say Hello",
+&"no_port": 2,
+&"pos_x": 380,
+&"pos_y": 220,
+&"prefilled": false,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 1,
+&"height": 50,
+&"id": "s3",
+&"label": "End",
+&"no_port": 2,
+&"pos_x": 340,
+&"pos_y": 340,
+&"prefilled": true,
+&"width": 140,
+&"yes_port": 3
+}])
+palette_types = Array[int]([0, 1, 2])
+connections = Array[Dictionary]([{
+&"from": "s1",
+&"from_port": 1,
+&"label": "",
+&"to": "s2",
+&"to_port": 0
+}, {
+&"from": "s2",
+&"from_port": 1,
+&"label": "",
+&"to": "s3",
+&"to_port": 0
+}])
+hint_level_1 = "Look at the symbols — which one is for a calculation step?"
+hint_level_2 = "The rectangle symbol is used for processes like calculations."
+hint_level_3 = "Drag the Process block into the slot labeled 'Say Hello'."
+cutscene_type = 2
+cutscene_path = "res://assets/video/Fishj.ogv"

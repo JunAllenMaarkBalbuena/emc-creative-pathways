@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://lrphyfwb7cbk"]
+
+[ext_resource type="Script" uid="uid://s0orccqogys3" path="res://scripts/npc.gd" id="1_npc"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_empty"]
+animations = []
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_nh2m4"]
+radius = 0.6
+height = 1.5
+
+[sub_resource type="CapsuleShape3D" id="Shape_npc_blocker"]
+radius = 1.0
+height = 4.0
+
+[node name="NPC" type="Area3D" unique_id=742076912]
+collision_layer = 2
+script = ExtResource("1_npc")
+use_dialogue_sequence = true
+prompt_title = "NPC"
+prompt_content = "Talk to this NPC."
+interaction_button_text = "Talk"
+
+[node name="Avatar" type="AnimatedSprite3D" parent="." unique_id=1834427824]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.78, 0)
+pixel_size = 0.012
+billboard = 1
+sprite_frames = SubResource("SpriteFrames_empty")
+
+[node name="InteractionBounds" type="CollisionShape3D" parent="." unique_id=442850673]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_nh2m4")
+
+[node name="Blocker" type="StaticBody3D" parent="." unique_id=1974838224]
+collision_layer = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Blocker" unique_id=1778948023]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("Shape_npc_blocker")
+disabled = true

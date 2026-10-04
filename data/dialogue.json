@@ -1,50 +1,106 @@
 {
   "orientation_sign": {
-    "speaker": "EMC Guide",
-    "prompt_title": "EMC Campus Map",
-    "prompt_content": "Read a short introduction to the EMC campus.",
-    "text": "Welcome to the EMC campus. Follow the path to explore the Animation, Game Development, and Multimedia laboratories.",
-    "portrait_player": "",
-    "portrait_npc": ""
+	"speaker": "EMC Guide",
+	"prompt_title": "EMC Campus Map",
+	"prompt_content": "Read a short introduction to the EMC campus.",
+	"text": "Welcome to the EMC campus. Follow the path to explore the Animation, Game Development, and Multimedia laboratories.",
+	"portrait_player": "",
+	"portrait_npc": ""
   },
   "terminal_welcome": {
-    "speaker": "Orientation Terminal",
-    "prompt_title": "Orientation Terminal",
-    "prompt_content": "Use this terminal to begin your campus orientation.",
-    "text": "Your first task is to explore the campus and interact with its learning stations.",
-    "portrait_player": "",
-    "portrait_npc": ""
+	"speaker": "Orientation Terminal",
+	"prompt_title": "Orientation Terminal",
+	"prompt_content": "Use this terminal to begin your campus orientation.",
+	"text": "Your first task is to explore the campus and interact with its learning stations.",
+	"portrait_player": "",
+	"portrait_npc": ""
   },
   "library_door_locked": {
-    "speaker": "Laboratory Door",
-    "prompt_title": "Animation Laboratory",
-    "prompt_content": "Enter the Animation Laboratory.",
-    "text": "Access granted. The Animation Laboratory is now open.",
-    "portrait_player": "",
-    "portrait_npc": ""
+	"speaker": "Laboratory Door",
+	"prompt_title": "Animation Laboratory",
+	"prompt_content": "Complete the Orientation Terminal first.",
+	"text": "This door is locked. Complete the Orientation Terminal first.",
+	"portrait_player": "",
+	"portrait_npc": ""
   },
   "collectible_badge": {
-    "speaker": "Achievement",
-    "prompt_title": "Explorer Badge",
-    "prompt_content": "Pick up this glowing Explorer Badge.",
-    "text": "You found an EMC Explorer Badge!",
-    "portrait_player": "",
-    "portrait_npc": ""
+	"speaker": "Achievement",
+	"prompt_title": "Explorer Badge",
+	"prompt_content": "Pick up this glowing Explorer Badge.",
+	"text": "You found an EMC Explorer Badge!",
+	"portrait_player": "",
+	"portrait_npc": ""
   },
   "npc_campus_guide": {
-    "speaker": "Mika",
-    "prompt_title": "Mika — Campus Guide",
-    "prompt_content": "Talk to Mika for instructions on how to begin your EMC campus tour.",
-    "text": "Hi! Start by reading the orientation terminal, then visit the campus sign and Animation Laboratory.",
-    "portrait_player": "",
-    "portrait_npc": "",
-    "dialogue": [
-      {"speaker": "Player", "side": "left", "text": "Hi Mika, how do I begin the campus tour?"},
-      {"speaker": "Mika", "side": "right", "text": "Would you like a quick overview or should I explain everything step by step?"},
-      {"speaker": "Mika", "side": "right", "text": "Each station introduces a different part of Entertainment and Multimedia Computing.", "choices": [
-        {"text": "Quick overview, please!", "next": ""},
-        {"text": "Step by step sounds good.", "next": ""}
-      ]}
-    ]
+	"speaker": "Mika",
+	"prompt_title": "Mika — Campus Guide",
+	"prompt_content": "Talk to Mika for instructions on how to begin your EMC campus tour.",
+	"text": "Hi! Start by reading the orientation terminal, then visit the campus sign and Animation Laboratory.",
+	"portrait_player": "res://assets/image/Player.png",
+	"portrait_npc": "res://assets/image/Mika.png",
+	"dialogue": [
+	  {"speaker": "Player", "side": "left", "text": "Hi Mika, how do I begin the campus tour?"},
+	  {"speaker": "Mika", "side": "right", "text": "Would you like a quick overview or should I explain everything step by step?"},
+	  {"speaker": "Mika", "side": "right", "text": "Each station introduces a different part of Entertainment and Multimedia Computing.", "choices": [
+		{"text": "Quick overview, please!", "next": ""},
+		{"text": "Step by step sounds good.", "next": ""}
+	  ]}
+	]
+  },
+  "npc_kyle_coding": {
+	"speaker": "Kyle",
+	"prompt_title": "Kyle — Programming Instructor",
+	"prompt_content": "Talk to Kyle about the Coding Laboratory.",
+	"text": "Welcome to the Coding Lab! This is where you learn to bring ideas to life through code.",
+	"portrait_player": "res://assets/image/Player.png",
+	"portrait_npc": "res://assets/image/kyle.png",
+	"dialogue": [
+	  {"speaker": "Player", "side": "left", "text": "Hey Kyle, what happens in the Coding Lab?"},
+	  {"speaker": "Kyle", "side": "right", "text": "This is where we teach programming for games, apps, and interactive media."},
+	  {"speaker": "Kyle", "side": "right", "text": "You'll learn languages like C#, Python, and GDScript. Ready to start coding?"},
+	  {"speaker": "Player", "side": "left", "text": "Absolutely! Let's do this."}
+	]
+  },
+  "npc_carl_animation": {
+	"speaker": "Carl",
+	"prompt_title": "Carl — Animation Instructor",
+	"prompt_content": "Talk to Carl about the Animation Studio.",
+	"text": "The Animation Studio is where characters and worlds come alive!",
+	"portrait_player": "res://assets/image/Player.png",
+	"portrait_npc": "res://assets/image/carl.png",
+	"dialogue": [
+	  {"speaker": "Player", "side": "left", "text": "Hi Carl, what's the Animation Studio all about?"},
+	  {"speaker": "Carl", "side": "right", "text": "We teach 2D and 3D animation, motion graphics, and visual effects."},
+	  {"speaker": "Carl", "side": "right", "text": "From hand-drawn frame-by-frame to rigging and skeletal animation — it's all here."},
+	  {"speaker": "Player", "side": "left", "text": "That sounds amazing!"}
+	]
+  },
+  "npc_brix_3d": {
+	"speaker": "Brix",
+	"prompt_title": "Brix — 3D Design Instructor",
+	"prompt_content": "Talk to Brix about the 3D Design Laboratory.",
+	"text": "Welcome to the 3D Design Lab! Let's sculpt, model, and texture.",
+	"portrait_player": "res://assets/image/Player.png",
+	"portrait_npc": "res://assets/image/brix.png",
+	"dialogue": [
+	  {"speaker": "Player", "side": "left", "text": "Hey Brix, what do you teach here?"},
+	  {"speaker": "Brix", "side": "right", "text": "3D modeling, texturing, lighting, and rendering. Blender, Maya, you name it."},
+	  {"speaker": "Brix", "side": "right", "text": "Every great game and movie starts with solid 3D assets. Want to try making one?"},
+	  {"speaker": "Player", "side": "left", "text": "Yes! I've always wanted to create 3D characters."}
+	]
+  },
+  "npc_sheon_gamedev": {
+	"speaker": "Sheon",
+	"prompt_title": "Sheon — Game Development Instructor",
+	"prompt_content": "Talk to Sheon about the Game Development Laboratory.",
+	"text": "Welcome to the Game Dev Lab! This is where everything comes together.",
+	"portrait_player": "res://assets/image/Player.png",
+	"portrait_npc": "res://assets/image/sheon.png",
+	"dialogue": [
+	  {"speaker": "Player", "side": "left", "text": "Hi Sheon, what's special about Game Dev?"},
+	  {"speaker": "Sheon", "side": "right", "text": "Game Dev combines programming, art, audio, and design into one experience."},
+	  {"speaker": "Sheon", "side": "right", "text": "You'll learn game engines, level design, physics, and player psychology."},
+	  {"speaker": "Player", "side": "left", "text": "This is exactly what I want to do!"}
+	]
   }
 }

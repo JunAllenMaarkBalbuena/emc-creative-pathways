@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CutsceneDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/cutscene/cutscene_definition.gd" id="1_cs_def"]
+[ext_resource type="VideoStream" path="res://assets/video/Level_1_cutscene.ogv" id="2_video"]
+
+[resource]
+script = ExtResource("1_cs_def")
+cutscene_id = "coding_lab_entry"
+display_name = "Coding Lab Entry"
+video_stream = ExtResource("2_video")
+allow_skip = true
+allow_pause = true

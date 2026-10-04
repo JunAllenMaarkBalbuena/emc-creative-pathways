@@ -1,0 +1,76 @@
+[gd_scene format=3 uid="uid://d4p5q6r7s8t9u"]
+
+[ext_resource type="Script" path="res://scripts/door_interactable.gd" id="1_door"]
+[ext_resource type="Script" path="res://scripts/level_completion_interactable.gd" id="2_terminal"]
+[ext_resource type="Resource" path="res://data/levels/programming_lab.tres" id="3_level"]
+[ext_resource type="PackedScene" uid="uid://djhxox6wpy7jx" path="res://scenes/player.tscn" id="4_player"]
+[ext_resource type="PackedScene" path="res://scenes/game_ui.tscn" id="5_game_ui"]
+[ext_resource type="PackedScene" uid="uid://dg23u7a2xtli2" path="res://scenes/dialogue_ui.tscn" id="6_dialogue_ui"]
+[ext_resource type="Script" uid="uid://bnmup8wxee1x" path="res://scripts/player_follow_camera.gd" id="7_camera"]
+
+[sub_resource type="Environment" id="Env_lab"]
+background_mode = 1
+background_color = Color(0.06, 0.08, 0.18, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.4, 0.5, 0.8, 1)
+ambient_light_energy = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.08, 0.12, 0.22, 1)
+roughness = 0.9
+
+[sub_resource type="PlaneMesh" id="Mesh_floor"]
+material = SubResource("Mat_floor")
+size = Vector2(10, 10)
+
+[sub_resource type="BoxShape3D" id="Shape_floor"]
+
+[sub_resource type="CollisionShape3D" id="CS_floor"]
+shape = SubResource("Shape_floor")
+
+[node name="ProgrammingLabLevel" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_lab")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.866, 0.5, 0, -0.5, 0.866, 0, 8, 0)
+
+[node name="Floor" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Floor"]
+mesh = SubResource("Mesh_floor")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("Shape_floor")
+
+[node name="Player" parent="." instance=ExtResource("4_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="PlayerFollowCamera" type="Node3D" parent="."]
+script = ExtResource("7_camera")
+transform = Transform3D(1, 0, 0, 0, 0.938, -0.345, 0, 0.345, 0.938, 0, 3, 5)
+target_node = NodePath("../Player")
+
+[node name="LabTerminal" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.5, 0)
+script = ExtResource("2_terminal")
+monitoring = true
+monitorable = true
+level_definition = ExtResource("3_level")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="LabTerminal"]
+transform = Transform3D(1, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 1, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="LabTerminal"]
+
+[node name="InteractionLabel" type="Label3D" parent="LabTerminal"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
+text = "Start Programming Lab"
+font_size = 18
+modulate = Color(0.3, 0.7, 1, 1)
+
+[node name="DialogueUI" parent="." instance=ExtResource("6_dialogue_ui")]
+
+[node name="GameUI" parent="." instance=ExtResource("5_game_ui")]

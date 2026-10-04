@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://ckyf13j3erx7a"
+path="res://.godot/imported/ei ei ei ei mun.mp3-85056f25051de1d49745c903c947a0d8.mp3str"
+
+[deps]
+
+source_file="res://assets/ei ei ei ei mun.mp3"
+dest_files=["res://.godot/imported/ei ei ei ei mun.mp3-85056f25051de1d49745c903c947a0d8.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

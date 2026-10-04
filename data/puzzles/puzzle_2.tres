@@ -1,0 +1,101 @@
+[gd_resource type="Resource" script_class="FlowchartPuzzleData" format=3]
+
+[ext_resource type="Script" path="res://scripts/programming_lab/flowchart_puzzle_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+puzzle_id = "number_squarer"
+title = "Number Squarer"
+problem_description = "A program that takes a number, calculates its square, and displays the result.
+
+Find the missing processing step."
+ipo_input = "Input: A number (e.g. 5)"
+ipo_process = "Process: Multiply number by itself"
+ipo_output = "Output: The squared result (e.g. 25)"
+slots = Array[Dictionary]([{
+&"correct_type": 0,
+&"height": 50,
+&"id": "s1",
+&"label": "Start",
+&"no_port": 2,
+&"pos_x": 340,
+&"pos_y": 60,
+&"prefilled": true,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 4,
+&"height": 50,
+&"id": "s2",
+&"label": "Enter Number",
+&"no_port": 2,
+&"pos_x": 340,
+&"pos_y": 160,
+&"prefilled": true,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 2,
+&"height": 50,
+&"id": "s3",
+&"label": "Calculate Square",
+&"no_port": 2,
+&"pos_x": 340,
+&"pos_y": 240,
+&"prefilled": false,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 4,
+&"height": 50,
+&"id": "s4",
+&"label": "Display Result",
+&"no_port": 2,
+&"pos_x": 340,
+&"pos_y": 320,
+&"prefilled": true,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 1,
+&"height": 50,
+&"id": "s5",
+&"label": "End",
+&"no_port": 2,
+&"pos_x": 340,
+&"pos_y": 420,
+&"prefilled": true,
+&"width": 140,
+&"yes_port": 3
+}])
+palette_types = Array[int]([0, 1, 2, 4])
+connections = Array[Dictionary]([{
+&"from": "s1",
+&"from_port": 1,
+&"label": "",
+&"to": "s2",
+&"to_port": 0
+}, {
+&"from": "s2",
+&"from_port": 1,
+&"label": "",
+&"to": "s3",
+&"to_port": 0
+}, {
+&"from": "s3",
+&"from_port": 1,
+&"label": "",
+&"to": "s4",
+&"to_port": 0
+}, {
+&"from": "s4",
+&"from_port": 1,
+&"label": "",
+&"to": "s5",
+&"to_port": 0
+}])
+hint_level_1 = "What kind of operation is a calculation?"
+hint_level_2 = "The missing symbol represents a Process step."
+hint_level_3 = "Use the Rectangle symbol — it represents a Process or calculation."
+cutscene_type = 2
+cutscene_path = "res://assets/video/Fishj.ogv"

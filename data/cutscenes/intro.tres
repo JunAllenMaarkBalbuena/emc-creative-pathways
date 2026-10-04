@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CutsceneDefinition" format=3 uid="uid://bbrxyl4y31hef"]
+
+[ext_resource type="Script" uid="uid://dwmoauwrdx1vk" path="res://scripts/cutscene_definition.gd" id="1_cs_def"]
+[ext_resource type="Script" uid="uid://dh6fk6ttmc71d" path="res://scripts/cutscene_frame.gd" id="1_ydxrw"]
+[ext_resource type="VideoStream" uid="uid://bvsscwlnmhelg" path="res://assets/video/Du-Bist-Gut-Genug.ogv.ogv" id="3_7ip7w"]
+
+[resource]
+script = ExtResource("1_cs_def")
+cutscene_id = "intro"
+display_name = "Intro Cutscene"
+video_stream = ExtResource("3_7ip7w")
+allow_pause = false

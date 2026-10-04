@@ -60,5 +60,9 @@ void fragment() {
 	ALBEDO = col;
 	ROUGHNESS = 1.0;
 	METALLIC = 0.0;
-	ALPHA = 1.0;
+	/* No ALPHA assignment here: writing ALPHA (even a constant 1.0) moves a
+	 * spatial ShaderMaterial into the transparency pass, where its large AABB
+	 * depth-sorts against translucent objects and can overdraw them. The grid
+	 * is opaque by design and must stay in the opaque pass. Guarded by
+	 * tests/test_modeling_grid_opaque.gd. */
 }

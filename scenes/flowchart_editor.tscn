@@ -1,0 +1,455 @@
+[gd_scene format=3 uid="uid://du86rlqjagrn0"]
+
+[ext_resource type="Script" uid="uid://br0xasgc8syyg" path="res://scripts/programming_lab/flowchart_editor.gd" id="1_ed"]
+[ext_resource type="Script" uid="uid://borutbtj3ci28" path="res://scripts/programming_lab/flowchart_editor_canvas.gd" id="2_cv"]
+
+[node name="FlowchartEditor" type="Control" unique_id=1323471628]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ed")
+
+[node name="TopBar" type="HBoxContainer" parent="." unique_id=795559373]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 44.0
+grow_horizontal = 2
+theme_override_constants/separation = 6
+
+[node name="TitleLabel" type="Label" parent="TopBar" unique_id=233401231]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "  Flowchart Editor"
+
+[node name="NewBtn" type="Button" parent="TopBar" unique_id=585544876]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 32)
+layout_mode = 2
+size_flags_vertical = 4
+text = "New"
+
+[node name="LoadBtn" type="Button" parent="TopBar" unique_id=1705616061]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 32)
+layout_mode = 2
+size_flags_vertical = 4
+text = "Load"
+
+[node name="SaveBtn" type="Button" parent="TopBar" unique_id=1580446449]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 32)
+layout_mode = 2
+size_flags_vertical = 4
+text = "Save"
+
+[node name="SaveAsBtn" type="Button" parent="TopBar" unique_id=1543047036]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 32)
+layout_mode = 2
+size_flags_vertical = 4
+text = "Save As"
+
+[node name="TestBtn" type="Button" parent="TopBar" unique_id=659584355]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 32)
+layout_mode = 2
+size_flags_vertical = 4
+text = "Test"
+
+[node name="GizmoBtn" type="CheckButton" parent="TopBar" unique_id=659584356]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 32)
+layout_mode = 2
+size_flags_vertical = 4
+button_pressed = true
+text = "Gizmo"
+
+[node name="HSeparator" type="HSeparator" parent="TopBar" unique_id=159303225]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="BackBtn" type="Button" parent="TopBar" unique_id=566286700]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(70, 32)
+layout_mode = 2
+size_flags_vertical = 4
+text = "← Back"
+
+[node name="MainArea" type="HSplitContainer" parent="." unique_id=267545742]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 46.0
+offset_bottom = -30.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+split_offsets = PackedInt32Array(-320)
+split_offset = -320
+
+[node name="Canvas" type="Control" parent="MainArea" unique_id=1927049263]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2_cv")
+
+[node name="SidePanel" type="ScrollContainer" parent="MainArea" unique_id=970175146]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 3
+
+[node name="SideContent" type="VBoxContainer" parent="MainArea/SidePanel" unique_id=934555021]
+layout_mode = 2
+size_flags_horizontal = 7
+size_flags_vertical = 7
+theme_override_constants/separation = 4
+
+[node name="PuzzleSection" type="VBoxContainer" parent="MainArea/SidePanel/SideContent" unique_id=266344558]
+layout_mode = 2
+size_flags_horizontal = 7
+theme_override_constants/separation = 4
+
+[node name="SectionLabel" type="Label" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=324587353]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "Puzzle Properties"
+
+[node name="TitleEdit" type="LineEdit" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=827428350]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+placeholder_text = "Puzzle Title"
+
+[node name="DiffOption" type="OptionButton" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1167616849]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="DescEdit" type="TextEdit" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=295722247]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 7
+size_flags_vertical = 3
+placeholder_text = "Problem description..."
+
+[node name="IPOInput" type="LineEdit" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1145598837]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+placeholder_text = "IPO Input:"
+
+[node name="IPOProcess" type="LineEdit" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1042418424]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+placeholder_text = "IPO Process:"
+
+[node name="IPOOutput" type="LineEdit" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=2016558043]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+placeholder_text = "IPO Output:"
+
+[node name="HintSeparator" type="HSeparator" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1643258848]
+layout_mode = 2
+size_flags_horizontal = 7
+
+[node name="Hint1" type="TextEdit" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1363772063]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 7
+size_flags_vertical = 3
+placeholder_text = "Hint Level 1 (gentle)..."
+
+[node name="Hint2" type="TextEdit" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1538059996]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 7
+size_flags_vertical = 3
+placeholder_text = "Hint Level 2 (moderate)..."
+
+[node name="Hint3" type="TextEdit" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=660868757]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 7
+size_flags_vertical = 3
+placeholder_text = "Hint Level 3 (explicit)..."
+
+[node name="CutsceneLabel" type="Label" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1792368418]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "Cutscene"
+
+[node name="CutsceneTypeOption" type="OptionButton" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1792368419]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+
+[node name="CutscenePathEdit" type="LineEdit" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1792368420]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+placeholder_text = "Cutscene video path (.ogv, .webm)"
+
+[node name="CutsceneFpsEdit" type="SpinBox" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1792368421]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 7
+min_value = 1.0
+max_value = 60.0
+value = 12.0
+
+[node name="CutsceneBrowseBtn" type="Button" parent="MainArea/SidePanel/SideContent/PuzzleSection" unique_id=1792368422]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Browse..."
+
+[node name="HSep" type="HSeparator" parent="MainArea/SidePanel/SideContent" unique_id=1067245122]
+layout_mode = 2
+size_flags_horizontal = 7
+
+[node name="SequenceSection" type="VBoxContainer" parent="MainArea/SidePanel/SideContent" unique_id=1795394750]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+theme_override_constants/separation = 4
+
+[node name="SeqSectionLabel" type="Label" parent="MainArea/SidePanel/SideContent/SequenceSection" unique_id=1479797664]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "Level Sequence"
+
+[node name="SeqPathLabel" type="Label" parent="MainArea/SidePanel/SideContent/SequenceSection" unique_id=1643678638]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+theme_override_font_sizes/font_size = 10
+text = "data/levels/game_sequence.tres"
+
+[node name="LevelOrderList" type="ItemList" parent="MainArea/SidePanel/SideContent/SequenceSection" unique_id=1360850168]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 7
+size_flags_vertical = 3
+allow_reselect = true
+
+[node name="SeqButtons" type="HBoxContainer" parent="MainArea/SidePanel/SideContent/SequenceSection" unique_id=1384830120]
+layout_mode = 2
+size_flags_horizontal = 7
+
+[node name="SeqMoveUpBtn" type="Button" parent="MainArea/SidePanel/SideContent/SequenceSection/SeqButtons" unique_id=1409052544]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "▲ Up"
+
+[node name="SeqMoveDownBtn" type="Button" parent="MainArea/SidePanel/SideContent/SequenceSection/SeqButtons" unique_id=1815805140]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "▼ Down"
+
+[node name="SeqRemoveBtn" type="Button" parent="MainArea/SidePanel/SideContent/SequenceSection/SeqButtons" unique_id=1304009567]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Remove"
+
+[node name="SeqAddBtn" type="Button" parent="MainArea/SidePanel/SideContent/SequenceSection/SeqButtons" unique_id=290574164]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Add Level..."
+
+[node name="SeqLoadBtn" type="Button" parent="MainArea/SidePanel/SideContent/SequenceSection" unique_id=1468460581]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+text = "Load Sequence"
+
+[node name="SeqSaveBtn" type="Button" parent="MainArea/SidePanel/SideContent/SequenceSection" unique_id=1791319793]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+text = "Save Sequence"
+
+[node name="PuzzleHSep" type="HSeparator" parent="MainArea/SidePanel/SideContent" unique_id=670716863]
+layout_mode = 2
+size_flags_horizontal = 7
+
+[node name="PuzzleSeqSection" type="VBoxContainer" parent="MainArea/SidePanel/SideContent" unique_id=1795394751]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+theme_override_constants/separation = 4
+
+[node name="PSeqSectionLabel" type="Label" parent="MainArea/SidePanel/SideContent/PuzzleSeqSection" unique_id=816062074]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "Puzzle Sequence"
+
+[node name="PSeqPathLabel" type="Label" parent="MainArea/SidePanel/SideContent/PuzzleSeqSection" unique_id=622404025]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+theme_override_font_sizes/font_size = 10
+text = "(no level loaded)"
+
+[node name="PuzzleOrderList" type="ItemList" parent="MainArea/SidePanel/SideContent/PuzzleSeqSection" unique_id=675225169]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 7
+size_flags_vertical = 3
+allow_reselect = true
+
+[node name="PSeqButtons" type="HBoxContainer" parent="MainArea/SidePanel/SideContent/PuzzleSeqSection" unique_id=999051829]
+layout_mode = 2
+size_flags_horizontal = 7
+
+[node name="PSeqMoveUpBtn" type="Button" parent="MainArea/SidePanel/SideContent/PuzzleSeqSection/PSeqButtons" unique_id=536926300]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "▲ Up"
+
+[node name="PSeqMoveDownBtn" type="Button" parent="MainArea/SidePanel/SideContent/PuzzleSeqSection/PSeqButtons" unique_id=231686043]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "▼ Down"
+
+[node name="PSeqRemoveBtn" type="Button" parent="MainArea/SidePanel/SideContent/PuzzleSeqSection/PSeqButtons" unique_id=1336623216]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Remove"
+
+[node name="PSeqAddBtn" type="Button" parent="MainArea/SidePanel/SideContent/PuzzleSeqSection/PSeqButtons" unique_id=102576717]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Add Puzzle..."
+
+[node name="PSeqSelectBtn" type="Button" parent="MainArea/SidePanel/SideContent/PuzzleSeqSection" unique_id=540611568]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+text = "Select Level..."
+
+[node name="PSeqSaveBtn" type="Button" parent="MainArea/SidePanel/SideContent/PuzzleSeqSection" unique_id=1700524214]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+text = "Save to Level"
+
+[node name="NodeSection" type="VBoxContainer" parent="MainArea/SidePanel/SideContent" unique_id=1795394749]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+theme_override_constants/separation = 4
+
+[node name="SectionLabel" type="Label" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=2070907537]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "Node Properties"
+
+[node name="NodeTypeOption" type="OptionButton" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=996932894]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+
+[node name="NodeLabelEdit" type="LineEdit" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=1662183435]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+placeholder_text = "Node label"
+
+[node name="NodePrefilled" type="CheckBox" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=1792368413]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Prefilled (appears on load)"
+
+[node name="AddNodeBtn" type="Button" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=1641025168]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Add Node"
+
+[node name="DeleteBtn" type="Button" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=469443465]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+text = "Delete Selected Node"
+
+[node name="YesPortLabel" type="Label" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=1792368416]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+text = "Yes Port"
+
+[node name="YesPortOption" type="OptionButton" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=1792368414]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+
+[node name="NoPortLabel" type="Label" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=1792368417]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+text = "No Port"
+
+[node name="NoPortOption" type="OptionButton" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=1792368415]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+
+[node name="ConnLabelEdit" type="LineEdit" parent="MainArea/SidePanel/SideContent/NodeSection" unique_id=469443466]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 7
+placeholder_text = "Connection label..."
+
+[node name="StatusBar" type="HBoxContainer" parent="." unique_id=563414434]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="StatusLabel" type="Label" parent="StatusBar" unique_id=2102414210]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.6, 0.8, 1)
+theme_override_font_sizes/font_size = 12
+text = "Ready"
+
+[node name="PosLabel" type="Label" parent="StatusBar" unique_id=877166106]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 2
+theme_override_colors/font_color = Color(0.5, 0.6, 0.8, 0.6)
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 2

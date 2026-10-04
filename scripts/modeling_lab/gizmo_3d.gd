@@ -13,6 +13,8 @@ const AXIS_COLORS: Array[Color] = [
 
 var current_mode: int = Mode.TRANSLATE
 var _target: Node3D = null
+var _pivot_active: bool = false
+var _pivot: Vector3 = Vector3.ZERO
 var _dragging: bool = false
 var _drag_axis: Vector3 = Vector3.ZERO
 var _camera: Camera3D = null
@@ -49,10 +51,23 @@ func _ready():
 	_build_handles()
 
 func set_target(node: Node3D):
+	if node != null and not is_instance_valid(node):
+		node = null
 	_target = node
+	_pivot_active = false
 	visible = node != null
 	if node:
 		global_position = node.global_position
+
+## Positions the gizmo at a shared pivot (multi-selection centroid) instead of
+## tracking a single target node. Mode must already be set via set_mode() so
+## the correct handles are built.
+func set_pivot(pos: Vector3):
+	_target = null
+	_pivot_active = true
+	_pivot = pos
+	global_position = pos
+	visible = true
 
 func set_mode(mode: int):
 	if current_mode == mode:
@@ -76,7 +91,7 @@ func end_drag():
 	transform_ended.emit()
 
 func pick(screen_pos: Vector2, camera: Camera3D) -> Dictionary:
-	if not _target or not camera or not visible:
+	if not visible or not camera:
 		return {"picked": false, "axis": Vector3.ZERO, "uniform": false}
 	var space := camera.get_world_3d().direct_space_state
 	if not space:
@@ -275,8 +290,17 @@ func _build_scale():
 	center_group.add_child(center_area)
 
 func _process(_delta):
+	# Self-heal: if the targeted node was freed (delete, undo of spawn), drop it
+	# and hide instead of tracking a freed instance and resurrecting every frame.
+	if _target and not is_instance_valid(_target):
+		_target = null
+		_pivot_active = false
+		visible = false
+		return
 	if _target and visible:
 		global_position = _target.global_position
+	elif _pivot_active and visible:
+		global_position = _pivot
 
 	# Constant-screen-size: the gizmo used to be a FIXED world-size object
 	# (0.04-radius shafts, ~1 unit tall), so it shrank to sub-pixel width as
@@ -286,7 +310,7 @@ func _process(_delta):
 	# gizmos) keep the transform gizmo at constant screen size by scaling it
 	# with camera distance. Inject the camera distance here and scale the
 	# handle root so the projected size of every handle stays constant.
-	if _camera and _target:
+	if _camera and visible:
 		var d := _camera.global_position.distance_to(global_position)
 		if d > 0.0:
 			var s := clampf(
@@ -299,4 +323,4 @@ func _process(_delta):
 			# scale together; the drag axis / uniform flags live in Area meta,
 			# so picking and drags keep working at any zoom).
 			_handle_root.scale = Vector3.ONE * s
-	visible = _target != null
+	visible = (_target != null) or _pivot_active

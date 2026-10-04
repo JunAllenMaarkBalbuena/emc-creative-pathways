@@ -1,7 +1,7 @@
-class_name SaveManager
+﻿class_name SaveManager
 extends RefCounted
 
-const MODEL_DIR := "res://data/player_models/"
+const MODEL_DIR := "user://models/"
 
 func _init():
 	_ensure_dir()
@@ -52,9 +52,9 @@ func delete_model(path: String) -> bool:
 	return dir.remove(path.trim_prefix(MODEL_DIR)) == OK
 
 func _ensure_dir():
-	var dir: DirAccess = DirAccess.open("res://")
+	var dir: DirAccess = DirAccess.open("user://")
 	if dir:
-		var _discarded_dir: Error = dir.make_dir_recursive("data/player_models")
+		var _discarded: Error = dir.make_dir_recursive("models")
 
 func _sanitize(name: String) -> String:
 	const KEEP := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
@@ -73,41 +73,103 @@ func _timestamp() -> String:
 func capture_model(object_container: Node3D, model_name: String) -> ModelData:
 	var data := ModelData.new()
 	data.model_name = model_name
-	for child in object_container.get_children():
-		if child is MeshInstance3D and not child.is_in_group("ghost_guides"):
-			var mat: StandardMaterial3D = child.get_surface_override_material(0) as StandardMaterial3D
-			var pd := PrimitiveSaveData.new()
-			pd.type = PrimitiveSpawner.type_for_mesh(child.mesh)
-			pd.node_name = child.name
-			pd.position = child.position
-			pd.rotation_degrees = child.rotation_degrees
-			pd.scale = child.scale
-			if child.get_parent() and child.get_parent() != object_container:
-				pd.parent_name = child.get_parent().name
-			if mat:
-				pd.material_albedo = mat.albedo_color
-				pd.material_metallic = mat.metallic
-				pd.material_roughness = mat.roughness
-			data.primitives.append(pd)
+	_walk_capture(object_container, data.primitives, "")
 	return data
 
+
+## Depth-first pre-order serialization: parents always precede children, so
+## rebuild can create the parent group before parenting members under it.
+## `parent_display` is the display name of the group we are walking inside;
+## it is stored on each entry's `parent_name` so hierarchy is preserved.
+func _walk_capture(node: Node3D, output: Array, parent_display: String) -> void:
+	for child in node.get_children():
+		if child is MeshInstance3D and not child.is_in_group("ghost_guides"):
+			output.append(_capture_mesh(child, parent_display))
+		elif child is Node3D and not child is MeshInstance3D and _has_mesh_descendant(child):
+			var group_display := HierarchyManager.display_of(child)
+			output.append(_capture_group(child, parent_display))
+			_walk_capture(child, output, group_display)
+
+
+func _capture_mesh(mi: MeshInstance3D, parent_display: String) -> PrimitiveSaveData:
+	var mat: StandardMaterial3D = mi.get_surface_override_material(0) as StandardMaterial3D
+	var pd := PrimitiveSaveData.new()
+	pd.node_type = PrimitiveSaveData.TYPE_MESH
+	pd.type = PrimitiveSpawner.type_for_mesh(mi.mesh)
+	pd.node_name = mi.name
+	pd.display_name = HierarchyManager.display_of(mi)
+	pd.position = mi.position
+	pd.rotation_degrees = mi.rotation_degrees
+	pd.scale = mi.scale
+	pd.parent_name = parent_display
+	if mat:
+		pd.material_albedo = mat.albedo_color
+		pd.material_metallic = mat.metallic
+		pd.material_roughness = mat.roughness
+	return pd
+
+
+func _capture_group(group: Node3D, parent_display: String) -> PrimitiveSaveData:
+	var pd := PrimitiveSaveData.new()
+	pd.node_type = PrimitiveSaveData.TYPE_GROUP
+	pd.node_name = group.name
+	pd.display_name = HierarchyManager.display_of(group)
+	pd.position = group.position
+	pd.rotation_degrees = group.rotation_degrees
+	pd.scale = group.scale
+	pd.parent_name = parent_display
+	return pd
+
+
+func _has_mesh_descendant(node: Node) -> bool:
+	for c in node.get_children():
+		if c is MeshInstance3D and not c.is_in_group("ghost_guides"):
+			return true
+		if _has_mesh_descendant(c):
+			return true
+	return false
+
+
 func restore_model(object_container: Node3D, data: ModelData, spawner: PrimitiveSpawner) -> Array[MeshInstance3D]:
-	for child in object_container.get_children():
-		if child is MeshInstance3D:
-			child.queue_free()
+	var existing := object_container.get_children()
+	for child in existing:
+		child.free()
 	var created: Array[MeshInstance3D] = []
 	var name_map: Dictionary = {}
 	for pd in data.primitives:
-		var mi := spawner.spawn(pd.type, object_container)
-		mi.name = pd.node_name
-		mi.position = pd.position
-		mi.rotation_degrees = pd.rotation_degrees
-		mi.scale = pd.scale
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = pd.material_albedo
-		mat.metallic = pd.material_metallic
-		mat.roughness = pd.material_roughness
-		mi.set_surface_override_material(0, mat)
-		created.append(mi)
-		name_map[pd.node_name] = mi
+		var parent: Node3D = object_container
+		if pd.parent_name != "" and name_map.has(pd.parent_name):
+			parent = name_map[pd.parent_name]
+		if pd.node_type == PrimitiveSaveData.TYPE_GROUP:
+			var group := Node3D.new()
+			HierarchyManager.set_blender_name(group, _display_or(pd))
+			group.position = pd.position
+			group.rotation_degrees = pd.rotation_degrees
+			group.scale = pd.scale
+			parent.add_child(group)
+			group.owner = object_container.owner if object_container.owner else object_container
+			name_map[_display_or(pd)] = group
+		else:
+			var mi := spawner.spawn(pd.type, parent)
+			HierarchyManager.set_blender_name(mi, _display_or(pd))
+			mi.position = pd.position
+			mi.rotation_degrees = pd.rotation_degrees
+			mi.scale = pd.scale
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = pd.material_albedo
+			mat.transparency = StandardMaterial3D.TRANSPARENCY_ALPHA \
+				if pd.material_albedo.a < 0.999 else StandardMaterial3D.TRANSPARENCY_DISABLED
+			mat.metallic = pd.material_metallic
+			mat.roughness = pd.material_roughness
+			mi.set_surface_override_material(0, mat)
+			created.append(mi)
 	return created
+
+
+func _display_or(pd: PrimitiveSaveData) -> String:
+	if pd.display_name != "":
+		return pd.display_name
+	# Legacy saves predate display_name; fall back to the engine name.
+	return pd.node_name
+
+

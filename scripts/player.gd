@@ -42,7 +42,9 @@ func _ready() -> void:
 		var start_index: int = progression.get_skin_index(0)
 		_apply_skin(start_index)
 		# Restore spawn position if returning via Continue
-		var scene_path := get_tree().current_scene.scene_file_path
+		var scene_path := ""
+		if get_tree().current_scene != null:
+			scene_path = get_tree().current_scene.scene_file_path
 		var spawn = progression.get_spawn_position(scene_path)
 		push_warning("PLAYER _ready: scene=%s spawn=%s" % [scene_path, spawn])
 		if spawn != null and spawn.has("player"):
@@ -58,6 +60,8 @@ func _ready() -> void:
 func _apply_spawn_position(pos: Vector3, cam_offset: Vector3 = Vector3.ZERO) -> void:
 	global_position = pos
 	if cam_offset != Vector3.ZERO:
+		if get_tree().current_scene == null:
+			return
 		var cam = get_tree().current_scene.get_node_or_null("PlayerFollowCamera")
 		if cam is PlayerFollowCamera:
 			cam._scene_offset = cam_offset

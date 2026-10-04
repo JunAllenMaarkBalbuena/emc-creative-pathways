@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://cxmycjr0ea7u8"]
+
+[ext_resource type="Script" uid="uid://cmhxgn542yuob" path="res://scripts/intro_sequence.gd" id="1_eda3u"]
+[ext_resource type="Resource" uid="uid://bbrxyl4y31hef" path="res://data/cutscenes/intro.tres" id="2_yle8u"]
+
+[node name="IntroSequence" type="Node" unique_id=1809072436]
+script = ExtResource("1_eda3u")
+intro_cutscene = ExtResource("2_yle8u")

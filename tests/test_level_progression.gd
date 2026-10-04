@@ -30,7 +30,7 @@ func _run() -> int:
 		lp.free()
 		return 1
 
-	var src := FileAccess.get_file_as_string("res://scripts/flowchart_editor.gd")
+	var src := FileAccess.get_file_as_string("res://scripts/programming_lab/flowchart_editor.gd")
 	if src.is_empty():
 		print("FAIL: cannot read flowchart_editor.gd")
 		lp.free()

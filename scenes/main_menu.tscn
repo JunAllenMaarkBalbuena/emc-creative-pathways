@@ -1,0 +1,436 @@
+[gd_scene format=3 uid="uid://dyy32cgobcafv"]
+
+[ext_resource type="Script" uid="uid://bsd8eb244ykxr" path="res://scripts/main_menu.gd" id="1_mm"]
+[ext_resource type="Resource" uid="uid://bbrxyl4y31hef" path="res://data/cutscenes/intro.tres" id="2_intro"]
+[ext_resource type="PackedScene" uid="uid://bif8qbymn8lwn" path="res://scenes/settings_ui.tscn" id="3_settings_ui"]
+[ext_resource type="AudioStream" uid="uid://c3rnsyp184wt1" path="res://assets/sound/main_menu_Background_sound.mp3" id="4_bgm"]
+[ext_resource type="Script" uid="uid://c7qfbs2tiy8ky" path="res://scripts/loop_audio.gd" id="5_loop"]
+[ext_resource type="Texture2D" uid="uid://bji80e5xy1ns7" path="res://assets/Scene_BG/Menu_Bg_image.png" id="6_bg"]
+[ext_resource type="Script" uid="uid://cujwycjjswfne" path="res://scripts/scene_bg.gd" id="7_scene_bg"]
+[ext_resource type="FontFile" uid="uid://6x7n1j1y8cqj" path="res://fonts/DancingScript.ttf" id="8_cursive"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_title"]
+font = ExtResource("8_cursive")
+font_size = 72
+outline_size = 8
+outline_color = Color(0, 0, 0, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon_normal"]
+bg_color = Color(0.15, 0.15, 0.18, 0.85)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8, 0.8, 0.9, 0.6)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon_pressed"]
+bg_color = Color(0.1, 0.1, 0.12, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6, 0.6, 0.7, 0.7)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon_hover"]
+bg_color = Color(0.28, 0.28, 0.35, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.9, 0.9, 1, 0.7)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.3, 0.3, 0.4, 0.5)
+shadow_size = 8
+
+[sub_resource type="LabelSettings" id="LabelSettings_version"]
+outline_size = 4
+outline_color = Color(0, 0, 0, 0.6)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.7, 0.55, 0.35, 0.85)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.85, 0.68, 0.45, 0.6)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.75, 0.6, 0.4, 0.4)
+shadow_size = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.55, 0.42, 0.28, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.75, 0.6, 0.4, 0.7)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.6, 0.5, 0.35, 0.35)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.8, 0.65, 0.45, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.95, 0.78, 0.55, 0.8)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.85, 0.7, 0.5, 0.55)
+shadow_size = 18
+
+[node name="MainMenu" type="Control" unique_id=1378796174]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_mm")
+intro_cutscene = ExtResource("2_intro")
+
+[node name="Scene_BG" type="TextureRect" parent="." unique_id=1930481861]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 2.0
+offset_bottom = 2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("6_bg")
+expand_mode = 1
+stretch_mode = 6
+script = ExtResource("7_scene_bg")
+
+[node name="Background" type="ColorRect" parent="." unique_id=872511245]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.9887783, 0.7232064, 0.7313631, 0)
+
+[node name="TitleLabel" type="Label" parent="." unique_id=625069874]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -280.0
+offset_top = 25.0
+offset_right = 280.0
+offset_bottom = 113.0
+grow_horizontal = 2
+text = "EMC Simulator"
+label_settings = SubResource("LabelSettings_title")
+horizontal_alignment = 1
+
+[node name="ExitButton" type="Button" parent="." unique_id=1686615230]
+custom_minimum_size = Vector2(0, 45)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -92.0
+offset_top = 26.0
+offset_right = -47.0
+offset_bottom = 71.0
+grow_horizontal = 0
+scale = Vector2(1.3572208, 1.4000007)
+theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 0.4, 0.35, 1)
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleBoxFlat_icon_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_icon_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_icon_hover")
+text = "✕"
+
+[node name="SettingsButton" type="Button" parent="." unique_id=1946812137]
+custom_minimum_size = Vector2(0, 45)
+layout_mode = 1
+offset_left = 30.000002
+offset_top = 27.0
+offset_right = 75.0
+offset_bottom = 72.0
+scale = Vector2(1.3200005, 1.36)
+theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleBoxFlat_icon_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_icon_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_icon_hover")
+text = "☰"
+
+[node name="SettingsUI" parent="." unique_id=832481365 instance=ExtResource("3_settings_ui")]
+visible = false
+layout_mode = 1
+
+[node name="BGM" type="AudioStreamPlayer" parent="." unique_id=1958089087]
+bus = &"Music"
+stream = ExtResource("4_bgm")
+autoplay = true
+
+[node name="Loop" type="Node" parent="BGM" unique_id=311690344]
+script = ExtResource("5_loop")
+
+[node name="BezelTop" type="ColorRect" parent="." unique_id=1528394768]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 16.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.1, 0.1, 0.12, 1)
+
+[node name="BezelLeft" type="ColorRect" parent="." unique_id=1347285609]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_top = 12.000001
+offset_right = 18.0
+offset_bottom = -54.750122
+grow_vertical = 2
+scale = Vector2(1, 1.1200001)
+mouse_filter = 2
+color = Color(0.1, 0.1, 0.12, 1)
+
+[node name="BezelRight" type="ColorRect" parent="." unique_id=1496974302]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -18.0
+offset_top = 12.0
+offset_bottom = 13.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.1, 0.1, 0.12, 1)
+
+[node name="VersionLabel" type="Label" parent="." unique_id=2016825204]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 44.0
+offset_top = -28.0
+offset_right = 245.0
+offset_bottom = 2.0
+grow_vertical = 0
+pivot_offset = Vector2(4, 23)
+text = "v0.1.0 — Capstone Project"
+label_settings = SubResource("LabelSettings_version")
+horizontal_alignment = 2
+
+[node name="ModelButton" type="Button" parent="." unique_id=2029710663]
+custom_minimum_size = Vector2(260, 44)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -296.0
+offset_top = -329.0
+offset_right = -36.0
+offset_bottom = -282.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+text = "3D MODEL"
+
+[node name="ContinueButton" type="Button" parent="." unique_id=1365451152]
+visible = false
+custom_minimum_size = Vector2(260, 44)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -296.0
+offset_top = -130.0
+offset_right = -36.0
+offset_bottom = -86.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+text = "CONTINUE"
+
+[node name="BezelInner" type="ColorRect" parent="." unique_id=1196035824]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 10.0
+offset_right = -14.0
+offset_bottom = -3.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.04, 0.04, 0.06, 0.25)
+
+[node name="ArtButton" type="Button" parent="." unique_id=1365451154]
+custom_minimum_size = Vector2(260, 44)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -296.0
+offset_top = -226.0
+offset_right = -36.0
+offset_bottom = -182.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+text = "ART"
+
+[node name="EditorButton" type="Button" parent="." unique_id=1365451153]
+custom_minimum_size = Vector2(260, 44)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -296.0
+offset_top = -276.0
+offset_right = -36.0
+offset_bottom = -232.0
+grow_horizontal = 0
+grow_vertical = 0
+scale = Vector2(0.99843305, 1)
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+text = "EDITOR"
+
+[node name="PlayButton" type="Button" parent="." unique_id=1068678645]
+custom_minimum_size = Vector2(260, 60)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -296.0
+offset_top = -82.0
+offset_right = -36.0
+offset_bottom = -22.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+text = "PLAY"
+
+[node name="PhysicalControls" type="Control" parent="." unique_id=1047283897]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -560.0
+offset_top = -52.0
+offset_right = -200.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+scale = Vector2(1.0088372, 1.2184112)
+
+[node name="MonitorBrand" type="Label" parent="PhysicalControls" unique_id=1557261833]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -190.90364
+offset_top = 3.9807262
+offset_right = -150.90364
+offset_bottom = 19.980728
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.5, 0.5, 0.55, 0.6)
+theme_override_font_sizes/font_size = 10
+text = "EMC"
+horizontal_alignment = 1
+
+[node name="LabButton" type="Button" parent="." unique_id=736277677]
+custom_minimum_size = Vector2(260, 44)
+layout_mode = 0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -296.0
+offset_top = -180.0
+offset_right = -36.0
+offset_bottom = -136.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "LAB"

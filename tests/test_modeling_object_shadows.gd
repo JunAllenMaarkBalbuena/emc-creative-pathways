@@ -46,30 +46,37 @@ func _run() -> void:
 		fail += 1
 		print("FAIL: spawned cube material is transparent; it cannot receive/render shadows cleanly")
 
-	# Selection must not wipe the object's lit/shadowed shading: the highlight
-	# replaces the base material, so if it is strongly emissive the whole
-	# surface goes flat-bright and the object's visible shadow is lost when
-	# selected. It must stay a light tint that keeps per-face lighting.
+	# Selection must be a separate indicator layer and never alter the object's
+	# own material: the highlight goes on GeometryInstance3D.material_overlay
+	# (rendered on top of the active material), NOT on the surface override. The
+	# base material — its albedo, alpha (transparency), metallic/roughness —
+	# must be byte-for-byte untouched while selected, so the object keeps its
+	# real state and its lit shadowed shading.
 	var base_surface_mat: Material = cube.get_surface_override_material(0)
 	var sel := SelectionManager.new(container)
 	sel.select(cube)
-	var hl := cube.get_surface_override_material(0) as StandardMaterial3D
-	# The highlight must NOT disable the depth test: that would drop the
-	# selected object out of the shadow pass, making its soft drop shadow on
-	# the floor vanish while selected (and return on deselect).
+	var hl := cube.material_overlay as StandardMaterial3D
 	if hl == null:
 		fail += 1
-		print("FAIL: selection did not apply a highlight material")
-	elif hl.no_depth_test:
+		print("FAIL: selection did not apply a highlight overlay (material_overlay)")
+	# The overlay must NOT disable the depth test: it would let the tint draw
+	# through occluders and read as the grid overlapping the object.
+	if hl != null and hl.no_depth_test:
 		fail += 1
-		print("FAIL: selection highlight disables depth test; the selected object stops casting its drop shadow")
+		print("FAIL: selection highlight overlay disables depth test; the tint renders through other objects")
 	if hl != null and hl.emission_enabled:
 		fail += 1
 		print("FAIL: selection highlight uses emission which destroys the object's per-face shading")
-	sel.deselect_all()
 	if cube.get_surface_override_material(0) != base_surface_mat:
 		fail += 1
-		print("FAIL: deselect must restore the object's base material (and its shading)")
+		print("FAIL: selection must not replace the object's base material (state must stay untouched)")
+	sel.deselect_all()
+	if cube.material_overlay != null:
+		fail += 1
+		print("FAIL: deselect must clear the highlight overlay")
+	if cube.get_surface_override_material(0) != base_surface_mat:
+		fail += 1
+		print("FAIL: deselect must leave the object's base material untouched")
 
 	# Floor: the grid must be an opaque, lit surface so the drop shadow shows
 	# under objects instead of falling on a shadow-ignoring overlay.

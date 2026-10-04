@@ -8,6 +8,8 @@ signal lab_closed
 enum LabMode { LESSON, CREATIVE_STUDIO }
 enum Tool { MOVE, ROTATE, SCALE }
 
+const ColorPickerControlScript := preload("res://scripts/digital_art_lab/color_picker_control.gd")
+
 # Subsystems
 var snap_settings: SnapSettings
 var spawner: PrimitiveSpawner
@@ -21,7 +23,7 @@ var material_manager: MaterialManager
 var hierarchy_manager: HierarchyManager
 var save_manager: SaveManager
 var portfolio_manager: PortfolioManager3D
-var undo_manager: UndoManager
+var undo_redo: CommandManager
 var creative_studio_manager: CreativeStudioManager
 
 # Mode state
@@ -39,6 +41,26 @@ var _drag_start_mouse: Vector2 = Vector2.ZERO
 var _drag_axis_screen: Vector2 = Vector2.RIGHT
 var _drag_axis_perp: Vector2 = Vector2.UP
 
+# Box-select / body-drag state
+var _box_dragging: bool = false
+var _box_drag_start: Vector2 = Vector2.ZERO
+var _body_dragging: bool = false
+var _body_plane_point: Vector3 = Vector3.ZERO
+var _body_drag_start: Vector3 = Vector3.ZERO
+# Body-drag is ARMED on press over a selected member and only BEGINS once the
+# cursor moves past BODY_DRAG_START_PX. A plain click (no movement) stays
+# armed through release and does nothing — so the very next click within the
+# double-click window still matches _last_click_node (no rebuild happened) and
+# drills down from a selected group to a single member.
+var _body_drag_armed: bool = false
+var _body_drag_origin: Vector2 = Vector2.ZERO
+const BODY_DRAG_START_PX := 4.0
+
+# Double-click detection
+var _last_click_time: float = 0.0
+var _last_click_node: MeshInstance3D = null
+const DOUBLE_CLICK_THRESHOLD := 0.3
+
 # Workspace references
 var workspace: Node3D
 var object_container: Node3D
@@ -46,6 +68,7 @@ var ghost_container: Node3D
 var gizmo: Gizmo3D
 var camera_controller: CameraController
 var grid_plane: MeshInstance3D
+var _selection_overlay: Control
 
 # Called by main menu
 static func launch():
@@ -59,20 +82,22 @@ func _ready():
 	gizmo = workspace.get_node("Gizmo3D")
 	camera_controller = workspace.get_node("CameraController")
 	grid_plane = workspace.get_node("GridPlane")
+	_selection_overlay = $SubViewportContainer/SubViewport/SelectionOverlay
 
 	snap_settings = SnapSettings.new()
 	grid_plane.visible = snap_settings.grid_visible
 	spawner = PrimitiveSpawner.new()
 	selection_manager = SelectionManager.new(object_container)
-	transform_manager = TransformManager.new(selection_manager, snap_settings)
+	hierarchy_manager = HierarchyManager.new(object_container)
+	undo_redo = CommandManager.new()
+	undo_redo.selection_manager = selection_manager
+	material_manager = MaterialManager.new()
+	transform_manager = TransformManager.new(selection_manager, snap_settings, hierarchy_manager, undo_redo, spawner, material_manager)
 	accuracy_manager = AccuracyManager.new()
 	scoring_manager = ScoringManager.new()
 	assignment_manager = AssignmentManager.new()
-	material_manager = MaterialManager.new()
-	hierarchy_manager = HierarchyManager.new(object_container)
 	save_manager = SaveManager.new()
 	portfolio_manager = PortfolioManager3D.new(save_manager)
-	undo_manager = UndoManager.new()
 	creative_studio_manager = CreativeStudioManager.new()
 
 	ghost_guide_manager = GhostGuideManager.new(ghost_container)
@@ -133,6 +158,8 @@ func _connect_ui_signals():
 	%ResetBtn.pressed.connect(_on_reset)
 	%CenterBtn.pressed.connect(_on_center)
 	%FocusBtn.pressed.connect(_focus_selected)
+	%UndoBtn.pressed.connect(_on_undo)
+	%RedoBtn.pressed.connect(_on_redo)
 
 	# Toggles
 	%GridToggle.toggled.connect(_on_grid_toggled)
@@ -150,14 +177,27 @@ func _connect_ui_signals():
 	%ColorSwatch.gui_input.connect(_on_color_swatch_clicked)
 	%MetallicSlider.value_changed.connect(_on_metallic_changed)
 	%RoughnessSlider.value_changed.connect(_on_roughness_changed)
+	%MetallicSlider.drag_started.connect(_on_material_drag_started)
+	%MetallicSlider.drag_ended.connect(func(_vc: bool): _on_material_drag_ended(Color()))
+	%RoughnessSlider.drag_started.connect(_on_material_drag_started)
+	%RoughnessSlider.drag_ended.connect(func(_vc: bool): _on_material_drag_ended(Color()))
 	for btn in [%PlasticBtn, %MetalBtn, %WoodBtn, %StoneBtn, %GlassBtn]:
 		btn.pressed.connect(_on_preset_pressed.bind(btn.text.to_lower()))
+	_build_base_color_wheel()
+	_base_color_wheel.drag_started.connect(_on_material_drag_started)
+	_base_color_wheel.drag_ended.connect(_on_material_drag_ended)
 
 	# Hierarchy
 	%RenameBtn.pressed.connect(_on_hierarchy_rename)
 	%ParentBtn.pressed.connect(_on_hierarchy_parent)
 	%UnparentBtn.pressed.connect(_on_hierarchy_unparent)
 	%Tree.item_selected.connect(_on_hierarchy_selected)
+	# SELECT_MULTI emits multi_selected (3 args) instead of item_selected on
+	# click. A bound method with fewer args than the signal is NOT called by
+	# Godot ("Method expected 0 argument(s), but called with 3"), so wrap the
+	# handler in an arg-matching lambda.
+	%Tree.multi_selected.connect(func(_it, _col, _sel): _on_hierarchy_selected())
+	%Tree.item_edited.connect(_on_tree_item_edited)
 
 	# Inspector
 	%NodeName.text_submitted.connect(_on_inspector_name_changed)
@@ -177,6 +217,10 @@ func _connect_ui_signals():
 
 	# Spawn menu
 	%SpawnBtn.get_popup().id_pressed.connect(_on_spawn_selected)
+
+	# Save / Load toolbar buttons (Creative Studio only)
+	%SaveBtn.pressed.connect(_on_save)
+	%LoadBtn.pressed.connect(_on_load)
 
 	# Dialogs
 	%SaveDialog/VBox/HBox/SaveBtn.pressed.connect(_on_save_confirm)
@@ -214,10 +258,12 @@ func _setup_assignment(data: AssignmentData):
 func _clear_objects():
 	if selection_manager:
 		selection_manager.deselect_all()
+	# Free EVERY non-ghost child below the container: groups (Node3D) AND
+	# their members. Ghost guides live in the separate GhostContainer, so this
+	# blanket wipe never touches lesson guides.
 	for child in object_container.get_children():
-
-		if child is MeshInstance3D and not child.is_in_group("ghost_guides"):
-			child.queue_free()
+		if not child.is_in_group("ghost_guides"):
+			child.free()
 	_player_objects.clear()
 
 
@@ -241,6 +287,18 @@ func _process(_delta):
 		_update_assignment_accuracy()
 	if gizmo and gizmo.visible and _dragging:
 		_update_gizmo_drag()
+	# Hard invariant: the gizmo may ONLY be visible while something is
+	# actually selected. The snapshot undo system rebuilds node instances on
+	# every apply, which can silently invalidate the cached selection (and thus
+	# leave a pivot-mode gizmo floating over an empty scene). Re-check every
+	# frame and tear down if the selection really is gone. selected_nodes()
+	# stale-clears first, so this is the single source of truth for "is any
+	# selectable mesh alive and picked".
+	if gizmo and selection_manager:
+		if gizmo.visible and selection_manager.selected_nodes().is_empty() \
+				and not selection_manager.get_selected():
+			gizmo.set_target(null)
+			gizmo.visible = false
 
 
 func _update_assignment_accuracy():
@@ -346,6 +404,8 @@ func _enter_creative_studio():
 	_clear_objects()
 	ghost_guide_manager.clear()
 	%SpawnBtn.visible = true
+	%SaveBtn.visible = true
+	%LoadBtn.visible = true
 	%LessonLabel.text = "Creative Studio — Free Modeling"
 	%Assignment/LessonTitle.text = "Creative Studio"
 	%Assignment/Instructions.text = "Spawn primitives, edit materials, and save your creations!"
@@ -361,10 +421,25 @@ func _enter_creative_studio():
 
 func _on_spawn_selected(id: int):
 	if _mode == LabMode.CREATIVE_STUDIO:
-		var mi := spawner.spawn(id, object_container)
-		mi.position = Vector3(0, 0.5, 0)
-		selection_manager.select(mi)
-		camera_controller.fit_all([mi])
+		var base := PrimitiveSpawner.base_name_for_type(id)
+		var unique_name := HierarchyManager.allocate_name(object_container, base)
+		var data := {
+			name = unique_name,
+			display_name = unique_name,
+			type = id,
+			position = Vector3(0, 0.5, 0),
+			rotation_degrees = Vector3.ZERO,
+			scale = Vector3.ONE,
+			material_albedo = Color.WHITE,
+			material_metallic = 0.0,
+			material_roughness = 1.0,
+		}
+		var mi := undo_redo.execute_command(
+			CommandFactory.spawn(data, object_container, spawner, material_manager, hierarchy_manager)
+		)
+		if mi:
+			selection_manager.select(mi)
+			camera_controller.fit_all([mi])
 		_rebuild_hierarchy_request()
 
 
@@ -379,7 +454,12 @@ func _on_tool_selected(tool: int):
 
 func _on_selection_changed(node: MeshInstance3D):
 	if node:
-		gizmo.set_target(node)
+		if selection_manager.selected_count() > 1:
+			# Multi-select: the gizmo pivots to the group centroid (it stops
+			# tracking any single member) so Move/Rotate/Scale act on the set.
+			gizmo.set_pivot(selection_manager.get_centroid())
+		else:
+			gizmo.set_target(node)
 		gizmo.visible = (_mode == LabMode.CREATIVE_STUDIO) or (_mode == LabMode.LESSON)
 	else:
 		# REGRESSION: deselect MUST also clear the gizmo's target, not just hide
@@ -389,6 +469,11 @@ func _on_selection_changed(node: MeshInstance3D):
 		# selected (only visible, not <null>, is what actually keeps it hidden).
 		gizmo.set_target(null)
 		gizmo.visible = false
+	# The material panel must reflect the newly selected object immediately
+	# (its base color, metallic, roughness) — not only after the first
+	# transform drag. Deselect resets the panel to defaults.
+	_update_inspector(node)
+	_sync_tree_selection()
 
 
 # ── Viewport Input ──────────────────────────────────────────────
@@ -399,12 +484,33 @@ func _on_viewport_gui_input(event: InputEvent):
 
 	# Camera gets first chance
 	if camera_controller.handle_input(event):
+		# Camera consumed the interaction (orbit/zoom). A previously armed
+		# body-drag press (if any) is now stale — no release will clear it.
+		body_drag_armed_discard()
 		_update_zoom_display()
 		get_viewport().set_input_as_handled()
 		return
 
 	# Selection on left click
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# Double-click detection: must run BEFORE gizmo/body-drag checks
+		# so the second click isn't consumed by transform handles.
+		var now := Time.get_ticks_msec() / 1000.0
+		var hit_node := selection_manager.pick_object(mouse_pos, camera_controller.camera)
+		var is_double_click := (hit_node != null \
+			and is_instance_valid(hit_node) \
+			and _last_click_node == hit_node \
+			and (now - _last_click_time) < DOUBLE_CLICK_THRESHOLD)
+		_last_click_time = now
+		_last_click_node = hit_node
+		if is_double_click:
+			# Double-click: select only the hit node. When the full group is
+			# selected this drills down from group -> member (the single-click
+			# rule re-expands to the whole group again on the next click).
+			selection_manager.select(hit_node)
+			get_viewport().set_input_as_handled()
+			return
+
 		# Start transform drag if a gizmo handle was grabbed
 		if selection_manager.get_selected():
 			var pick := gizmo.pick(mouse_pos, camera_controller.camera)
@@ -417,9 +523,10 @@ func _on_viewport_gui_input(event: InputEvent):
 					_drag_axis_screen = Vector2.RIGHT
 					_drag_axis_perp = Vector2.UP
 				else:
-					var sel := selection_manager.get_selected()
-					var origin := camera_controller.camera.unproject_position(sel.global_position)
-					var tip := camera_controller.camera.unproject_position(sel.global_position + _drag_axis)
+					# Screen axis is computed from gizmo position (the group
+					# centroid when multi-selected), not the primary node.
+					var origin := camera_controller.camera.unproject_position(gizmo.global_position)
+					var tip := camera_controller.camera.unproject_position(gizmo.global_position + _drag_axis)
 					_drag_axis_screen = (tip - origin).normalized()
 					_drag_axis_perp = Vector2(-_drag_axis_screen.y, _drag_axis_screen.x)
 				match _current_tool:
@@ -429,11 +536,35 @@ func _on_viewport_gui_input(event: InputEvent):
 				get_viewport().set_input_as_handled()
 				return
 
-		# Select the object under the cursor
+		# Body-drag: clicking an already-selected member with >1 selected and
+		# the Move tool active drags the whole group along the camera plane
+		# WITHOUT collapsing the selection set. Arm it on press; it only BEGINS
+		# once the cursor actually moves (see motion branch), so a plain click —
+		# including the first click of a double-click that should drill INTO the
+		# selected group — never triggers a transform/rebuild.
+		var hit := selection_manager.pick_object(mouse_pos, camera_controller.camera)
+		if hit \
+				and selection_manager.selected_count() > 1 \
+				and selection_manager.is_selected(hit) \
+				and _current_tool == Tool.MOVE:
+			_body_drag_armed = true
+			_body_drag_origin = mouse_pos
+			get_viewport().set_input_as_handled()
+			return
+
+		# Single selection / collapse
 		var selected := selection_manager.select_from_click(mouse_pos, camera_controller.camera)
 		if selected:
 			get_viewport().set_input_as_handled()
 			return
+
+		# Nothing under the cursor → start a rubber-band box selection.
+		_box_drag_start = mouse_pos
+		_box_dragging = true
+		if _selection_overlay:
+			_selection_overlay.show_box(mouse_pos, mouse_pos)
+		get_viewport().set_input_as_handled()
+		return
 
 	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _dragging:
@@ -442,22 +573,47 @@ func _on_viewport_gui_input(event: InputEvent):
 				Tool.MOVE: transform_manager.end_move()
 				Tool.ROTATE: transform_manager.end_rotate()
 				Tool.SCALE: transform_manager.end_scale()
+		if _body_dragging:
+			_body_dragging = false
+			transform_manager.end_move()
+		elif _body_drag_armed:
+			# A plain click on a selected member: no drag ever started, so do
+			# NOT call end_move() (that would execute a transform + rebuild the
+			# nodes, breaking the following double-click's node-identity match).
+			body_drag_armed_discard()
+		if _box_dragging:
+			_box_dragging = false
+			_apply_selection_box(_box_drag_start, mouse_pos)
+			if _selection_overlay:
+				_selection_overlay.hide_box()
 
-	if event is InputEventMouseMotion and _dragging:
-		var moved: Vector2 = mouse_pos - _drag_start_mouse
-		var dist: float = moved.dot(_drag_axis_screen)
-		match _current_tool:
-			Tool.MOVE:
-				transform_manager.apply_move(_drag_axis, dist * 0.02)
-			Tool.ROTATE:
-				var tangential: float = moved.dot(_drag_axis_perp)
-				transform_manager.apply_rotate(_drag_axis, tangential * 0.001)
-			Tool.SCALE:
-				if _drag_uniform:
-					transform_manager.apply_scale(_drag_axis, _scale_delta(mouse_pos, _drag_start_mouse, _drag_axis_screen), true)
-				else:
-					transform_manager.apply_scale(_drag_axis, _scale_delta(mouse_pos, _drag_start_mouse, _drag_axis_screen), false)
-		_update_inspector(selection_manager.get_selected())
+	if event is InputEventMouseMotion:
+		if _dragging:
+			var moved: Vector2 = mouse_pos - _drag_start_mouse
+			var dist: float = moved.dot(_drag_axis_screen)
+			match _current_tool:
+				Tool.MOVE:
+					transform_manager.apply_move(_drag_axis, dist * 0.02)
+				Tool.ROTATE:
+					var tangential: float = moved.dot(_drag_axis_perp)
+					transform_manager.apply_rotate(_drag_axis, tangential * 0.001)
+				Tool.SCALE:
+					if _drag_uniform:
+						transform_manager.apply_scale(_drag_axis, _scale_delta(mouse_pos, _drag_start_mouse, _drag_axis_screen), true)
+					else:
+						transform_manager.apply_scale(_drag_axis, _scale_delta(mouse_pos, _drag_start_mouse, _drag_axis_screen), false)
+			_update_inspector(selection_manager.get_selected())
+		elif _body_drag_armed:
+			# The press armed a potential body-drag. Promote it to a real drag
+			# only once the cursor actually moves; otherwise the release below
+			# simply clears the arm (a click, not a drag).
+			if mouse_pos.distance_to(_body_drag_origin) >= BODY_DRAG_START_PX:
+				_begin_body_drag(mouse_pos)
+		elif _body_dragging:
+			_apply_body_drag(mouse_pos)
+		elif _box_dragging:
+			if _selection_overlay:
+				_selection_overlay.show_box(_box_drag_start, mouse_pos)
 
 	# Keyboard shortcuts
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -484,8 +640,66 @@ func _scale_delta(mouse_now: Vector2, grab_start: Vector2, screen_axis: Vector2)
 	return (mouse_now - grab_start).dot(screen_axis)
 
 
+func _apply_selection_box(from: Vector2, to: Vector2):
+	# Rubber-band selection in viewport coordinates. An object is inside the
+	# box when its projected center lands in the rect. Walks the FULL hierarchy
+	# (including grouped members) so a group can be box-selected just like a
+	# standalone mesh — matching the physics click path.
+	var rect := Rect2(from, to - from).abs()
+	var hits: Array[MeshInstance3D] = []
+	for child in selection_manager.collect_selectable_meshes():
+		var p: Vector2 = camera_controller.camera.unproject_position(child.global_position)
+		if rect.has_point(p):
+			hits.append(child)
+	if hits.is_empty():
+		selection_manager.deselect_all()
+	else:
+		selection_manager.select_multi(hits)
+
+
+func _begin_body_drag(mouse_pos: Vector2):
+	# Drag the whole group on a plane through the centroid facing the camera.
+	body_drag_armed_discard()
+	_body_dragging = true
+	_body_plane_point = selection_manager.get_centroid()
+	_body_drag_start = _ray_plane_hit(mouse_pos, _body_plane_point)
+	transform_manager.begin_move(Vector3.ZERO)
+
+
+## Drops a pending body-drag arm (press that never became a drag). Called from
+## the release path (a plain click — zero-move — must not fire end_move and
+## rebuild the meshes, which would break a following double-click drill-down),
+## from camera-input consumption, and when a drag proper begins.
+func body_drag_armed_discard() -> void:
+	_body_drag_armed = false
+
+
+func _ray_plane_hit(screen_pos: Vector2, plane_point: Vector3) -> Vector3:
+	var cam: Camera3D = camera_controller.camera
+	var from: Vector3 = cam.project_ray_origin(screen_pos)
+	var dir: Vector3 = cam.project_ray_normal(screen_pos)
+	var n := -cam.global_transform.basis.z
+	var denom := dir.dot(n)
+	if absf(denom) < 1e-6:
+		return plane_point
+	var t := (plane_point - from).dot(n) / denom
+	return from + dir * t
+
+
+func _apply_body_drag(mouse_pos: Vector2):
+	if not _body_dragging:
+		return
+	var plane_hit := _ray_plane_hit(mouse_pos, _body_plane_point)
+	var delta := plane_hit - _body_drag_start
+	transform_manager.apply_move_delta(delta)
+	if selection_manager.selected_count() > 1:
+		gizmo.set_pivot(selection_manager.get_centroid())
+
+
 func _update_gizmo_drag():
-	if selection_manager.get_selected():
+	if selection_manager.selected_count() > 1:
+		gizmo.set_pivot(selection_manager.get_centroid())
+	elif selection_manager.get_selected():
 		gizmo.global_position = selection_manager.get_selected().global_position
 
 
@@ -495,8 +709,13 @@ func _update_inspector(node: Node3D):
 		%PosX.set_value_no_signal(0); %PosY.set_value_no_signal(0); %PosZ.set_value_no_signal(0)
 		%RotX.set_value_no_signal(0); %RotY.set_value_no_signal(0); %RotZ.set_value_no_signal(0)
 		%ScaleX.set_value_no_signal(1); %ScaleY.set_value_no_signal(1); %ScaleZ.set_value_no_signal(1)
+		%ColorSwatch.color = Color.WHITE
+		if _base_color_wheel:
+			_base_color_wheel.set_color(Color.WHITE)
+		%MetallicSlider.set_value_no_signal(0.0)
+		%RoughnessSlider.set_value_no_signal(0.5)
 		return
-	%NodeName.text = node.name
+	%NodeName.text = HierarchyManager.display_of(node)
 	%PosX.set_value_no_signal(node.position.x)
 	%PosY.set_value_no_signal(node.position.y)
 	%PosZ.set_value_no_signal(node.position.z)
@@ -509,6 +728,8 @@ func _update_inspector(node: Node3D):
 
 	var mat := material_manager.read_from(node as MeshInstance3D)
 	%ColorSwatch.color = mat.get("albedo", Color.WHITE)
+	if _base_color_wheel:
+		_base_color_wheel.set_color(%ColorSwatch.color)
 	%MetallicSlider.set_value_no_signal(mat.get("metallic", 0.0))
 	%RoughnessSlider.set_value_no_signal(mat.get("roughness", 0.5))
 
@@ -533,28 +754,63 @@ func _on_gizmo_reset_view():
 # ── Actions ─────────────────────────────────────────────────────
 
 func _on_duplicate():
-	var copy := transform_manager.duplicate_selected()
-	if copy:
-		undo_manager.push_duplicate(copy.get_path())
-		_rebuild_hierarchy_request()
+	var sel := selection_manager.get_selected()
+	if not sel:
+		return
+	var action: ModelingAction
+	# Full-group selection duplicates the WHOLE group (new group node + member
+	# copies) instead of just the primary mesh; anything else keeps the
+	# classic single-node duplicate.
+	if selection_manager.is_full_group_selected(sel):
+		var group := selection_manager.get_group_parent(sel)
+		if group:
+			action = CommandFactory.duplicate_group(
+				group, object_container, spawner, material_manager, hierarchy_manager)
+		else:
+			action = CommandFactory.duplicate_node(
+				sel, object_container, spawner, material_manager, hierarchy_manager)
+	else:
+		action = CommandFactory.duplicate_node(
+			sel, object_container, spawner, material_manager, hierarchy_manager)
+	var copy := undo_redo.execute_command(action)
+	# For a plain mesh duplicate, re-point onto the copy. For a group duplicate
+	# the primary created node is the group Node3D; duplicate_group's member
+	# snapshots flow through _repoint_selection, which selects the member copies.
+	if copy and copy is MeshInstance3D:
+		selection_manager.select(copy)
+	_rebuild_hierarchy_request()
 
 
 func _on_delete():
-	var sel := selection_manager.get_selected()
-	if sel:
-		undo_manager.push_delete(sel.get_path(), {name = sel.name})
-		transform_manager.delete_selected()
-		_rebuild_hierarchy_request()
+	var sel_nodes := selection_manager.selected_nodes()
+	if sel_nodes.is_empty():
+		return
+	var nodes: Array[Node3D] = []
+	for n in sel_nodes:
+		nodes.append(n)
+	# Deselect BEFORE freeing: selected_changed(null) must fire while the node is
+	# still valid so the gizmo tears down. Deselecting after execute() loses the
+	# signal (the freed _selected is silently nulled) and the gizmo targets a
+	# freed node forever.
+	selection_manager.deselect_all()
+	undo_redo.execute_command(
+		CommandFactory.delete(nodes, object_container, spawner, material_manager, hierarchy_manager)
+	)
+	_rebuild_hierarchy_request()
 
 
 func _on_reset():
 	transform_manager.reset_selected()
+	_rebuild_hierarchy_request()
 	if selection_manager.get_selected():
 		_update_inspector(selection_manager.get_selected())
 
 
 func _on_center():
 	transform_manager.center_selected()
+	_rebuild_hierarchy_request()
+	if selection_manager.get_selected():
+		_update_inspector(selection_manager.get_selected())
 	if selection_manager.get_selected():
 		_update_inspector(selection_manager.get_selected())
 
@@ -578,34 +834,96 @@ func _on_hint():
 
 # ── Material Panel ──────────────────────────────────────────────
 
+var _base_color_wheel: ColorPickerControlScript = null
+var _base_color_wheel_expanded := false
+var _material_before: Dictionary = {}
+var _material_before_node_id: int = 0
+
+
+func _build_base_color_wheel():
+	_base_color_wheel = ColorPickerControlScript.new()
+	_base_color_wheel.name = "BaseColorWheel"
+	_base_color_wheel.visible = false
+	%ColorSwatch.get_parent().add_child(_base_color_wheel)
+	_base_color_wheel.color_changed.connect(_on_base_color_wheel_changed)
+
+
 func _on_color_swatch_clicked(event: InputEvent):
 	if event is InputEventMouseButton and event.pressed:
-		var sel := selection_manager.get_selected() as MeshInstance3D
-		if sel:
-			%ColorSwatch.color = Color(randf(), randf(), randf(), 1)
-			material_manager.apply_to(sel, {albedo = %ColorSwatch.color})
+		_base_color_wheel_expanded = not _base_color_wheel_expanded
+		if _base_color_wheel_expanded:
+			_base_color_wheel.set_color(%ColorSwatch.color)
+		_base_color_wheel.visible = _base_color_wheel_expanded
+
+
+func _on_base_color_wheel_changed(color: Color):
+	%ColorSwatch.color = color
+	var sel := selection_manager.get_selected() as MeshInstance3D
+	if sel and is_instance_valid(sel):
+		material_manager.apply_to(sel, {
+			albedo = color,
+			metallic = %MetallicSlider.value,
+			roughness = %RoughnessSlider.value,
+		})
 
 
 func _on_metallic_changed(val: float):
 	var sel := selection_manager.get_selected() as MeshInstance3D
-	if sel:
-		material_manager.apply_to(sel, {metallic = val, roughness = %RoughnessSlider.value, albedo = %ColorSwatch.color})
+	if sel and is_instance_valid(sel):
+		material_manager.apply_to(sel, {
+			albedo = %ColorSwatch.color,
+			metallic = val,
+			roughness = %RoughnessSlider.value,
+		})
 
 
 func _on_roughness_changed(val: float):
 	var sel := selection_manager.get_selected() as MeshInstance3D
-	if sel:
-		material_manager.apply_to(sel, {metallic = %MetallicSlider.value, roughness = val, albedo = %ColorSwatch.color})
+	if sel and is_instance_valid(sel):
+		material_manager.apply_to(sel, {
+			albedo = %ColorSwatch.color,
+			metallic = %MetallicSlider.value,
+			roughness = val,
+		})
 
 
 func _on_preset_pressed(preset_name: String):
 	var sel := selection_manager.get_selected() as MeshInstance3D
-	if sel:
-		material_manager.apply_preset(preset_name, sel)
+	if sel and is_instance_valid(sel):
 		var props := material_manager.get_preset_props(preset_name)
+		var before := material_manager.read_from(sel)
+		undo_redo.execute_command(
+			CommandFactory.material(sel, before, props,
+				object_container, spawner, material_manager, hierarchy_manager)
+		)
 		%ColorSwatch.color = props.get("albedo", Color.WHITE)
+		if _base_color_wheel:
+			_base_color_wheel.set_color(%ColorSwatch.color)
 		%MetallicSlider.value = props.get("metallic", 0.0)
 		%RoughnessSlider.value = props.get("roughness", 0.5)
+
+
+func _on_material_drag_started():
+	var sel := selection_manager.get_selected() as MeshInstance3D
+	if sel and is_instance_valid(sel):
+		_material_before_node_id = sel.get_instance_id()
+		_material_before = material_manager.read_from(sel)
+
+
+func _on_material_drag_ended(_final_color: Color):
+	if _material_before.is_empty():
+		return
+	var node := instance_from_id(_material_before_node_id) as Node3D
+	if node and is_instance_valid(node):
+		var after := material_manager.read_from(node)
+		if _material_before.albedo != after.albedo \
+				or abs(_material_before.metallic - after.metallic) > 0.001 \
+				or abs(_material_before.roughness - after.roughness) > 0.001:
+			undo_redo.execute_command(
+				CommandFactory.material(node, _material_before, after,
+					object_container, spawner, material_manager, hierarchy_manager)
+			)
+	_material_before = {}
 
 
 # ── Hierarchy ──────────────────────────────────────────────────
@@ -633,24 +951,76 @@ func _rebuild_hierarchy():
 	var tree: Tree = %Tree
 	tree.clear()
 	var root: TreeItem = tree.create_item()
+	var depth_items: Array[TreeItem] = []
 	for entry in hierarchy_manager.get_tree_data():
-		var item: TreeItem = tree.create_item(root)
+		var parent: TreeItem = root
+		if entry.depth > 0 and depth_items.size() >= entry.depth:
+			var pi: TreeItem = depth_items[entry.depth - 1]
+			if pi != null:
+				parent = pi
+		var item: TreeItem = tree.create_item(parent)
 		item.set_text(0, entry.name)
 		item.set_metadata(0, entry.node)
 		item.set_custom_color(0, Color(0.9, 0.9, 0.95))
+		item.set_editable(0, true)
+		depth_items.resize(entry.depth + 1)
+		depth_items[entry.depth] = item
+	_sync_tree_selection()
+
+
+func _sync_tree_selection():
+	var tree: Tree = %Tree
+	var sel_nodes := selection_manager.selected_nodes()
+	var single := selection_manager.get_selected()
+	if single and sel_nodes.is_empty():
+		sel_nodes = [single]
+	# Deselect all TreeItems first.
+	var cursor: TreeItem = tree.get_next_selected(null)
+	while cursor:
+		cursor.deselect(0)
+		cursor = tree.get_next_selected(cursor)
+	# Select TreeItems whose metadata matches the selected nodes.
+	var root := tree.get_root()
+	if not root:
+		return
+	var item: TreeItem = root.get_first_child()
+	while item:
+		var meta: Variant = item.get_metadata(0)
+		if is_instance_valid(meta) and meta is MeshInstance3D and meta in sel_nodes:
+			item.select(0)
+		item = item.get_next()
 
 
 func _on_hierarchy_selected():
 	var item: TreeItem = %Tree.get_selected()
 	if not item:
 		return
-	var meta: Variant = item.get_metadata(0)
-	if not is_instance_valid(meta):
+	var nodes: Array[MeshInstance3D] = []
+	var cur: TreeItem = %Tree.get_next_selected(null)
+	while cur:
+		var meta: Variant = cur.get_metadata(0)
+		if is_instance_valid(meta):
+			if meta is MeshInstance3D:
+				nodes.append(meta)
+			elif meta is Node3D:
+				# Group row: clicking selects every member (multi-select).
+				_collect_group_members(meta, nodes)
+		cur = %Tree.get_next_selected(cur)
+	if nodes.is_empty():
 		_rebuild_hierarchy_request()
 		return
-	var node := meta as Node3D
-	if node is MeshInstance3D:
-		selection_manager.select_node(node)
+	if nodes.size() > 1:
+		selection_manager.select_multi(nodes)
+	else:
+		selection_manager.select_node(nodes[0])
+
+
+func _collect_group_members(node: Node, output: Array[MeshInstance3D]):
+	for c in node.get_children():
+		if c is MeshInstance3D and not c.is_in_group("ghost_guides"):
+			output.append(c)
+		elif c.get_child_count() > 0:
+			_collect_group_members(c, output)
 
 
 func _on_hierarchy_rename():
@@ -661,35 +1031,74 @@ func _on_hierarchy_rename():
 	if not is_instance_valid(meta):
 		_rebuild_hierarchy_request()
 		return
+	if %Tree.edit_selected():
+		return
+
+
+func _on_tree_item_edited():
+	var item: TreeItem = %Tree.get_edited()
+	if item == null:
+		item = %Tree.get_selected()
+	if not item:
+		return
+	var meta: Variant = item.get_metadata(0)
+	if not is_instance_valid(meta):
+		_rebuild_hierarchy_request()
+		return
 	var node := meta as Node3D
-	if hierarchy_manager.rename(node, node.name + "_renamed"):
+	var new_name := item.get_text(0).strip_edges()
+	if new_name.is_empty():
+		_rebuild_hierarchy_request()
+		return
+	var old_name := HierarchyManager.display_of(node)
+	if new_name != old_name:
+		undo_redo.execute_command(
+			CommandFactory.rename(node, old_name, new_name, object_container, spawner, material_manager, hierarchy_manager)
+		)
 		_rebuild_hierarchy_request()
 
 
 func _on_hierarchy_parent():
-	var item: TreeItem = %Tree.get_selected()
-	if not item:
+	var members: Array[Node3D] = []
+	for n in selection_manager.selected_nodes():
+		if is_instance_valid(n):
+			members.append(n)
+	if members.size() < 2:
 		return
-	var meta: Variant = item.get_metadata(0)
-	if not is_instance_valid(meta):
-		_rebuild_hierarchy_request()
-		return
-	var child := meta as Node3D
-	if child.get_parent() != object_container:
-		hierarchy_manager.reparent(child, object_container)
-		_rebuild_hierarchy_request()
+	# If all selected members already share the same group parent, skip.
+	var shared_parent: Node = members[0].get_parent()
+	if shared_parent and shared_parent != object_container and shared_parent is Node3D:
+		var all_same := true
+		for m in members:
+			if m.get_parent() != shared_parent:
+				all_same = false
+				break
+		if all_same:
+			return
+	# Generate a unique group name
+	var group_name := "group"
+	undo_redo.execute_command(
+		CommandFactory.group(group_name, members, object_container, spawner, material_manager, hierarchy_manager)
+	)
+	_rebuild_hierarchy_request()
 
 
 func _on_hierarchy_unparent():
-	var item: TreeItem = %Tree.get_selected()
-	if not item:
-		return
-	var meta: Variant = item.get_metadata(0)
-	if not is_instance_valid(meta):
-		_rebuild_hierarchy_request()
-		return
-	var node := meta as Node3D
-	if hierarchy_manager.reparent(node, object_container):
+	var detached := false
+	var former_parents: Array[Node3D] = []
+	for n in selection_manager.selected_nodes():
+		if is_instance_valid(n) and n.get_parent() != object_container:
+			var old_parent: Node3D = n.get_parent()
+			if old_parent and old_parent != object_container and not former_parents.has(old_parent):
+				former_parents.append(old_parent)
+			detached = true
+	# Execute one ungroup command per dissolved group
+	for gp in former_parents:
+		if is_instance_valid(gp):
+			undo_redo.execute_command(
+				CommandFactory.ungroup(gp, object_container, spawner, material_manager, hierarchy_manager)
+			)
+	if detached:
 		_rebuild_hierarchy_request()
 
 
@@ -704,42 +1113,61 @@ func _on_hierarchy_selected_in_tree(node_path: NodePath):
 func _on_inspector_name_changed(new_name: String):
 	var sel := selection_manager.get_selected()
 	if sel:
-		hierarchy_manager.rename(sel, new_name)
-		_rebuild_hierarchy_request()
+		var old_name := HierarchyManager.display_of(sel)
+		if new_name != old_name:
+			undo_redo.execute_command(
+				CommandFactory.rename(sel, old_name, new_name, object_container, spawner, material_manager, hierarchy_manager)
+			)
+			_rebuild_hierarchy_request()
 
 
 func _on_inspector_pos_changed(val: float, axis: String):
 	var sel := selection_manager.get_selected()
 	if not sel: return
-	var p := sel.position
+	var before := sel.transform
+	var after := sel.transform
+	var p: Vector3 = sel.position
 	match axis:
 		"x": p.x = val
 		"y": p.y = val
 		"z": p.z = val
-	sel.position = p
-	_update_bottom_bar(sel)
+	after.origin = p
+	var action := CommandFactory.transform([object_container.get_path_to(sel)], [before], [after], object_container, spawner, material_manager, hierarchy_manager)
+	undo_redo.execute_command(action)
+	selection_manager.reselect_from_ids(action.get_last_created_ids())
+	_update_bottom_bar(selection_manager.get_selected())
 
 
 func _on_inspector_rot_changed(val: float, axis: String):
 	var sel := selection_manager.get_selected()
 	if not sel: return
-	var r := sel.rotation_degrees
+	var before := sel.transform
+	var after := sel.transform
+	var r: Vector3 = sel.rotation_degrees
 	match axis:
 		"x": r.x = val
 		"y": r.y = val
 		"z": r.z = val
-	sel.rotation_degrees = r
+	after.basis = Basis.from_euler(Vector3(deg_to_rad(r.x), deg_to_rad(r.y), deg_to_rad(r.z)))
+	var action := CommandFactory.transform([object_container.get_path_to(sel)], [before], [after], object_container, spawner, material_manager, hierarchy_manager)
+	undo_redo.execute_command(action)
+	selection_manager.reselect_from_ids(action.get_last_created_ids())
 
 
 func _on_inspector_scale_changed(val: float, axis: String):
 	var sel := selection_manager.get_selected()
 	if not sel: return
-	var s := sel.scale
+	var before := sel.transform
+	var after := sel.transform
+	var s: Vector3 = sel.scale
 	match axis:
 		"x": s.x = val
 		"y": s.y = val
 		"z": s.z = val
-	sel.scale = s
+	after.basis = after.basis.scaled(s)
+	var action := CommandFactory.transform([object_container.get_path_to(sel)], [before], [after], object_container, spawner, material_manager, hierarchy_manager)
+	undo_redo.execute_command(action)
+	selection_manager.reselect_from_ids(action.get_last_created_ids())
 
 
 # ── Save / Load ────────────────────────────────────────────────
@@ -809,10 +1237,12 @@ func _on_model_opened(data: ModelData, _path: String):
 		_clear_objects()
 		save_manager.restore_model(object_container, data, spawner)
 		_rebuild_hierarchy_request()
+		# collect_selectable_meshes() recurses into groups, so loaded scenes
+		# with grouped members frame correctly instead of only top-level meshes.
+		# Map to Array[Node3D] since fit_all() is typed against the base class.
 		var objects: Array[Node3D] = []
-		for child in object_container.get_children():
-			if child is MeshInstance3D:
-				objects.append(child)
+		for mesh in selection_manager.collect_selectable_meshes():
+			objects.append(mesh)
 		camera_controller.fit_all(objects)
 
 
@@ -837,25 +1267,28 @@ func _update_zoom_display():
 # ── Undo / Redo ────────────────────────────────────────────────
 
 func _on_undo():
-	var action := undo_manager.undo()
-	if action.is_empty():
+	var cmd := undo_redo.undo()
+	if not cmd:
 		return
-	match action.type:
-		"transform":
-			var node := object_container.get_node_or_null(action.node)
-			if node:
-				node.transform = action.before
+	_after_history_repoint(cmd)
+	_rebuild_hierarchy_request()
+	_update_inspector(selection_manager.get_selected())
 
 
 func _on_redo():
-	var action := undo_manager.redo()
-	if action.is_empty():
+	var cmd := undo_redo.redo()
+	if not cmd:
 		return
-	match action.type:
-		"transform":
-			var node := object_container.get_node_or_null(action.node)
-			if node:
-				node.transform = action.after
+	_after_history_repoint(cmd)
+	_rebuild_hierarchy_request()
+	_update_inspector(selection_manager.get_selected())
+
+
+## Undo/redo rebuild node instances (snapshot system frees + materializes).
+## Re-point the selection onto the freshly created nodes so the gizmo keeps
+## tracking live instances instead of silently going stale and lingering.
+func _after_history_repoint(cmd: ModelingAction) -> void:
+	selection_manager.reselect_from_ids(cmd.get_last_created_ids())
 
 
 # ── Dialogs ─────────────────────────────────────────────────────

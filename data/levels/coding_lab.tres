@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="LevelDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/level_definition.gd" id="1_level"]
+
+[resource]
+script = ExtResource("1_level")
+level_id = "coding_lab"
+display_name = "Coding Laboratory"
+description = "Explore the Coding Laboratory and complete the orientation terminal."
+starts_unlocked = true
+next_level_id = "animation_studio"
+reward_condition_ids = PackedStringArray("coding_lab_complete")
+completion_message = "Coding Lab Completed! The Animation Studio is now open."

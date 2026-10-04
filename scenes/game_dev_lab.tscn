@@ -1,0 +1,157 @@
+[gd_scene format=3 uid="uid://g6f05x3ksk72"]
+
+[ext_resource type="Script" uid="uid://dkqhw5c4lhmsj" path="res://scripts/door_interactable.gd" id="1_door"]
+[ext_resource type="Script" uid="uid://dqswel4asafr1" path="res://scripts/level_completion_interactable.gd" id="2_terminal"]
+[ext_resource type="Resource" path="res://data/levels/game_dev_lab.tres" id="3_level"]
+[ext_resource type="PackedScene" uid="uid://djhxox6wpy7jx" path="res://scenes/player.tscn" id="4_player"]
+[ext_resource type="PackedScene" path="res://scenes/game_ui.tscn" id="5_game_ui"]
+[ext_resource type="PackedScene" uid="uid://dg23u7a2xtli2" path="res://scenes/dialogue_ui.tscn" id="6_dialogue_ui"]
+[ext_resource type="Script" uid="uid://bnmup8wxee1x" path="res://scripts/player_follow_camera.gd" id="7_camera"]
+[ext_resource type="AudioStream" uid="uid://cqvyv3k02f126" path="res://assets/sound/Level_4_Background_sound.mp3" id="8_bgm"]
+[ext_resource type="Script" uid="uid://c7qfbs2tiy8ky" path="res://scripts/loop_audio.gd" id="9_loop"]
+[ext_resource type="PackedScene" uid="uid://lrphyfwb7cbk" path="res://scenes/npc.tscn" id="11_npc"]
+[ext_resource type="Texture2D" uid="uid://bv82x5krg2v4g" path="res://assets/image/sheon.png" id="12_portrait"]
+
+[sub_resource type="Environment" id="Env_gamedev"]
+background_mode = 1
+background_color = Color(0.14, 0.08, 0.2, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.75, 0.55, 0.9, 1)
+ambient_light_energy = 0.6
+tonemap_mode = 2
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.16, 0.1, 0.22, 1)
+roughness = 0.9
+
+[sub_resource type="PlaneMesh" id="Mesh_floor"]
+material = SubResource("Mat_floor")
+size = Vector2(12, 12)
+
+[sub_resource type="BoxShape3D" id="Shape_floor"]
+size = Vector3(12, 0.2, 12)
+
+[sub_resource type="StandardMaterial3D" id="Mat_accent"]
+albedo_color = Color(0.65, 0.3, 0.9, 1)
+emission_enabled = true
+emission = Color(0.35, 0.1, 0.55, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_accent"]
+material = SubResource("Mat_accent")
+size = Vector3(12, 0.1, 0.3)
+
+[sub_resource type="StandardMaterial3D" id="Mat_terminal"]
+albedo_color = Color(0.8, 0.4, 1, 1)
+emission_enabled = true
+emission = Color(0.4, 0.15, 0.65, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_terminal"]
+material = SubResource("Mat_terminal")
+size = Vector3(1.1, 1.4, 0.45)
+
+[sub_resource type="BoxShape3D" id="Shape_terminal"]
+size = Vector3(2.4, 2, 2.4)
+
+[sub_resource type="StandardMaterial3D" id="Mat_door"]
+albedo_color = Color(0.3, 0.3, 0.35, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_door"]
+material = SubResource("Mat_door")
+size = Vector3(1.3, 0.1, 0.15)
+
+[sub_resource type="BoxShape3D" id="Shape_door"]
+size = Vector3(2.2, 2.7, 1.8)
+
+[node name="GameDevLab" type="Node3D" unique_id=174086325]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=393880779]
+environment = SubResource("Env_gamedev")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1511085243]
+transform = Transform3D(1, 0, 0, 0, 0.707, 0.707, 0, -0.707, 0.707, 0, 8, 0)
+light_color = Color(0.9, 0.8, 1, 1)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="Floor" type="StaticBody3D" parent="." unique_id=780049562]
+
+[node name="Mesh" type="MeshInstance3D" parent="Floor" unique_id=1509178811]
+mesh = SubResource("Mesh_floor")
+
+[node name="Collision" type="CollisionShape3D" parent="Floor" unique_id=1572040439]
+shape = SubResource("Shape_floor")
+
+[node name="AccentStrip" type="MeshInstance3D" parent="." unique_id=72602591]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, -5.5)
+mesh = SubResource("Mesh_accent")
+
+[node name="DepartmentLabel" type="Label3D" parent="." unique_id=1643190103]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, -5.5)
+pixel_size = 0.01
+modulate = Color(0.85, 0.5, 1, 1)
+text = "GAME DEVELOPMENT LAB"
+font_size = 48
+
+[node name="Terminal" type="Area3D" parent="." unique_id=1240132305]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -4.5)
+collision_layer = 2
+script = ExtResource("2_terminal")
+level = ExtResource("3_level")
+prompt_title = "Game Dev Lab Terminal"
+prompt_content = "Complete the Game Development Lab orientation."
+interaction_button_text = "Complete"
+
+[node name="Mesh" type="MeshInstance3D" parent="Terminal" unique_id=657824773]
+mesh = SubResource("Mesh_terminal")
+
+[node name="InteractionBounds" type="CollisionShape3D" parent="Terminal" unique_id=1930709601]
+shape = SubResource("Shape_terminal")
+
+[node name="ReturnDoor" type="Area3D" parent="." unique_id=984352828]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 5)
+collision_layer = 2
+script = ExtResource("1_door")
+enable_on_open_action = true
+on_open_action_type = 2
+on_open_scene_path = "res://scenes/world_demo.tscn"
+prompt_title = "Return to Hallway"
+prompt_content = "Go back to the main hallway."
+interaction_button_text = "Exit"
+
+[node name="DoorMesh" type="MeshInstance3D" parent="ReturnDoor" unique_id=1649650716]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.65, -0.9526367, 0)
+mesh = SubResource("Mesh_door")
+
+[node name="InteractionBounds" type="CollisionShape3D" parent="ReturnDoor" unique_id=1639118761]
+shape = SubResource("Shape_door")
+
+[node name="NPC_Sheon" parent="." unique_id=1732537967 instance=ExtResource("11_npc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, -2)
+portrait = ExtResource("12_portrait")
+dialogue_id = "npc_sheon_gamedev"
+prompt_title = "Sheon — Game Development Instructor"
+prompt_content = "Talk to Sheon about the Game Development Laboratory."
+
+[node name="Player" parent="." unique_id=674077853 instance=ExtResource("4_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0993036, 3)
+
+[node name="PlayerFollowCamera" type="Camera3D" parent="." unique_id=1162549203]
+transform = Transform3D(1, 0, 0, 0, 0.9598053, 0.2806667, 0, -0.2806667, 0.9598053, 0, 3, 8)
+fov = 57.5
+script = ExtResource("7_camera")
+target_path = NodePath("../Player")
+follow_offset = Vector3(10, 10, 0)
+look_at_offset = Vector3(1, 1, 0)
+camera_fov = 62.0
+
+[node name="GameUI" parent="." unique_id=1591193901 instance=ExtResource("5_game_ui")]
+
+[node name="DialogueUI" parent="." unique_id=1955384763 instance=ExtResource("6_dialogue_ui")]
+
+[node name="BGM" type="AudioStreamPlayer" parent="." unique_id=1438750838]
+bus = &"Music"
+stream = ExtResource("8_bgm")
+autoplay = true
+
+[node name="Loop" type="Node" parent="BGM" unique_id=532083260]
+script = ExtResource("9_loop")

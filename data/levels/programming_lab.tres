@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="LevelDefinition" format=3 uid="uid://b12i5wl1rhjvp"]
 
 [ext_resource type="Script" uid="uid://dv2icf1h8wfrx" path="res://scripts/level_definition.gd" id="1_level"]
-[ext_resource type="Script" uid="uid://duw58fjwso4xo" path="res://scripts/flowchart_puzzle_data.gd" id="1_ttdar"]
+[ext_resource type="Script" uid="uid://duw58fjwso4xo" path="res://scripts/programming_lab/flowchart_puzzle_data.gd" id="1_ttdar"]
 
 [resource]
 script = ExtResource("1_level")

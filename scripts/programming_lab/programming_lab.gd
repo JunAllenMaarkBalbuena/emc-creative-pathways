@@ -277,7 +277,12 @@ func _on_close_lab():
 
 func _on_lab_exit():
 	lab_closed.emit()
-	if level_def and not level_def.level_id.is_empty():
+	var all_solved := puzzle_scores.size() > 0
+	for s in puzzle_scores:
+		if s == 0:
+			all_solved = false
+			break
+	if all_solved and level_def and not level_def.level_id.is_empty():
 		LevelProgression.complete_level(level_def)
 	var return_scene := LevelProgression.get_resume_scene()
 	if return_scene.is_empty():

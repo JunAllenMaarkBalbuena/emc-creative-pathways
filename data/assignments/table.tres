@@ -1,0 +1,48 @@
+[gd_resource type="Resource" script_class="AssignmentData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/modeling_lab/assignment_data.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/modeling_lab/primitive_def.gd" id="2"]
+
+[sub_resource type="Resource" id="Sub_0"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(-0.4, 0.2, -0.3)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.06, 0.4, 0.06)
+
+[sub_resource type="Resource" id="Sub_1"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(0.4, 0.2, -0.3)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.06, 0.4, 0.06)
+
+[sub_resource type="Resource" id="Sub_2"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(-0.4, 0.2, 0.3)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.06, 0.4, 0.06)
+
+[sub_resource type="Resource" id="Sub_3"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(0.4, 0.2, 0.3)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.06, 0.4, 0.06)
+
+[sub_resource type="Resource" id="Sub_4"]
+script = ExtResource("2")
+type = 0
+target_position = Vector3(0, 0.45, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.6, 0.05, 0.4)
+
+[resource]
+script = ExtResource("1")
+assignment_id = "table"
+display_name = "Table"
+lesson_number = 4
+skills_taught = Array[String](["move", "scale"])
+instruction_text = "Build a table using four cylinder legs and a flat top cube."
+primitives = Array[Resource]([SubResource("Sub_0"), SubResource("Sub_1"), SubResource("Sub_2"), SubResource("Sub_3"), SubResource("Sub_4")])

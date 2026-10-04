@@ -1,0 +1,566 @@
+[gd_scene format=3 uid="uid://dniw01hnu0bu3"]
+
+[ext_resource type="Script" path="res://scripts/digital_art_lab/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/digital_art_lab/canvas_view.gd" id="2_canvas"]
+[ext_resource type="Script" path="res://scripts/digital_art_lab/color_picker_control.gd" id="3_color"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0jce8"]
+bg_color = Color(0, 0, 0, 0.15)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tavol"]
+bg_color = Color(0, 0, 0, 0.12)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o665w"]
+bg_color = Color(0, 0, 0, 0.15)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toast"]
+bg_color = Color(0.15, 0.35, 0.6, 0.92)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="DigitalArtLab" type="CanvasLayer" unique_id=1094057994]
+script = ExtResource("1_main")
+
+[node name="MainPanel" type="Panel" parent="." unique_id=981329398]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="TopBar" type="HBoxContainer" parent="MainPanel" unique_id=129918536]
+layout_mode = 0
+anchor_right = 1.0
+offset_bottom = 35.0
+
+[node name="ArtworkName" type="Label" parent="MainPanel/TopBar" unique_id=546115653]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Untitled"
+
+[node name="NewBtn" type="Button" parent="MainPanel/TopBar" unique_id=2086085010]
+unique_name_in_owner = true
+layout_mode = 2
+text = "New"
+
+[node name="SaveBtn" type="Button" parent="MainPanel/TopBar" unique_id=195302039]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Save"
+
+[node name="LoadBtn" type="Button" parent="MainPanel/TopBar" unique_id=156040397]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Load"
+
+[node name="ExportBtn" type="Button" parent="MainPanel/TopBar" unique_id=1765418233]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Export"
+
+[node name="HSep1" type="HSeparator" parent="MainPanel/TopBar" unique_id=1922077959]
+layout_mode = 2
+
+[node name="UndoBtn" type="Button" parent="MainPanel/TopBar" unique_id=523465652]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Undo"
+
+[node name="RedoBtn" type="Button" parent="MainPanel/TopBar" unique_id=1105485422]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Redo"
+
+[node name="HSep2" type="HSeparator" parent="MainPanel/TopBar" unique_id=1795356875]
+layout_mode = 2
+
+[node name="GridBtn" type="Button" parent="MainPanel/TopBar" unique_id=667787597]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Grid"
+
+[node name="HSep3" type="HSeparator" parent="MainPanel/TopBar" unique_id=1224046174]
+layout_mode = 2
+
+[node name="HintBtn" type="Button" parent="MainPanel/TopBar" unique_id=1248948667]
+unique_name_in_owner = true
+layout_mode = 2
+text = "?"
+
+[node name="HSep4" type="HSeparator" parent="MainPanel/TopBar" unique_id=426904257]
+layout_mode = 2
+
+[node name="TopSpacer" type="Control" parent="MainPanel/TopBar" unique_id=129918537]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="FileStatus" type="Label" parent="MainPanel/TopBar" unique_id=129918538]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="CloseBtn" type="Button" parent="MainPanel/TopBar" unique_id=1821923227]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Close"
+
+[node name="MainSplit" type="HSplitContainer" parent="MainPanel" unique_id=122938470]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 35.0
+split_offsets = PackedInt32Array(60, 930)
+split_offset = 60
+
+[node name="LeftToolbarPanel" type="Panel" parent="MainPanel/MainSplit" unique_id=496025728]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_0jce8")
+
+[node name="LeftToolbar" type="VBoxContainer" parent="MainPanel/MainSplit/LeftToolbarPanel" unique_id=247533306]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BrushBtn" type="Button" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar" unique_id=1951619194]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+toggle_mode = true
+text = "Brush"
+
+[node name="EraserBtn" type="Button" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar" unique_id=1705722736]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Eraser"
+
+[node name="FillBtn" type="Button" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar" unique_id=1123971789]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Fill"
+
+[node name="EyeBtn" type="Button" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar" unique_id=1820521090]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Eye"
+
+[node name="PanBtn" type="Button" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar" unique_id=508924058]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Pan"
+
+[node name="ZoomBtn" type="Button" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar" unique_id=1304578359]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Zoom"
+
+[node name="ZoomSlider" type="VSlider" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar" unique_id=1265934477]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 250)
+layout_mode = 2
+size_flags_horizontal = 4
+min_value = 10.0
+max_value = 1000.0
+value = 100.0
+
+[node name="TSep" type="HSeparator" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar" unique_id=1645151146]
+layout_mode = 2
+
+[node name="ColorPanel" type="Panel" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar" unique_id=1752685223]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_tavol")
+
+[node name="ColorInner" type="VBoxContainer" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar/ColorPanel" unique_id=1763066890]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -12.0
+offset_bottom = -3.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(1, -5.5)
+alignment = 2
+
+[node name="PrimaryColor" type="ColorRect" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar/ColorPanel/ColorInner" unique_id=1396790624]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+
+[node name="SecondaryColor" type="ColorRect" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar/ColorPanel/ColorInner" unique_id=352030412]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+color = Color(0, 0, 0, 1)
+
+[node name="SwapColorsBtn" type="Button" parent="MainPanel/MainSplit/LeftToolbarPanel/LeftToolbar/ColorPanel/ColorInner" unique_id=387242819]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Swap"
+
+[node name="CenterSplit" type="VSplitContainer" parent="MainPanel/MainSplit" unique_id=368570107]
+layout_mode = 2
+
+[node name="CanvasContainer" type="Control" parent="MainPanel/MainSplit/CenterSplit" unique_id=370837805]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CanvasView" type="Control" parent="MainPanel/MainSplit/CenterSplit/CanvasContainer" unique_id=1702056136]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_canvas")
+
+[node name="BottomBar" type="HBoxContainer" parent="MainPanel/MainSplit/CenterSplit" unique_id=2049161907]
+layout_mode = 2
+
+[node name="ZoomLabel" type="Label" parent="MainPanel/MainSplit/CenterSplit/BottomBar" unique_id=486237197]
+unique_name_in_owner = true
+layout_mode = 2
+text = "100%"
+
+[node name="CoordLabel" type="Label" parent="MainPanel/MainSplit/CenterSplit/BottomBar" unique_id=413962466]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0, 0"
+
+[node name="ToolLabel" type="Label" parent="MainPanel/MainSplit/CenterSplit/BottomBar" unique_id=836753605]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Brush"
+
+[node name="LayerLabel" type="Label" parent="MainPanel/MainSplit/CenterSplit/BottomBar" unique_id=1634751137]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Layer: 1"
+
+[node name="RightPanelWrapper" type="Panel" parent="MainPanel/MainSplit" unique_id=1544554271]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_o665w")
+
+[node name="RightPanel" type="VBoxContainer" parent="MainPanel/MainSplit/RightPanelWrapper" unique_id=111479722]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="ColorSection" type="VBoxContainer" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel" unique_id=1694678290]
+layout_mode = 2
+
+[node name="ColorWheel" type="Control" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/ColorSection" unique_id=1287451983]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("3_color")
+
+[node name="RecentLabel" type="Label" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/ColorSection" unique_id=1457273427]
+layout_mode = 2
+text = "Recent"
+
+[node name="RecentColors" type="HFlowContainer" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/ColorSection" unique_id=724527953]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="FavLabel" type="Label" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/ColorSection" unique_id=745422996]
+layout_mode = 2
+text = "Favorites"
+
+[node name="FavColors" type="HFlowContainer" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/ColorSection" unique_id=1985082308]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BrushSection" type="VBoxContainer" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel" unique_id=502100897]
+layout_mode = 2
+
+[node name="BrushLabel" type="Label" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/BrushSection" unique_id=138621315]
+layout_mode = 2
+text = "Brush"
+
+[node name="SizeSlider" type="HSlider" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/BrushSection" unique_id=234478880]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1.0
+max_value = 200.0
+value = 20.0
+
+[node name="SizeLabel" type="Label" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/BrushSection" unique_id=2065909339]
+layout_mode = 2
+text = "Size"
+
+[node name="OpacitySlider" type="HSlider" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/BrushSection" unique_id=1592627442]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 1.0
+
+[node name="OpacityLabel" type="Label" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/BrushSection" unique_id=1507534891]
+layout_mode = 2
+text = "Opacity"
+
+[node name="HardnessSlider" type="HSlider" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/BrushSection" unique_id=1424984842]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 0.8
+
+[node name="HardnessLabel" type="Label" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/BrushSection" unique_id=2013507810]
+layout_mode = 2
+text = "Hardness"
+
+[node name="LayerSection" type="VBoxContainer" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel" unique_id=775002816]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LayerLabel2" type="Label" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/LayerSection" unique_id=1036786105]
+layout_mode = 2
+text = "Layers"
+
+[node name="LayerButtons" type="HBoxContainer" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/LayerSection" unique_id=1689389334]
+layout_mode = 2
+
+[node name="AddLayerBtn" type="Button" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/LayerSection/LayerButtons" unique_id=620985580]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(24, 32)
+layout_mode = 2
+text = "+"
+
+[node name="DeleteLayerBtn" type="Button" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/LayerSection/LayerButtons" unique_id=1961629657]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(24, 32)
+layout_mode = 2
+text = "-"
+
+[node name="DuplicateLayerBtn" type="Button" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/LayerSection/LayerButtons" unique_id=1157661360]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Dup"
+
+[node name="MergeDownBtn" type="Button" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/LayerSection/LayerButtons" unique_id=556614436]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Merge"
+
+[node name="LayerUpBtn" type="Button" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/LayerSection/LayerButtons" unique_id=1787721533]
+unique_name_in_owner = true
+layout_mode = 2
+text = "^"
+
+[node name="LayerDownBtn" type="Button" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/LayerSection/LayerButtons" unique_id=897407259]
+unique_name_in_owner = true
+layout_mode = 2
+text = "v"
+
+[node name="LayerList" type="ScrollContainer" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/LayerSection" unique_id=1490599606]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LayerEntries" type="VBoxContainer" parent="MainPanel/MainSplit/RightPanelWrapper/RightPanel/LayerSection/LayerList" unique_id=1919132034]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="SaveDialog" type="Panel" parent="MainPanel" unique_id=303450388]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -150.0
+offset_right = 200.0
+offset_bottom = 150.0
+
+[node name="SaveVBox" type="VBoxContainer" parent="MainPanel/SaveDialog" unique_id=1679065479]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+
+[node name="SaveTitle" type="Label" parent="MainPanel/SaveDialog/SaveVBox" unique_id=1679065480]
+layout_mode = 2
+text = "Save Artwork"
+horizontal_alignment = 1
+
+[node name="SaveNameEdit" type="LineEdit" parent="MainPanel/SaveDialog/SaveVBox" unique_id=196927675]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Artwork name..."
+
+[node name="SaveCategoryOption" type="OptionButton" parent="MainPanel/SaveDialog/SaveVBox" unique_id=1096924339]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 4
+popup/item_0/text = "General"
+popup/item_0/id = 0
+popup/item_1/text = "Portrait"
+popup/item_1/id = 1
+popup/item_2/text = "Landscape"
+popup/item_2/id = 2
+popup/item_3/text = "Sketch"
+popup/item_3/id = 3
+
+[node name="SaveButtons" type="HBoxContainer" parent="MainPanel/SaveDialog/SaveVBox" unique_id=1921162308]
+layout_mode = 2
+alignment = 1
+
+[node name="SaveConfirmBtn" type="Button" parent="MainPanel/SaveDialog/SaveVBox/SaveButtons" unique_id=1921162307]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Save"
+
+[node name="SaveCancelBtn" type="Button" parent="MainPanel/SaveDialog/SaveVBox/SaveButtons" unique_id=2113177041]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Cancel"
+
+[node name="SaveErrorLabel" type="Label" parent="MainPanel/SaveDialog/SaveVBox" unique_id=1697353553]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Save failed!"
+horizontal_alignment = 1
+
+[node name="LoadDialog" type="Panel" parent="MainPanel" unique_id=316947627]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -150.0
+offset_right = 200.0
+offset_bottom = 150.0
+
+[node name="LoadVBox" type="VBoxContainer" parent="MainPanel/LoadDialog" unique_id=769942005]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+
+[node name="LoadTitle" type="Label" parent="MainPanel/LoadDialog/LoadVBox" unique_id=769942004]
+layout_mode = 2
+text = "Load Artwork"
+horizontal_alignment = 1
+
+[node name="PortfolioItems" type="ItemList" parent="MainPanel/LoadDialog/LoadVBox" unique_id=2070242580]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LoadButtons" type="HBoxContainer" parent="MainPanel/LoadDialog/LoadVBox" unique_id=676263640]
+layout_mode = 2
+alignment = 1
+
+[node name="LoadOpenBtn" type="Button" parent="MainPanel/LoadDialog/LoadVBox/LoadButtons" unique_id=676263639]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open"
+
+[node name="LoadDeleteBtn" type="Button" parent="MainPanel/LoadDialog/LoadVBox/LoadButtons" unique_id=1033067191]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Delete"
+
+[node name="RefreshBtn" type="Button" parent="MainPanel/LoadDialog/LoadVBox/LoadButtons" unique_id=1996477811]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Refresh"
+
+[node name="LoadCancelBtn" type="Button" parent="MainPanel/LoadDialog/LoadVBox/LoadButtons" unique_id=257827866]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Cancel"
+
+[node name="CompletionPanel" type="Panel" parent="MainPanel" unique_id=992051513]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -80.0
+offset_right = 200.0
+offset_bottom = 80.0
+
+[node name="CompVBox" type="VBoxContainer" parent="MainPanel/CompletionPanel" unique_id=1924902021]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+alignment = 1
+
+[node name="CompTitle" type="Label" parent="MainPanel/CompletionPanel/CompVBox" unique_id=1924902020]
+layout_mode = 2
+text = "Level Complete!"
+horizontal_alignment = 1
+
+[node name="CompMsg" type="Label" parent="MainPanel/CompletionPanel/CompVBox" unique_id=471373715]
+layout_mode = 2
+size_flags_vertical = 3
+text = "You have saved your first artwork! You can continue painting or close the lab."
+horizontal_alignment = 1
+autowrap_mode = 1
+
+[node name="ContBtn" type="Button" parent="MainPanel/CompletionPanel/CompVBox" unique_id=337782233]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Continue"
+
+[node name="Toast" type="Panel" parent="MainPanel" unique_id=1495983440]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_top = 50.0
+offset_right = 150.0
+offset_bottom = 90.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_toast")
+
+[node name="ToastLabel" type="Label" parent="MainPanel/Toast" unique_id=1495983441]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HintLabel" type="Label" parent="MainPanel" unique_id=1495983449]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+text = "Hint: Use B/E/G/I/H to switch tools. Ctrl+Z undo, Ctrl+Y redo. Hold Space+click to pan."

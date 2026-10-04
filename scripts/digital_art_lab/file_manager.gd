@@ -1,8 +1,8 @@
-class_name FileManager
+﻿class_name FileManager
 extends RefCounted
 
-const PLAYER_DIR := "res://data/player_drawings/"
-const EXPORT_DIR := "res://data/Exported_drawings/"
+const PLAYER_DIR := "user://drawings/"
+const EXPORT_DIR := "user://exports/"
 
 
 func save_artwork(data: DigitalArtData, file_name: String = "") -> String:
@@ -67,16 +67,16 @@ func artwork_exists(name: String) -> bool:
 
 
 func _ensure_dirs():
-	var dir := DirAccess.open("res://")
+	var dir := DirAccess.open("user://")
 	if dir == null:
-		push_error("FileManager: Cannot open res://")
+		push_error("FileManager: Cannot open user://")
 		return
-	var err1 := dir.make_dir_recursive("data/player_drawings")
-	var err2 := dir.make_dir_recursive("data/Exported_drawings")
+	var err1 := dir.make_dir_recursive("drawings")
+	var err2 := dir.make_dir_recursive("exports")
 	if err1 != OK:
-		push_error("FileManager: Failed to create data/player_drawings: ", err1)
+		push_error("FileManager: Failed to create drawings: ", err1)
 	if err2 != OK:
-		push_error("FileManager: Failed to create data/Exported_drawings: ", err2)
+		push_error("FileManager: Failed to create exports: ", err2)
 
 
 func export_png(image: Image, file_name: String) -> String:
@@ -105,3 +105,5 @@ func _sanitize_filename(name: String) -> String:
 func _timestamp() -> String:
 	var dt := Time.get_datetime_dict_from_system()
 	return "%04d-%02d-%02d %02d:%02d" % [dt.year, dt.month, dt.day, dt.hour, dt.minute]
+
+

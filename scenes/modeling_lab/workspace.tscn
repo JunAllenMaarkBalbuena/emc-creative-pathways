@@ -1,17 +1,25 @@
 [gd_scene format=3 uid="uid://cbdanxiec00r2"]
 
-[ext_resource type="Script" path="res://scripts/modeling_lab/camera_controller.gd" id="2_1qofw"]
-[ext_resource type="Script" path="res://scripts/modeling_lab/gizmo_3d.gd" id="3_s6jf8"]
-[ext_resource type="Shader" path="res://scripts/modeling_lab/grid_shader.gdshader" id="4_grid"]
+[ext_resource type="Script" uid="uid://dxodymvusoi0j" path="res://scripts/modeling_lab/camera_controller.gd" id="2_1qofw"]
+[ext_resource type="Script" uid="uid://cassadxs4ht44" path="res://scripts/modeling_lab/gizmo_3d.gd" id="3_s6jf8"]
+[ext_resource type="Shader" uid="uid://cgj7jsh6u0gc5" path="res://scripts/modeling_lab/grid_shader.gdshader" id="4_grid"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_grid"]
+render_priority = 0
+shader = ExtResource("4_grid")
+shader_parameter/base_color = Color(0.055, 0.07, 0.09, 1)
+shader_parameter/line_color = Color(0.5, 0.56, 0.64, 1)
+shader_parameter/major_line_color = Color(0.78, 0.82, 0.88, 1)
+shader_parameter/axis_color_x = Color(0.9, 0.28, 0.28, 1)
+shader_parameter/axis_color_z = Color(0.3, 0.45, 0.95, 1)
+shader_parameter/grid_minor = 1.0
+shader_parameter/grid_major = 5.0
+shader_parameter/line_width = 0.045
+shader_parameter/fade_start = 6.0
+shader_parameter/fade_end = 22.0
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_7v3k9"]
 size = Vector2(20, 20)
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_grid"]
-shader = ExtResource("4_grid")
-shader_parameter/grid_minor = 1.0
-shader_parameter/grid_major = 5.0
-shader_parameter/base_color = Color(0.055, 0.07, 0.09, 1.0)
 
 [sub_resource type="Environment" id="Environment_v5u26"]
 background_mode = 1
@@ -30,8 +38,8 @@ fov = 45.11566
 
 [node name="GridPlane" type="MeshInstance3D" parent="." unique_id=1735948212]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.005, 0)
-mesh = SubResource("PlaneMesh_7v3k9")
 material_override = SubResource("ShaderMaterial_grid")
+mesh = SubResource("PlaneMesh_7v3k9")
 
 [node name="GhostContainer" type="Node3D" parent="." unique_id=1222487981]
 
@@ -44,9 +52,9 @@ environment = SubResource("Environment_v5u26")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=426699901]
 transform = Transform3D(0.9009434, -0.19907434, 0.178886, 0, 0.40207168, 0.17714061, -0.9009434, -0.19907434, 0.178886, 0, 0, 0)
 shadow_enabled = true
+shadow_normal_bias = 0.6
 shadow_blur = 2.0
 directional_shadow_blend_splits = true
-shadow_normal_bias = 0.6
 
 [node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=2034506630]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)

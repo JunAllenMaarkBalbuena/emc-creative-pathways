@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="GameSequence" format=3 uid="uid://c6y10d875n741"]
+
+[ext_resource type="Script" uid="uid://fcf3rdfknb30" path="res://scripts/game_sequence.gd" id="1_e720o"]
+
+[resource]
+script = ExtResource("1_e720o")
+level_order_ids = Array[String](["orientation", "coding_lab", "animation_studio", "3d_design_lab", "game_dev_lab"])

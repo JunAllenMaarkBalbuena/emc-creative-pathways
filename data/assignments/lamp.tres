@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="AssignmentData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/modeling_lab/assignment_data.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/modeling_lab/primitive_def.gd" id="2"]
+
+[sub_resource type="Resource" id="Sub_0"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(0, 0.2, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.15, 0.4, 0.15)
+material_color = Color(0.3, 0.15, 0.0, 1)
+material_metallic = 0.5
+material_roughness = 0.3
+
+[sub_resource type="Resource" id="Sub_1"]
+script = ExtResource("2")
+type = 1
+target_position = Vector3(0, 1.0, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.2, 0.2, 0.2)
+material_color = Color(1.0, 0.95, 0.8, 1)
+material_roughness = 0.8
+
+[sub_resource type="Resource" id="Sub_2"]
+script = ExtResource("2")
+type = 3
+target_position = Vector3(0, 0.7, 0)
+target_rotation = Vector3(180, 0, 0)
+target_scale = Vector3(0.3, 0.3, 0.3)
+material_color = Color(0.9, 0.7, 0.3, 1)
+
+[resource]
+script = ExtResource("1")
+assignment_id = "lamp"
+display_name = "Lamp"
+lesson_number = 5
+skills_taught = Array[String](["move", "scale", "rotate", "materials"])
+instruction_text = "Build a lamp with a cylinder base, sphere bulb, and cone shade. Use the Materials tab to color each part."
+primitives = Array[Resource]([SubResource("Sub_0"), SubResource("Sub_1"), SubResource("Sub_2")])

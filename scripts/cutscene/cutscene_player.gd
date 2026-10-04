@@ -51,7 +51,9 @@ func _play_video(data: CutsceneDefinition):
 	video_player.stream = data.video_stream
 	video_player.visible = true
 	video_player.play()
-	video_player.finished.connect(_finish)
+	if video_player.finished.is_connected(_finish):
+		video_player.finished.disconnect(_finish)
+	video_player.finished.connect(_finish, CONNECT_ONE_SHOT)
 	_is_playing = true
 
 func _play_frames(data: CutsceneDefinition):
@@ -90,15 +92,18 @@ func _next_frame():
 	_advance_frame_timer(dur)
 
 func _finish():
+	if not _is_playing:
+		return
 	_is_playing = false
+	video_player.stop()
+	frame_rect.texture = null
+	subtitle_label.text = ""
+	visible = false
 	bgm_player.stop()
 	_restore_scene_audio()
 	cutscene_finished.emit()
 
 func skip():
-	_is_playing = false
-	video_player.stop()
-	bgm_player.stop()
 	_finish()
 
 func _toggle_pause():

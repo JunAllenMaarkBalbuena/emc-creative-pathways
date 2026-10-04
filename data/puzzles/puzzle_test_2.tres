@@ -1,0 +1,97 @@
+[gd_resource type="Resource" script_class="FlowchartPuzzleData" format=3]
+
+[ext_resource type="Script" path="res://scripts/programming_lab/flowchart_puzzle_data.gd" id="1_tmtk3"]
+
+[resource]
+script = ExtResource("1_tmtk3")
+puzzle_id = "test_puzzle"
+title = "test puzzle 2"
+problem_description = "test puzzle 2 problem"
+ipo_input = "1"
+ipo_process = "1"
+ipo_output = "1"
+slots = Array[Dictionary]([{
+&"correct_type": 2,
+&"height": 50,
+&"id": "s1",
+&"label": "1 = 2",
+&"no_port": 2,
+&"pos_x": 360,
+&"pos_y": 260,
+&"prefilled": true,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 4,
+&"height": 50,
+&"id": "s3",
+&"label": "input 1",
+&"no_port": 2,
+&"pos_x": 340,
+&"pos_y": 160,
+&"prefilled": true,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 0,
+&"height": 50,
+&"id": "s4",
+&"label": "",
+&"no_port": 2,
+&"pos_x": 360,
+&"pos_y": 60,
+&"prefilled": false,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 1,
+&"height": 50,
+&"id": "s5",
+&"label": "",
+&"no_port": 2,
+&"pos_x": 320,
+&"pos_y": 460,
+&"prefilled": false,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 4,
+&"height": 50,
+&"id": "s6",
+&"label": "printf \"2\";",
+&"no_port": 2,
+&"pos_x": 340,
+&"pos_y": 340,
+&"prefilled": true,
+&"width": 140,
+&"yes_port": 3
+}])
+palette_types = Array[int]([0, 1, 2, 4])
+connections = Array[Dictionary]([{
+&"from": "s4",
+&"from_port": 1,
+&"label": "",
+&"to": "s3",
+&"to_port": 0
+}, {
+&"from": "s3",
+&"from_port": 1,
+&"label": "",
+&"to": "s1",
+&"to_port": 0
+}, {
+&"from": "s1",
+&"from_port": 1,
+&"label": "",
+&"to": "s6",
+&"to_port": 0
+}, {
+&"from": "s6",
+&"from_port": 1,
+&"label": "",
+&"to": "s5",
+&"to_port": 0
+}])
+hint_level_1 = "inpu1"
+hint_level_2 = "make 1 = 2"
+hint_level_3 = "oupput 2"

@@ -67,8 +67,12 @@ func _test_deferred_action(tree: SceneTree) -> void:
 	if not GameConditions.get_flag("door_test_flag"):
 		_fail = 1
 		print("FAIL: on-open action did not run after cutscene finished")
+	var cs = tree.root.get_node_or_null("CutscenePlayer")
+	if cs != null and (cs.visible or cs.frame_rect.texture != null):
+		_fail = 1
+		print("FAIL: cutscene layer still visible after finishing (stale frame)")
 	if _fail == 0:
-		print("PASS: doors play entry cutscene and defer on-open action until finished")
+		print("PASS: doors play entry cutscene, defer on-open action, and clear the cutscene screen")
 
 func _make_texture(color: Color) -> Texture2D:
 	var img := Image.create(8, 8, false, Image.FORMAT_RGBA8)

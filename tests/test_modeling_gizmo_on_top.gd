@@ -58,12 +58,21 @@ func _run() -> void:
 	var spawner := PrimitiveSpawner.new()
 	var selection := SelectionManager.new(container)
 	var cube := spawner.spawn(PrimitiveDef.Type.CUBE, container)
+	var base_surface_mat: Material = cube.get_surface_override_material(0)
 	selection.select(cube)
-	var highlight := cube.get_surface_override_material(0) as StandardMaterial3D
+	# The selection highlight is a separate indicator layer on material_overlay;
+	# it must keep depth test ON (no drawing through occluders) and must NOT
+	# replace or modify the object's own surface material.
+	var highlight := cube.material_overlay as StandardMaterial3D
 	if highlight != null and highlight.no_depth_test:
 		fail += 1
-		print("FAIL: selection highlight disables depth test; the selected object is dropped "
-				+ "from the shadow pass and its soft drop shadow vanishes on selection")
+		print("FAIL: selection highlight overlay disables depth test; the tint renders through other objects")
+	if highlight == null:
+		fail += 1
+		print("FAIL: selection did not apply a highlight overlay (material_overlay)")
+	if cube.get_surface_override_material(0) != base_surface_mat:
+		fail += 1
+		print("FAIL: selection must not replace the object's base material")
 
 	if fail == 0:
 		print("PASS: gizmo handles render on top without casting shadows; highlight keeps depth test on")

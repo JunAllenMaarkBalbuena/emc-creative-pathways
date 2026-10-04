@@ -15,6 +15,7 @@
 /ppt_prompt.txt
 /scenes_batchA_run.bat
 /scenes_batchA_move.ps1
+/scenes/batchA_move.ps1
 /test_compile_check.gd
 /test_compile_check.gd.uid
 

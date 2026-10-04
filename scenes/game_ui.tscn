@@ -1,0 +1,166 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/game_ui.gd" id="1_game_ui"]
+[ext_resource type="Script" uid="uid://ckqwko765wi11" path="res://scripts/virtual_joystick.gd" id="2_joystick"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_hud"]
+font_size = 22
+outline_size = 6
+outline_color = Color(0.02, 0.04, 0.08, 0.85)
+
+[node name="GameUI" type="CanvasLayer"]
+process_mode = 3
+script = ExtResource("1_game_ui")
+
+[node name="Overlay" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -1.0
+offset_right = 8.0
+offset_bottom = -1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Status" type="Label" parent="Overlay"]
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 760.0
+offset_bottom = 100.0
+text = "EMC Simulator"
+label_settings = SubResource("LabelSettings_hud")
+
+[node name="VirtualJoystick" type="Control" parent="Overlay"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 26.0
+offset_top = -190.0
+offset_right = 174.0
+offset_bottom = -42.0
+grow_vertical = 0
+script = ExtResource("2_joystick")
+
+[node name="InteractionPrompt" type="PanelContainer" parent="Overlay"]
+anchors_preset = -1
+anchor_left = 0.483
+anchor_top = 0.625
+anchor_right = 0.95500004
+anchor_bottom = 0.93500006
+offset_top = -0.2640381
+offset_right = -0.16003418
+offset_bottom = 0.11993408
+
+[node name="Content" type="VBoxContainer" parent="Overlay/InteractionPrompt"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Overlay/InteractionPrompt/Content"]
+custom_minimum_size = Vector2(1, 1)
+layout_mode = 2
+size_flags_vertical = 6
+size_flags_stretch_ratio = 0.0
+text = "Interact"
+autowrap_mode = 2
+
+[node name="Content" type="Label" parent="Overlay/InteractionPrompt/Content"]
+custom_minimum_size = Vector2(1, 1)
+layout_mode = 2
+size_flags_vertical = 3
+autowrap_mode = 2
+
+[node name="InteractButton" type="Button" parent="Overlay/InteractionPrompt/Content"]
+custom_minimum_size = Vector2(150, 40)
+custom_maximum_size = Vector2(300, 50)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.0
+offset_transform_enabled = true
+offset_transform_position = Vector2(0.775, 0)
+offset_transform_visual_only = false
+text = "Interact"
+
+[node name="Feedback" type="Label" parent="Overlay"]
+custom_minimum_size = Vector2(1, 1)
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 145.0
+offset_top = 112.0
+offset_right = -145.0
+offset_bottom = 190.0
+grow_horizontal = 2
+label_settings = SubResource("LabelSettings_hud")
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="MenuButton" type="Button" parent="Overlay"]
+custom_minimum_size = Vector2(40, 40)
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -52.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 52.0
+grow_horizontal = 0
+text = "☰"
+
+[node name="PausePanel" type="PanelContainer" parent="Overlay"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -120.0
+offset_right = 160.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Overlay/PausePanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Overlay/PausePanel/VBox"]
+layout_mode = 2
+text = "PAUSED"
+horizontal_alignment = 1
+
+[node name="Master" type="HBoxContainer" parent="Overlay/PausePanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/PausePanel/VBox/Master"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "Master"
+
+[node name="Slider" type="HSlider" parent="Overlay/PausePanel/VBox/Master"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.01
+value = 1.0
+
+[node name="Buttons" type="HBoxContainer" parent="Overlay/PausePanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ResumeButton" type="Button" parent="Overlay/PausePanel/VBox/Buttons"]
+custom_minimum_size = Vector2(130, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Resume"
+
+[node name="QuitButton" type="Button" parent="Overlay/PausePanel/VBox/Buttons"]
+custom_minimum_size = Vector2(130, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Main Menu"

@@ -62,7 +62,7 @@ func _find_or_create_cutscene_player() -> CutscenePlayer:
 	var existing := get_tree().root.find_children("*", "CutscenePlayer", true, false)
 	if existing.size() > 0:
 		return existing[0]
-	var cs_scene := preload("res://scenes/cutscene_player.tscn")
+	var cs_scene := preload("res://scenes/cutscene/cutscene_player.tscn")
 	var cs_player := cs_scene.instantiate() as CutscenePlayer
 	get_tree().root.add_child(cs_player)
 	return cs_player

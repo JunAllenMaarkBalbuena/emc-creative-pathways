@@ -1,15 +1,17 @@
 extends Node
 
-## Regression test: cutscene_player._next_frame() read `.duration` off a Texture2D
-## (Array[Texture2D] _frames), crashing multi-frame PNG cutscenes.
-## Root cause: frame durations were dropped when images were collected.
+## Regression tests for cutscene_player.gd:
+## 1. _next_frame() read `.duration` off a Texture2D, crashing multi-frame cutscenes.
+## 2. _finish() never cleared the last frame/hid the layer, so after a door
+##    entry cutscene (player kept at tree root) the final frame stayed on screen.
 
 var _fail := 0
 
 func _ready() -> void:
 	var tree := get_tree()
-	var cp_scene := load("res://scenes/cutscene_player.tscn") as PackedScene
-	var cp := cp_scene.instantiate()
+
+	# --- Natural end: must play through and then clean up the screen. ---
+	var cp := (load("res://scenes/cutscene/cutscene_player.tscn") as PackedScene).instantiate()
 	add_child(cp)
 	await tree.process_frame
 
@@ -25,12 +27,38 @@ func _ready() -> void:
 
 	cp.play(def)
 	await tree.create_timer(0.5).timeout
-
-	if cp._frame_idx >= 2 or cp._is_playing == false:
-		print("PASS: cutscene advanced through frames using per-frame durations")
-	else:
+	if cp._frame_idx < 2 or cp._is_playing:
 		_fail = 1
 		print("FAIL: cutscene stuck at frame %d, _is_playing=%s" % [cp._frame_idx, cp._is_playing])
+	elif cp.visible:
+		_fail = 1
+		print("FAIL: after natural end the cutscene layer is still visible (last frame stuck on screen)")
+	elif cp.frame_rect.texture != null:
+		_fail = 1
+		print("FAIL: after natural end the last frame texture is still set")
+
+	# --- Skip path: must also clean up the screen. ---
+	var cp2 := (load("res://scenes/cutscene/cutscene_player.tscn") as PackedScene).instantiate()
+	add_child(cp2)
+	await tree.process_frame
+	var def2 := CutsceneDefinition.new()
+	def2.cutscene_id = "test2"
+	def2.frames = [fa, fb]
+	cp2.play(def2)
+	await tree.create_timer(0.15).timeout
+	if not cp2._is_playing:
+		_fail = 1
+		print("FAIL: skip test cutscene never started")
+	cp2.skip()
+	if cp2.visible:
+		_fail = 1
+		print("FAIL: after skip the cutscene layer is still visible")
+	if cp2.frame_rect.texture != null:
+		_fail = 1
+		print("FAIL: after skip the last frame texture is still set")
+
+	if _fail == 0:
+		print("PASS: cutscene clean-up on natural end and on skip")
 	tree.quit(_fail)
 
 func _make_texture(color: Color) -> Texture2D:

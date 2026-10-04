@@ -1,0 +1,377 @@
+[gd_scene format=3 uid="uid://5hqqsjumtjtf"]
+
+[ext_resource type="Script" uid="uid://cd5d8i7fm1chu" path="res://scripts/programming_lab/programming_lab.gd" id="1_lab"]
+[ext_resource type="Script" uid="uid://bqiv2axnyc18q" path="res://scripts/programming_lab/flowchart_workspace.gd" id="2_ws"]
+[ext_resource type="Script" uid="uid://bkjqlh5uvkbbr" path="res://scripts/programming_lab/execution_player.gd" id="3_exec"]
+[ext_resource type="Script" uid="uid://b2ar0vjp2wevo" path="res://scripts/companion_character.gd" id="4_char"]
+[ext_resource type="Script" uid="uid://nt8ddcy21hwg" path="res://scripts/lab_cutscene_player.gd" id="5_labcs"]
+
+[node name="ProgrammingLab" type="CanvasLayer" unique_id=1633015544]
+script = ExtResource("1_lab")
+
+[node name="Panel" type="Panel" parent="." unique_id=168080458]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TopBar" type="HBoxContainer" parent="Panel" unique_id=437415425]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 44.0
+grow_horizontal = 2
+theme_override_constants/separation = 8
+
+[node name="Margin" type="MarginContainer" parent="Panel/TopBar" unique_id=1082331318]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 16
+
+[node name="TitleLabel" type="Label" parent="Panel/TopBar/Margin" unique_id=1803850004]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "Puzzle Title"
+
+[node name="StarsLabel" type="Label" parent="Panel/TopBar" unique_id=1963198273]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 18
+text = "★★★"
+
+[node name="CounterLabel" type="Label" parent="Panel/TopBar" unique_id=1551488351]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.7, 0.9, 0.8)
+theme_override_font_sizes/font_size = 14
+text = "Puzzle 1 / 7"
+
+[node name="CloseButton" type="Button" parent="Panel/TopBar" unique_id=98919926]
+custom_minimum_size = Vector2(90, 36)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 14
+text = "←  Menu"
+
+[node name="LeftPanel" type="Panel" parent="Panel" unique_id=263386173]
+layout_mode = 0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 52.0
+offset_right = 280.0
+offset_bottom = -56.0
+
+[node name="ProblemSection" type="Panel" parent="Panel/LeftPanel" unique_id=239187950]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 264.0
+offset_bottom = 160.0
+
+[node name="ProblemTitle" type="Label" parent="Panel/LeftPanel/ProblemSection" unique_id=1087908868]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 248.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "Problem"
+
+[node name="Description" type="RichTextLabel" parent="Panel/LeftPanel/ProblemSection" unique_id=1158526923]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 32.0
+offset_right = 248.0
+offset_bottom = 144.0
+theme_override_colors/default_color = Color(0.8, 0.85, 0.95, 1)
+theme_override_font_sizes/normal_font_size = 12
+text = "Description goes here."
+
+[node name="IPOSection" type="Panel" parent="Panel/LeftPanel" unique_id=580787599]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 168.0
+offset_right = 264.0
+offset_bottom = 330.0
+
+[node name="IPOTitle" type="Label" parent="Panel/LeftPanel/IPOSection" unique_id=575648831]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 248.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "IPO Chart"
+
+[node name="InputLabel" type="Label" parent="Panel/LeftPanel/IPOSection" unique_id=1817863593]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 36.0
+offset_right = 248.0
+offset_bottom = 52.0
+theme_override_colors/font_color = Color(0.6, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "Input: "
+
+[node name="ProcessLabel" type="Label" parent="Panel/LeftPanel/IPOSection" unique_id=288362875]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 58.0
+offset_right = 248.0
+offset_bottom = 74.0
+theme_override_colors/font_color = Color(0.6, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "Process: "
+
+[node name="OutputLabel" type="Label" parent="Panel/LeftPanel/IPOSection" unique_id=579895391]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 80.0
+offset_right = 248.0
+offset_bottom = 96.0
+theme_override_colors/font_color = Color(0.6, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "Output: "
+
+[node name="PaletteTitle" type="Label" parent="Panel/LeftPanel" unique_id=1561861616]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 338.0
+offset_right = 264.0
+offset_bottom = 358.0
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "Block Palette"
+
+[node name="PaletteContainer" type="ScrollContainer" parent="Panel/LeftPanel" unique_id=1561861614]
+layout_mode = 0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 362.0
+offset_right = 264.0
+offset_bottom = -8.0
+
+[node name="PaletteItems" type="VBoxContainer" parent="Panel/LeftPanel/PaletteContainer" unique_id=1561861615]
+custom_minimum_size = Vector2(248, 0)
+layout_mode = 2
+size_flags_horizontal = 7
+theme_override_constants/separation = 8
+
+[node name="Workspace" type="Control" parent="Panel" unique_id=1955566673]
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 296.0
+offset_top = 52.0
+offset_right = -8.0
+offset_bottom = -56.0
+script = ExtResource("2_ws")
+
+[node name="ExecutionPlayer" type="Control" parent="Panel" unique_id=1706006004]
+visible = false
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 296.0
+offset_top = 52.0
+offset_right = -8.0
+offset_bottom = -56.0
+mouse_filter = 2
+script = ExtResource("3_exec")
+
+[node name="Overlay" type="ColorRect" parent="Panel/ExecutionPlayer" unique_id=1082867517]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.5)
+
+[node name="StepLabel" type="Label" parent="Panel/ExecutionPlayer" unique_id=390389345]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -30.0
+offset_right = 200.0
+offset_bottom = 10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "Running..."
+horizontal_alignment = 1
+
+[node name="ProgressBar" type="ProgressBar" parent="Panel/ExecutionPlayer" unique_id=1210920284]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = 20.0
+offset_right = 200.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+show_percentage = false
+
+[node name="CompanionChar" type="TextureRect" parent="Panel" unique_id=320063319]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -148.0
+offset_top = -138.0
+offset_right = -20.0
+offset_bottom = -10.0
+script = ExtResource("4_char")
+
+[node name="BottomBar" type="HBoxContainer" parent="Panel" unique_id=320063318]
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -56.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 8
+
+[node name="RunButton" type="Button" parent="Panel/BottomBar" unique_id=1635083040]
+custom_minimum_size = Vector2(80, 36)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "▶  Run"
+
+[node name="HintButton" type="Button" parent="Panel/BottomBar" unique_id=512207629]
+custom_minimum_size = Vector2(80, 36)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+theme_override_font_sizes/font_size = 14
+text = "💡 Hint"
+
+[node name="ResetButton" type="Button" parent="Panel/BottomBar" unique_id=1451947871]
+custom_minimum_size = Vector2(80, 36)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.8, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "↺ Reset"
+
+[node name="HintPanel" type="Panel" parent="Panel" unique_id=1108026471]
+visible = false
+layout_mode = 1
+offset_left = 320.0
+offset_top = 80.0
+offset_right = 720.0
+offset_bottom = 220.0
+
+[node name="HintLabel" type="RichTextLabel" parent="Panel/HintPanel" unique_id=764368717]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 384.0
+offset_bottom = 124.0
+theme_override_colors/default_color = Color(0.9, 0.9, 1, 1)
+theme_override_font_sizes/normal_font_size = 14
+bbcode_enabled = true
+text = "Hint text"
+
+[node name="CutscenePlayer" type="Control" parent="Panel" unique_id=1792368423]
+visible = false
+anchors_preset = 0
+mouse_filter = 2
+script = ExtResource("5_labcs")
+
+[node name="CompletionPanel" type="Panel" parent="Panel" unique_id=1053710066]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -120.0
+offset_right = 200.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Title" type="Label" parent="Panel/CompletionPanel" unique_id=1005103432]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 384.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.2, 1, 0.4, 1)
+theme_override_font_sizes/font_size = 22
+text = "Puzzle Complete!"
+horizontal_alignment = 1
+
+[node name="Message" type="Label" parent="Panel/CompletionPanel" unique_id=929416090]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 56.0
+offset_right = 384.0
+offset_bottom = 80.0
+theme_override_colors/font_color = Color(0.8, 0.85, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "Completion message"
+horizontal_alignment = 1
+
+[node name="Stars" type="Label" parent="Panel/CompletionPanel" unique_id=1423100164]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 90.0
+offset_right = 384.0
+offset_bottom = 120.0
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 28
+text = "★★★"
+horizontal_alignment = 1
+
+[node name="Score" type="Label" parent="Panel/CompletionPanel" unique_id=184872573]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 126.0
+offset_right = 384.0
+offset_bottom = 150.0
+theme_override_colors/font_color = Color(0.6, 0.7, 0.9, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "Score: 100% | Time: 0s | Hints: 0"
+horizontal_alignment = 1
+
+[node name="NextButton" type="Button" parent="Panel/CompletionPanel" unique_id=1769888264]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 164.0
+offset_right = 220.0
+offset_bottom = 194.0
+theme_override_colors/font_color = Color(0.3, 0.7, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "Next Puzzle ▶"
+
+[node name="CloseButton" type="Button" parent="Panel/CompletionPanel" unique_id=1273016805]
+layout_mode = 0
+offset_left = 240.0
+offset_top = 164.0
+offset_right = 340.0
+offset_bottom = 194.0
+theme_override_font_sizes/font_size = 14
+text = "Close"

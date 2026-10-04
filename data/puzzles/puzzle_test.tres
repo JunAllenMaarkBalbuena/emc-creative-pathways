@@ -1,0 +1,65 @@
+[gd_resource type="Resource" script_class="FlowchartPuzzleData" format=3]
+
+[ext_resource type="Script" path="res://scripts/programming_lab/flowchart_puzzle_data.gd" id="1_hcm82"]
+
+[resource]
+script = ExtResource("1_hcm82")
+puzzle_id = "test"
+title = "test"
+problem_description = "test problem"
+ipo_input = "0"
+ipo_process = "1"
+ipo_output = "1"
+slots = Array[Dictionary]([{
+&"correct_type": 2,
+&"height": 50,
+&"id": "s3",
+&"label": "printf \"hello world\";",
+&"no_port": 2,
+&"pos_x": 360,
+&"pos_y": 260,
+&"prefilled": true,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 0,
+&"height": 50,
+&"id": "s4",
+&"label": "",
+&"no_port": 2,
+&"pos_x": 360,
+&"pos_y": 140,
+&"prefilled": false,
+&"width": 140,
+&"yes_port": 3
+}, {
+&"correct_type": 1,
+&"height": 50,
+&"id": "s5",
+&"label": "",
+&"no_port": 2,
+&"pos_x": 360,
+&"pos_y": 380,
+&"prefilled": false,
+&"width": 140,
+&"yes_port": 3
+}])
+palette_types = Array[int]([0, 1, 2])
+connections = Array[Dictionary]([{
+&"from": "s4",
+&"from_port": 1,
+&"label": "",
+&"to": "s3",
+&"to_port": 0
+}, {
+&"from": "s3",
+&"from_port": 1,
+&"label": "",
+&"to": "s5",
+&"to_port": 0
+}])
+hint_level_1 = "no input"
+hint_level_2 = "hello world"
+hint_level_3 = "1st "
+cutscene_type = 2
+cutscene_path = "res://assets/video/Fishj.ogv"

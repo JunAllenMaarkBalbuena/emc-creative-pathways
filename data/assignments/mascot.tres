@@ -1,0 +1,92 @@
+[gd_resource type="Resource" script_class="AssignmentData" load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/modeling_lab/assignment_data.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/modeling_lab/primitive_def.gd" id="2"]
+
+[sub_resource type="Resource" id="Sub_0"]
+script = ExtResource("2")
+type = 0
+target_position = Vector3(0, 0, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(3, 0.1, 2)
+
+[sub_resource type="Resource" id="Sub_1"]
+script = ExtResource("2")
+type = 0
+target_position = Vector3(0, 0.65, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.7, 0.6, 0.5)
+material_color = Color(0.2, 0.5, 0.8, 1)
+
+[sub_resource type="Resource" id="Sub_2"]
+script = ExtResource("2")
+type = 1
+target_position = Vector3(0, 1.35, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.4, 0.4, 0.4)
+material_color = Color(1.0, 0.85, 0.6, 1)
+
+[sub_resource type="Resource" id="Sub_3"]
+script = ExtResource("2")
+type = 3
+target_position = Vector3(0, 1.85, 0)
+target_rotation = Vector3(180, 0, 0)
+target_scale = Vector3(0.3, 0.25, 0.3)
+material_color = Color(1.0, 0.2, 0.2, 1)
+
+[sub_resource type="Resource" id="Sub_4"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(-0.55, 0.95, 0)
+target_rotation = Vector3(0, 0, 20)
+target_scale = Vector3(0.08, 0.35, 0.08)
+material_color = Color(0.2, 0.5, 0.8, 1)
+
+[sub_resource type="Resource" id="Sub_5"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(0.55, 0.95, 0)
+target_rotation = Vector3(0, 0, -20)
+target_scale = Vector3(0.08, 0.35, 0.08)
+material_color = Color(0.2, 0.5, 0.8, 1)
+
+[sub_resource type="Resource" id="Sub_6"]
+script = ExtResource("2")
+type = 1
+target_position = Vector3(-0.55, 0.7, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.1, 0.1, 0.1)
+material_color = Color(1.0, 0.85, 0.6, 1)
+
+[sub_resource type="Resource" id="Sub_7"]
+script = ExtResource("2")
+type = 1
+target_position = Vector3(0.55, 0.7, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.1, 0.1, 0.1)
+material_color = Color(1.0, 0.85, 0.6, 1)
+
+[sub_resource type="Resource" id="Sub_8"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(-0.25, 0.3, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.08, 0.3, 0.08)
+material_color = Color(0.2, 0.5, 0.8, 1)
+
+[sub_resource type="Resource" id="Sub_9"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(0.25, 0.3, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.08, 0.3, 0.08)
+material_color = Color(0.2, 0.5, 0.8, 1)
+
+[resource]
+script = ExtResource("1")
+assignment_id = "mascot"
+display_name = "EMC Mascot"
+lesson_number = 7
+skills_taught = Array[String](["move", "scale", "rotate", "materials", "hierarchy", "duplicate"])
+instruction_text = "Build the EMC mascot! Use all your skills — position, scale, rotate, color each part, and organize with hierarchy."
+primitives = Array[Resource]([SubResource("Sub_0"), SubResource("Sub_1"), SubResource("Sub_2"), SubResource("Sub_3"), SubResource("Sub_4"), SubResource("Sub_5"), SubResource("Sub_6"), SubResource("Sub_7"), SubResource("Sub_8"), SubResource("Sub_9")])

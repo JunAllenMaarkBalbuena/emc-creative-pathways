@@ -1,6 +1,12 @@
 class_name PrimitiveSpawner
 extends RefCounted
 
+static func base_name_for_type(type: int) -> String:
+	var keys := PrimitiveDef.Type.keys()
+	if type < 0 or type >= keys.size():
+		return "object"
+	return keys[type].to_lower()
+
 static func type_for_mesh(mesh: Mesh) -> int:
 	if mesh is BoxMesh:
 		return PrimitiveDef.Type.CUBE
@@ -55,35 +61,17 @@ func _add_collision(mi: MeshInstance3D):
 	area.collision_layer = 1
 	area.collision_mask = 0
 	var cs := CollisionShape3D.new()
-	cs.shape = _shape_for_mesh(mi.mesh)
+	# Trimesh picker: Jolt cannot apply non-uniform scale to primitive shapes
+	# (Sphere/Capsule/Cylinder), and the mesh's per-axis scale is inherited by
+	# this SelectArea child. Mesh-based shapes scale non-uniformly, so per-axis
+	# scale drags and undo/redo replays no longer spam _try_build_shape errors.
+	if mi.mesh:
+		cs.shape = mi.mesh.create_trimesh_shape()
+	else:
+		cs.shape = BoxShape3D.new()
 	area.add_child(cs)
 	mi.add_child(area)
 	area.owner = mi.owner if mi.owner else mi
-
-func _shape_for_mesh(mesh: Mesh) -> Shape3D:
-	if mesh is BoxMesh:
-		var s := BoxShape3D.new()
-		s.size = mesh.size
-		return s
-	if mesh is SphereMesh:
-		var s := SphereShape3D.new()
-		s.radius = mesh.radius
-		return s
-	if mesh is CylinderMesh:
-		var s := CylinderShape3D.new()
-		s.radius = mesh.top_radius
-		s.height = mesh.height
-		return s
-	if mesh is CapsuleMesh:
-		var s := CapsuleShape3D.new()
-		s.radius = mesh.radius
-		s.height = mesh.height
-		return s
-	if mesh is PlaneMesh:
-		var s := BoxShape3D.new()
-		s.size = Vector3(mesh.size.x, 0.01, mesh.size.y)
-		return s
-	return BoxShape3D.new()
 
 func spawn_named(type: int, parent: Node3D, node_name: String) -> MeshInstance3D:
 	var mi := spawn(type, parent)

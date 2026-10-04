@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="LevelDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/level_definition.gd" id="1_level"]
+
+[resource]
+script = ExtResource("1_level")
+level_id = "orientation"
+display_name = "Campus Orientation"
+description = "Read the Orientation Terminal to complete your first campus task."
+starts_unlocked = true
+next_level_id = "coding_lab"
+reward_condition_ids = PackedStringArray("orientation_complete")
+completion_message = "Orientation Completed! The Coding Laboratory is now open."

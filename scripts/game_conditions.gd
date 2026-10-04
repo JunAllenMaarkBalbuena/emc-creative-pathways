@@ -17,3 +17,10 @@ static func clear_flag(flag_id: String) -> void:
 
 static func clear_all() -> void:
 	_flags.clear()
+
+static func get_true_flag_ids() -> Array[String]:
+	var result: Array[String] = []
+	for flag_id in _flags:
+		if _flags[flag_id]:
+			result.append(flag_id)
+	return result

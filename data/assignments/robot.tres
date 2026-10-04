@@ -1,0 +1,69 @@
+[gd_resource type="Resource" script_class="AssignmentData" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/modeling_lab/assignment_data.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/modeling_lab/primitive_def.gd" id="2"]
+
+[sub_resource type="Resource" id="Sub_0"]
+script = ExtResource("2")
+type = 0
+target_position = Vector3(0, 0.6, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.6, 0.6, 0.4)
+
+[sub_resource type="Resource" id="Sub_1"]
+script = ExtResource("2")
+type = 1
+target_position = Vector3(0, 1.3, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.4, 0.4, 0.4)
+
+[sub_resource type="Resource" id="Sub_2"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(-0.5, 0.8, 0)
+target_rotation = Vector3(0, 0, 15)
+target_scale = Vector3(0.1, 0.5, 0.1)
+
+[sub_resource type="Resource" id="Sub_3"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(0.5, 0.8, 0)
+target_rotation = Vector3(0, 0, -15)
+target_scale = Vector3(0.1, 0.5, 0.1)
+
+[sub_resource type="Resource" id="Sub_4"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(-0.2, 0.2, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.1, 0.4, 0.1)
+
+[sub_resource type="Resource" id="Sub_5"]
+script = ExtResource("2")
+type = 2
+target_position = Vector3(0.2, 0.2, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.1, 0.4, 0.1)
+
+[sub_resource type="Resource" id="Sub_6"]
+script = ExtResource("2")
+type = 1
+target_position = Vector3(-0.5, 1.15, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.15, 0.15, 0.15)
+
+[sub_resource type="Resource" id="Sub_7"]
+script = ExtResource("2")
+type = 1
+target_position = Vector3(0.5, 1.15, 0)
+target_rotation = Vector3(0, 0, 0)
+target_scale = Vector3(0.15, 0.15, 0.15)
+
+[resource]
+script = ExtResource("1")
+assignment_id = "robot"
+display_name = "Robot"
+lesson_number = 6
+skills_taught = Array[String](["move", "scale", "rotate", "hierarchy"])
+instruction_text = "Assemble a simple robot using hierarchy. Body is the parent of arms and head."
+primitives = Array[Resource]([SubResource("Sub_0"), SubResource("Sub_1"), SubResource("Sub_2"), SubResource("Sub_3"), SubResource("Sub_4"), SubResource("Sub_5"), SubResource("Sub_6"), SubResource("Sub_7")])
