@@ -26,3 +26,9 @@
 # Output of tools/package-handoff.ps1. Large (~370 MB) and regenerable from any
 # commit, so it is never committed - run the script instead.
 /dist/
+
+# Export output. Built by:
+#   godot --headless --export-release "Web" build/web/index.html
+#   godot --headless --export-release "Windows Desktop" build/windows/EMC-Creative-Pathways.exe
+# Binaries are large and regenerable, and must never enter history.
+/build/
