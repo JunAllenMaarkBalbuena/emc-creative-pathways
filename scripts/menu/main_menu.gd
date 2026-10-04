@@ -28,7 +28,21 @@ func _ready() -> void:
 	if lab_button:
 		lab_button.pressed.connect(_on_lab_pressed)
 	if editor_button:
-		editor_button.pressed.connect(_on_editor_pressed)
+		# The flowchart editor is an authoring tool, not player content. It
+		# browses and saves .tres puzzles through FileDialog with
+		# ACCESS_RESOURCES against res://data/puzzles/, and on web res:// is a
+		# read-only virtual filesystem inside the .pck. The dialog cannot list
+		# a real directory tree there, and save-as has nowhere writable to go.
+		#
+		# So it is hidden rather than half-working. Puzzles authored on desktop
+		# still ship in the exported build, because they are baked into the .pck
+		# at export time - a web player can play them, just not create them.
+		#
+		# Left visible on desktop, where it is the normal way to author puzzles.
+		if Platform.is_mobile_or_web():
+			editor_button.hide()
+		else:
+			editor_button.pressed.connect(_on_editor_pressed)
 	if art_button:
 		art_button.pressed.connect(_on_art_pressed)
 	if model_button:
