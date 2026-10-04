@@ -20,7 +20,11 @@
 .PARAMETER Preset
     Which preset to build. Defaults to building all of them.
 
-.PARAMETER Debug
+.PARAMETER GodotPath
+    Full path to the Godot binary. The console build is preferred because its
+    stdout/stderr are what this script parses. Autodetected if omitted.
+
+.PARAMETER DebugBuild
     Build the debug template instead of the release template.
 
 .EXAMPLE
@@ -32,7 +36,11 @@
 [CmdletBinding()]
 param(
     [string[]] $Preset,
-    [switch] $Debug
+    [string] $GodotPath,
+    # Named DebugBuild, not Debug: [CmdletBinding()] makes -Debug an automatic
+    # common parameter, and declaring $Debug collides with it and makes the
+    # script fail to load at all.
+    [switch] $DebugBuild
 )
 
 Set-StrictMode -Version Latest
@@ -43,18 +51,58 @@ Push-Location $Root
 
 try {
     # ------------------------------------------------------------------- engine
+    # Resolution order: explicit -GodotPath, then PATH, then the usual install
+    # locations. The console build is strongly preferred because this script
+    # reads Godot's stderr to decide whether the export really worked; the
+    # windowed build sends it to a console that does not exist.
     $engine = $null
-    $candidates = @(
-        'C:\Program Files\Godot\Godot_v4.7.2-stable_win64_console.exe',
-        'C:\Program Files\Godot\Godot_v4.7.2-stable_win64.exe'
-    )
-    foreach ($c in $candidates) { if (Test-Path $c) { $engine = $c; break } }
+
+    if ($GodotPath) {
+        if (-not (Test-Path $GodotPath)) { throw "no Godot binary at -GodotPath '$GodotPath'" }
+        $engine = (Resolve-Path $GodotPath).Path
+    }
+
     if (-not $engine) {
-        $onPath = Get-Command godot* -ErrorAction SilentlyContinue | Select-Object -First 1
+        $onPath = Get-Command godot* -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^godot.*\.exe$' } |
+            Select-Object -First 1
         if ($onPath) { $engine = if ($onPath -is [string]) { $onPath } else { $onPath.Source } }
     }
+
     if (-not $engine) {
-        throw 'Godot 4.7.2 console binary not found. Pass its path or put it on PATH.'
+        # Candidate roots, most specific first. Godot ships as a self-contained
+        # folder or a bare exe depending on how it was installed, so both shapes
+        # are searched, and the console variant is preferred within each.
+        $roots = @(
+            'C:\Program Files\Godot',
+            'C:\Program Files (x86)\Godot',
+            (Join-Path $env:USERPROFILE 'Downloads'),
+            (Join-Path $env:USERPROFILE 'Desktop'),
+            (Join-Path $env:USERPROFILE 'Documents'),
+            (Join-Path $env:LOCALAPPDATA 'Programs'),
+            $Root
+        )
+        $found = New-Object System.Collections.Generic.List[string]
+        foreach ($r in $roots) {
+            if (-not $r -or -not (Test-Path $r)) { continue }
+            foreach ($f in Get-ChildItem -Path $r -Filter 'Godot*_console.exe' -Recurse -Depth 2 -File -ErrorAction SilentlyContinue) {
+                $found.Add($f.FullName)
+            }
+            foreach ($f in Get-ChildItem -Path $r -Filter 'Godot*.exe' -Recurse -Depth 2 -File -ErrorAction SilentlyContinue) {
+                # Skip the console ones already collected, and the _export
+                # template binaries that also match the pattern.
+                if ($f.Name -match '_console\.exe$' -or $f.Name -match 'export') { continue }
+                $found.Add($f.FullName)
+            }
+        }
+        # Prefer a 4.7.2 build, so a stray older Godot on PATH does not win.
+        $engine = @($found | Where-Object { $_ -match '4\.7\.2' }) | Select-Object -First 1
+        if (-not $engine) { $engine = $found | Select-Object -First 1 }
+    }
+
+    if (-not $engine) {
+        throw ('Godot 4.7.2 not found. Pass -GodotPath "<full path to godot exe>", ' +
+            'or add it to PATH. Searched PATH and: ' + ($roots -join ', '))
     }
     Write-Host "engine  : $engine" -ForegroundColor DarkGray
 
@@ -93,8 +141,8 @@ try {
     Write-Host "templates: $tplCount files in $tplDir" -ForegroundColor DarkGray
 
     # -------------------------------------------------------------------- build
-    $mode = if ($Debug) { 'debug' } else { 'release' }
-    $flag = if ($Debug) { '--export-debug' } else { '--export-release' }
+    $mode = if ($DebugBuild) { 'debug' } else { 'release' }
+    $flag = if ($DebugBuild) { '--export-debug' } else { '--export-release' }
     $results = @()
 
     foreach ($p in $Preset) {
@@ -125,7 +173,12 @@ try {
             -RedirectStandardOutput $outFile -RedirectStandardError $errFile
         $code = $proc.ExitCode
 
-        $stderr = if (Test-Path $errFile) { @(Get-Content $errFile -EA SilentlyContinue) } else { @() }
+        # Wrapped in @() at the assignment, not inside the branches. An if
+        # expression assigned to a variable unwraps a single-element or empty
+        # array to a scalar or $null, and $null.Count throws under
+        # Set-StrictMode -Version Latest. A successful export writes no stderr
+        # at all, which is precisely the case that hit it.
+        $stderr = @(if (Test-Path $errFile) { Get-Content $errFile -EA SilentlyContinue })
         $looksBad = @($stderr | Where-Object { $_ -match '(?i)\berror\b|failed|cannot|not found|no export template' })
 
         Write-Host "  exit code : $code"
