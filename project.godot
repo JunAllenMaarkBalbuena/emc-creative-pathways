@@ -82,6 +82,15 @@ interact={
 ]
 }
 
+[emc]
+
+; Dev override read by scripts/platform.gd. Set to true to make a desktop build
+; present the mobile/touch UI - virtual joystick shown, desktop-only settings
+; hidden - so touch layouts can be tested without deploying to a phone.
+; Leave false for normal play. Has no effect on an actual mobile or web export,
+; where Platform.is_mobile_or_web() already reports true.
+simulate_mobile=false
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

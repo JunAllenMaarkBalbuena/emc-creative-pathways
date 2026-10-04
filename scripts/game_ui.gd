@@ -25,8 +25,23 @@ var _player: PlayerController
 var _feedback_time := 0.0
 var _current_target: Interactable
 var _is_paused := false
+## Whether the on-screen joystick belongs on screen at all. Decided once in
+## _ready and then respected by every show/hide, so the dialogue handlers
+## cannot switch it back on for a platform that does not want it.
+var _touch_controls := false
 
 func _ready() -> void:
+	# The joystick is a plain Control with no visible=false in the scene, so it
+	# renders on every platform unless something hides it. On a desktop build it
+	# sits over the bottom-left 148x148 px with mouse_filter = STOP, which both
+	# looks wrong and swallows clicks meant for whatever is behind it.
+	#
+	# Movement is unaffected either way: PlayerController merges the joystick's
+	# _virtual_move with Input.get_vector() by taking whichever is longer, so a
+	# hidden joystick simply contributes zero.
+	_touch_controls = Platform.wants_touch_controls()
+	joystick.visible = _touch_controls
+
 	prompt_panel.hide()
 	feedback_label.hide()
 	pause_panel.hide()
@@ -89,8 +104,13 @@ func _setup_player() -> void:
 	_player.skin_changed.connect(_on_skin_changed)
 	var dialogue_ui := _get_dialogue_ui()
 	if dialogue_ui != null:
-		dialogue_ui.dialogue_started.connect(func(): joystick.hide(); prompt_panel.hide())
-		dialogue_ui.dialogue_ended.connect(func(): joystick.show(); refresh_prompt())
+		# Both handlers go through the flag rather than show()/hide() directly.
+		# Calling joystick.show() unconditionally here would bring the joystick
+		# back on a desktop build every time a conversation ended.
+		dialogue_ui.dialogue_started.connect(
+			func(): joystick.visible = false; prompt_panel.hide())
+		dialogue_ui.dialogue_ended.connect(
+			func(): joystick.visible = _touch_controls; refresh_prompt())
 
 func _find_player() -> PlayerController:
 	var root := get_tree().current_scene
