@@ -35,12 +35,21 @@ jobs:
           - preset: Web
             slug: web
             output: build/web/index.html
-            # Web builds are a directory of html + js + wasm + pck that must
-            # keep its relative structure; Windows is a single embedded exe.
+            # A web export's index.html is only a few KB of HTML shell that
+            # loads the real payload. Verifying index.html's size checks
+            # nothing. The game lives in the .pck, so that is what gets measured.
+            verify_file: build/web/index.pck
+            # Every bundle file must exist; the shell is useless without them.
+            required_files: build/web/index.html build/web/index.js build/web/index.wasm build/web/index.pck
+            min_mb: 50
             artifact_path: build/web
           - preset: Windows Desktop
             slug: windows
             output: build/windows/EMC-Creative-Pathways.exe
+            # embed_pck=true, so this single file is the whole game.
+            verify_file: build/windows/EMC-Creative-Pathways.exe
+            required_files: build/windows/EMC-Creative-Pathways.exe
+            min_mb: 50
             artifact_path: build/windows
 
     steps:
@@ -119,36 +128,47 @@ jobs:
       - name: Verify the artifact
         run: |
           # The exit code alone is not trusted. Godot can exit 0 having written
-          # nothing, so confirm the file exists and is not a stub.
-          target="${{ matrix.output }}"
-          if [ ! -f "$target" ]; then
-            echo "::error::export reported success but produced no file at $target"
-            ls -la "$(dirname "$target")" || true
+          # nothing, so confirm the real payload exists and is not a stub.
+          missing=0
+          for f in ${{ matrix.required_files }}; do
+            if [ ! -f "$f" ]; then
+              echo "::error::missing expected file: $f"
+              missing=$((missing+1))
+            fi
+          done
+          if [ "$missing" -gt 0 ]; then
+            echo "listing what was actually produced:"
+            find "${{ matrix.artifact_path }}" -type f 2>/dev/null | head -20 || true
             exit 1
           fi
+
+          target="${{ matrix.verify_file }}"
           size=$(stat -c%s "$target")
-          echo "produced $target - $size bytes"
-          # A real build of this project is hundreds of MB. Anything under
-          # 100 KB means something went wrong despite the exit code.
-          if [ "$size" -lt 100000 ]; then
-            echo "::error::$target is only $size bytes, which is implausibly small for this project"
+          echo "payload: $target - $size bytes"
+          min=$(( ${{ matrix.min_mb }} * 1024 * 1024 ))
+          if [ "$size" -lt "$min" ]; then
+            echo "::error::$target is $size bytes, below the ${{ matrix.min_mb }} MB floor for this project"
             exit 1
           fi
+
+          echo "total built size: $(du -sh "${{ matrix.artifact_path }}" | cut -f1)"
           {
             echo "### ${{ matrix.preset }}"
             echo "- engine: $(cat engine_version.txt)"
-            echo "- artifact: $target"
-            echo "- size: $size bytes"
+            echo "- payload: $target ($size bytes)"
+            echo "- total: $(du -sh "${{ matrix.artifact_path }}" | cut -f1)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Flag error-looking lines in the export log
-        if: always()
+        # Only on failure. Matching /error/ alone also fires on a successful
+        # export, because Godot's own progress output mentions error counts.
+        if: failure()
         run: |
           if [ ! -f export_stderr.txt ]; then
             echo "no stderr log to inspect"
             exit 0
           fi
-          if grep -Ein 'error|failed|no export template' export_stderr.txt; then
+          if grep -Ein 'error:|no export template|invalid|unknown option' export_stderr.txt; then
             echo "::warning::the export log contains lines that look like errors - see the step above"
           else
             echo "no error-looking lines in the export log"
