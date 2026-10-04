@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dwmoauwrdx1vk" path="res://scripts/cutscene_definition.gd" id="1_cs_def"]
 [ext_resource type="Script" uid="uid://dh6fk6ttmc71d" path="res://scripts/cutscene_frame.gd" id="1_ydxrw"]
-[ext_resource type="VideoStream" uid="uid://bvsscwlnmhelg" path="res://assets/video/Du-Bist-Gut-Genug.ogv.ogv" id="3_7ip7w"]
+[ext_resource type="VideoStream" uid="uid://bvsscwlnmhelg" path="res://assets/video/Du-Bist-Gut-Genug.ogv" id="3_7ip7w"]
 
 [resource]
 script = ExtResource("1_cs_def")
