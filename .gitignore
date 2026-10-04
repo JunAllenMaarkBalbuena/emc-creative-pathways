@@ -9,3 +9,15 @@
 
 # Third-party skill sources, fetched by tools/setup-godot-skills.ps1
 /vendor/
+
+# One-off scratch: throwaway prompts and completed batch-migration helpers.
+# Not project source. See docs/decisions/2026-10-04-portable-handoff.md
+/ppt_prompt.txt
+/scenes_batchA_run.bat
+/scenes_batchA_move.ps1
+/test_compile_check.gd
+/test_compile_check.gd.uid
+
+# Staging directory used by the godot_ai addon's self-updater. Carries its own
+# .gitignore and .gdignore, is 5.7 MB, and is not source.
+/addons/.godot_ai_update/
