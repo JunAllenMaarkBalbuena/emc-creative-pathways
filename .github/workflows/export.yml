@@ -79,6 +79,9 @@ jobs:
 
       - name: Export
         run: |
+          # Godot does not create the output directory itself.
+          mkdir -p "$(dirname "${{ matrix.output }}")"
+
           # Deliberately not `set -e`: the goal here is to capture Godot's
           # diagnostics, which go to stderr, before deciding anything. GitHub's
           # default shell is `bash -e`, so a bare failure would abort this step
@@ -93,6 +96,23 @@ jobs:
           tail -n 60 export_stdout.txt || true
           echo "--- stderr ---"
           cat export_stderr.txt || true
+
+          if [ "$code" -ne 0 ]; then
+            # Job logs need an authenticated token to read, but workflow
+            # annotations are readable from the public API. Emitting the
+            # diagnosis as annotations means a failure can be diagnosed from
+            # outside without waiting on someone to read the log.
+            # % CR and LF would be interpreted as workflow command syntax.
+            sanitize() { printf '%s' "$1" | tr -d '\r' | sed 's/%/%%/g' | cut -c1-240; }
+            echo "::error::export of '${{ matrix.preset }}' exited $code"
+            grep -Ei 'error|no export template|not found|invalid|unknown|missing' export_stderr.txt \
+              | head -n 6 | while IFS= read -r line; do
+                echo "::error::$(sanitize "$line")"
+              done
+            echo "::error::engine reported: $(sanitize "$(godot --headless --version 2>&1 | head -1)")"
+            echo "::error::template root contents: $(sanitize "$(ls "$HOME/.local/share/godot/export_templates/" 2>&1 | tr '\n' ' ')")"
+            echo "::error::templates for ${{ matrix.slug }}: $(sanitize "$(find "$HOME/.local/share/godot/export_templates" -iname "*${{ matrix.slug }}*" 2>/dev/null | tr '\n' ' ')")"
+          fi
           # Still fail the step if Godot reported failure.
           exit $code
 
