@@ -1,0 +1,144 @@
+name: Export builds
+
+# Builds the Web and Windows presets on every push, so a collaborator gets a
+# playable build without installing Godot export templates locally.
+#
+# Why this exists: the export templates are a 1,222 MB install. Asking every
+# collaborator to download that before they can produce a build is a poor
+# trade, and on a home connection the download was measured at 14 KB/s - about
+# 25 hours. Here it happens on GitHub's infrastructure instead. This repository
+# is public, so hosted runner minutes are free and unmetered.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Never let two runs fight over the same branch's artifacts.
+concurrency:
+  group: export-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  export:
+    name: ${{ matrix.slug }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # One preset failing must not hide the other's result, so these run as
+      # separate matrix legs rather than sequentially in one job.
+      fail-fast: false
+      matrix:
+        include:
+          - preset: Web
+            slug: web
+            output: build/web/index.html
+            # Web builds are a directory of html + js + wasm + pck that must
+            # keep its relative structure; Windows is a single embedded exe.
+            artifact_path: build/web
+          - preset: Windows Desktop
+            slug: windows
+            output: build/windows/EMC-Creative-Pathways.exe
+            artifact_path: build/windows
+
+    steps:
+      - name: Check out the project
+        uses: actions/checkout@v4
+        with:
+          # The repository is ~350 MB. A shallow clone is enough to build and
+          # keeps the checkout from dominating the run time.
+          fetch-depth: 1
+          lfs: false
+
+      - name: Set up Godot 4.7.2 with export templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          # Must match the engine the project pins. A template built for a
+          # different patch version fails in a way that reads like a project
+          # problem rather than a setup one.
+          version: 4.7.2
+          # GDScript only. Pulling the .NET build would add ~200 MB for nothing.
+          use-dotnet: false
+          # Without this the export has no template to run against.
+          include-templates: true
+          cache: true
+
+      - name: Record the engine version
+        run: |
+          godot --headless --version | tee engine_version.txt
+          cat engine_version.txt >> "$GITHUB_STEP_SUMMARY"
+
+      # A fresh CI checkout has no .godot/ directory, so no imported assets and
+      # no script class cache. Exporting without this step produces a build
+      # where every class_name fails to resolve. This is the same trap that
+      # made a fresh clone fail 19 of 20 tests locally - see commit 7080be5.
+      - name: Import project assets
+        run: godot --headless --import
+
+      - name: Export
+        run: |
+          # Deliberately not `set -e`: the goal here is to capture Godot's
+          # diagnostics, which go to stderr, before deciding anything. GitHub's
+          # default shell is `bash -e`, so a bare failure would abort this step
+          # and discard the log we came for.
+          set +e
+          godot --headless --export-release "${{ matrix.preset }}" "${{ matrix.output }}" \
+            >export_stdout.txt 2>export_stderr.txt
+          code=$?
+          set -e
+          echo "--- exit code: $code ---"
+          echo "--- stdout ---"
+          tail -n 60 export_stdout.txt || true
+          echo "--- stderr ---"
+          cat export_stderr.txt || true
+          # Still fail the step if Godot reported failure.
+          exit $code
+
+      - name: Verify the artifact
+        run: |
+          # The exit code alone is not trusted. Godot can exit 0 having written
+          # nothing, so confirm the file exists and is not a stub.
+          target="${{ matrix.output }}"
+          if [ ! -f "$target" ]; then
+            echo "::error::export reported success but produced no file at $target"
+            ls -la "$(dirname "$target")" || true
+            exit 1
+          fi
+          size=$(stat -c%s "$target")
+          echo "produced $target - $size bytes"
+          # A real build of this project is hundreds of MB. Anything under
+          # 100 KB means something went wrong despite the exit code.
+          if [ "$size" -lt 100000 ]; then
+            echo "::error::$target is only $size bytes, which is implausibly small for this project"
+            exit 1
+          fi
+          {
+            echo "### ${{ matrix.preset }}"
+            echo "- engine: $(cat engine_version.txt)"
+            echo "- artifact: $target"
+            echo "- size: $size bytes"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Flag error-looking lines in the export log
+        if: always()
+        run: |
+          if [ ! -f export_stderr.txt ]; then
+            echo "no stderr log to inspect"
+            exit 0
+          fi
+          if grep -Ein 'error|failed|no export template' export_stderr.txt; then
+            echo "::warning::the export log contains lines that look like errors - see the step above"
+          else
+            echo "no error-looking lines in the export log"
+          fi
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: emc-creative-pathways-${{ matrix.slug }}
+          path: ${{ matrix.artifact_path }}
+          retention-days: 30
+          # A silently empty upload is worse than a failed one.
+          if-no-files-found: error
