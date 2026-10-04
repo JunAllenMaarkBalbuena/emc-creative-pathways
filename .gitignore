@@ -6,3 +6,6 @@
 /data/player_models/
 /data/player_drawings/
 /data/Exported_drawings/
+
+# Third-party skill sources, fetched by tools/setup-godot-skills.ps1
+/vendor/

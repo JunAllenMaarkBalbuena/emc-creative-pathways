@@ -1,0 +1,13 @@
+﻿{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    "superpowers@git+https://github.com/obra/superpowers.git"
+  ],
+  "skills": {
+    "paths": [
+      "vendor/godot-skills/godot-prompter/skills",
+      "vendor/godot-skills/modastar/skills",
+      "vendor/godot-skills/gd-agentic/skills"
+    ]
+  }
+}
