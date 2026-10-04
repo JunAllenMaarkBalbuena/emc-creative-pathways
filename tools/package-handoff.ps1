@@ -119,9 +119,14 @@ Commit or stash first, or pass -AllowDirty if you know the difference is safe.
         } else {
             Write-Host '  confirmed: no .godot/ cache in the archive' -ForegroundColor DarkGray
         }
-        if (-not @($entries | Where-Object { $_ -eq "$prefix/project.godot" })) {
-            throw 'archive has no project.godot at its root - the prefix is wrong'
+        # $prefix already ends in a slash, so append the filename directly.
+        # Writing "$prefix/project.godot" here built "prefix//project.godot", never
+        # matched, and made this script throw on every successful run.
+        $rootProject = "$prefix" + 'project.godot'
+        if (-not @($entries | Where-Object { $_ -eq $rootProject })) {
+            throw "archive has no project.godot at its root - the prefix is wrong (looked for '$rootProject')"
         }
+        Write-Host "  confirmed: project.godot at '$rootProject'" -ForegroundColor DarkGray
     } finally {
         $zipObj.Dispose()
     }
