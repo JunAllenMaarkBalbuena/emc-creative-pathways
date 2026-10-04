@@ -20,7 +20,8 @@
     That regenerates .godot/ and proves the tree is sound.
 
 .PARAMETER OutputDir
-    Where to write the zip. Defaults to the repository root.
+    Where to write the zip. Defaults to the repository's dist/ directory, which is
+    gitignored, so packaging never dirties the tree it is packaging.
 
 .PARAMETER Ref
     Git ref to archive. Defaults to HEAD.
@@ -79,7 +80,8 @@ Commit or stash first, or pass -AllowDirty if you know the difference is safe.
     $subj   = (& $gitExe log -1 --format=%s $Ref 2>&1 | ForEach-Object { [string]$_ }).Trim()
     $branch = (& $gitExe rev-parse --abbrev-ref HEAD 2>&1 | ForEach-Object { [string]$_ }).Trim()
 
-    if (-not $OutputDir) { $OutputDir = $Root }
+    if (-not $OutputDir) { $OutputDir = Join-Path $Root 'dist' }
+    if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null }
     if (-not $Name) {
         $repo = Split-Path -Leaf $Root
         $Name = "$repo-$short"

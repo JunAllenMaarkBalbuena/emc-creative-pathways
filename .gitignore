@@ -22,3 +22,7 @@
 # Staging directory used by the godot_ai addon's self-updater. Carries its own
 # .gitignore and .gdignore, is 5.7 MB, and is not source.
 /addons/.godot_ai_update/
+
+# Output of tools/package-handoff.ps1. Large (~370 MB) and regenerable from any
+# commit, so it is never committed - run the script instead.
+/dist/
