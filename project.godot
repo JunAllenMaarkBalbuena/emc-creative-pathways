@@ -11,9 +11,9 @@ config_version=5
 [application]
 
 config/name="EMC Creative Pathways"
+run/main_scene="uid://cxmycjr0ea7u8"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="bsemc_dat_progress"
-run/main_scene="uid://cxmycjr0ea7u8"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
