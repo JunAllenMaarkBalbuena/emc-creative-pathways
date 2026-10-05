@@ -596,7 +596,13 @@ func _on_viewport_gui_input(event: InputEvent):
 					transform_manager.apply_move(_drag_axis, dist * 0.02)
 				Tool.ROTATE:
 					var tangential: float = moved.dot(_drag_axis_perp)
-					transform_manager.apply_rotate(_drag_axis, tangential * 0.001)
+					# 0.001 rad/px needed ~5,600px of drag for a full turn, so a
+					# rotation felt almost frozen even once the snap was fixed.
+					# 0.004 puts a 90deg turn at ~390px, which tracks a mouse or
+					# trackpad naturally. TransformManager accumulates this per
+					# frame and snaps the TOTAL, so raising it does not fight the
+					# snap - it only makes the detents arrive sooner.
+					transform_manager.apply_rotate(_drag_axis, tangential * 0.004)
 				Tool.SCALE:
 					if _drag_uniform:
 						transform_manager.apply_scale(_drag_axis, _scale_delta(mouse_pos, _drag_start_mouse, _drag_axis_screen), true)
@@ -836,7 +842,7 @@ func _on_hint():
 
 var _base_color_wheel: ColorPickerControlScript = null
 var _base_color_wheel_expanded := false
-var _material_before: Dictionary = {}
+var _material_before: Dictionary[String, Variant] = {}
 var _material_before_node_id: int = 0
 
 
@@ -1075,8 +1081,10 @@ func _on_hierarchy_parent():
 				break
 		if all_same:
 			return
-	# Generate a unique group name
-	var group_name := "group"
+	# Generate a unique group name. Allocating matters as soon as a second group
+	# exists: without it the name "group" is already taken and the new node's
+	# display name collides with the existing group's.
+	var group_name := HierarchyManager.allocate_name(object_container, "group")
 	undo_redo.execute_command(
 		CommandFactory.group(group_name, members, object_container, spawner, material_manager, hierarchy_manager)
 	)
@@ -1084,22 +1092,31 @@ func _on_hierarchy_parent():
 
 
 func _on_hierarchy_unparent():
-	var detached := false
-	var former_parents: Array[Node3D] = []
+	# Blender's "Clear Parent": only the selected objects leave their group, and
+	# the group itself stays behind - even once it is empty.
+	#
+	# This used to call CommandFactory.ungroup() on each former parent, which
+	# promotes EVERY member and frees the group. Detaching one object therefore
+	# destroyed the whole group and scattered its remaining members to the top
+	# level. ungroup() remains the right tool for dissolving a group outright,
+	# but nothing here can select a group node - groups are plain Node3D while the
+	# selection is Array[MeshInstance3D] - so that path is not reachable from a
+	# button and a separate "dissolve" affordance would have to be added.
+	var members: Array[Node3D] = []
 	for n in selection_manager.selected_nodes():
-		if is_instance_valid(n) and n.get_parent() != object_container:
-			var old_parent: Node3D = n.get_parent()
-			if old_parent and old_parent != object_container and not former_parents.has(old_parent):
-				former_parents.append(old_parent)
-			detached = true
-	# Execute one ungroup command per dissolved group
-	for gp in former_parents:
-		if is_instance_valid(gp):
-			undo_redo.execute_command(
-				CommandFactory.ungroup(gp, object_container, spawner, material_manager, hierarchy_manager)
-			)
-	if detached:
-		_rebuild_hierarchy_request()
+		if not is_instance_valid(n):
+			continue
+		var parent := n.get_parent()
+		if parent != object_container and parent is Node3D:
+			members.append(n as Node3D)
+
+	if members.is_empty():
+		return
+	undo_redo.execute_command(
+		CommandFactory.reparent(members, object_container, object_container,
+			spawner, material_manager, hierarchy_manager)
+	)
+	_rebuild_hierarchy_request()
 
 
 func _on_hierarchy_selected_in_tree(node_path: NodePath):
@@ -1148,7 +1165,22 @@ func _on_inspector_rot_changed(val: float, axis: String):
 		"x": r.x = val
 		"y": r.y = val
 		"z": r.z = val
-	after.basis = Basis.from_euler(Vector3(deg_to_rad(r.x), deg_to_rad(r.y), deg_to_rad(r.z)))
+	# Scale is baked into a Transform3D's basis, so rebuilding the basis from
+	# euler angles alone silently discards it: rotating a scaled object in the
+	# inspector reset it to unit size. Rebuild the rotation, then re-apply the
+	# object's scale on top.
+	#
+	# The multiply order matters. `Basis.scaled(s)` PRE-multiplies, so
+	# `Basis.from_euler(r).scaled(s)` is S*R. That only reads back correctly
+	# while the incoming basis is a bare rotation; when it already carries
+	# scale, S*R mixes the row lengths and a (2,3,4) scale under yaw came back
+	# as (3.16,3.0,3.16). `R*S` is the true TRS order and decomposes cleanly.
+	#
+	# Read the scale from `sel.scale` (Node3D decomposes it properly), not
+	# `sel.basis.get_scale()` - the latter is row lengths, valid only while
+	# unrotated.
+	var s: Vector3 = sel.scale
+	after.basis = Basis.from_euler(Vector3(deg_to_rad(r.x), deg_to_rad(r.y), deg_to_rad(r.z))) * Basis.from_scale(s)
 	var action := CommandFactory.transform([object_container.get_path_to(sel)], [before], [after], object_container, spawner, material_manager, hierarchy_manager)
 	undo_redo.execute_command(action)
 	selection_manager.reselect_from_ids(action.get_last_created_ids())
@@ -1164,7 +1196,14 @@ func _on_inspector_scale_changed(val: float, axis: String):
 		"x": s.x = val
 		"y": s.y = val
 		"z": s.z = val
-	after.basis = after.basis.scaled(s)
+	# Rebuild as orthonormal * scale rather than scaling the live basis.
+	# `Basis.scaled(s)` is `S * basis` (it pre-multiplies), so against a basis
+	# that already carries scale the row lengths MULTIPLY instead of being
+	# replaced: dragging X from 2 to 5 on a (2,3,4) cube produced (10,9,16),
+	# corrupting the untouched axes too, and each repeat squared them. Strip
+	# the scale off, then rebuild R * S in true TRS order.
+	var rot_only: Basis = after.basis.orthonormalized()
+	after.basis = rot_only * Basis.from_scale(s)
 	var action := CommandFactory.transform([object_container.get_path_to(sel)], [before], [after], object_container, spawner, material_manager, hierarchy_manager)
 	undo_redo.execute_command(action)
 	selection_manager.reselect_from_ids(action.get_last_created_ids())

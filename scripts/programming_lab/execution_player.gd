@@ -5,7 +5,7 @@ signal execution_finished(success: bool)
 signal step_changed(step_index: int, total_steps: int, slot_id: String)
 
 var workspace: FlowchartWorkspace
-var _path: Array = []
+var _path: Array[String] = []
 var _current_step := 0
 var _running := false
 var _success := false

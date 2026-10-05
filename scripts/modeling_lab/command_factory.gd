@@ -192,6 +192,42 @@ static func group(group_name: String, members: Array[Node3D], container: Node3D,
 		container, spawner, material_mgr, hierarchy_mgr)
 
 
+# ── Reparent ───────────────────────────────────────────────────
+## Move specific nodes to `new_parent`, preserving world transform and node
+## identity. Distinct from ungroup(), which promotes every member of a group and
+## frees the group itself - that cannot express "only this object leaves", and
+## its undo would restore all members, not the subset that was moved.
+##
+## `before` keeps each node's current parent_path and `after` records the target,
+## so undo is the same operation run backwards rather than a different code path.
+static func reparent(nodes: Array[Node3D], new_parent: Node3D, container: Node3D,
+		spawner: PrimitiveSpawner, material_mgr,
+		hierarchy_mgr: HierarchyManager) -> ModelingAction:
+	var before: Array[Dictionary] = []
+	var after: Array[Dictionary] = []
+	var live_ids: Array[int] = []
+
+	for n in nodes:
+		if not is_instance_valid(n):
+			continue
+		var data := _serialize_node(n, container)
+		before.append(data)
+		live_ids.append(n.get_instance_id())
+
+		var moved := data.duplicate()
+		# _serialize_node leaves parent_path empty for direct children of the
+		# container, so an empty path already means "parent is the container".
+		moved.parent_path = NodePath()
+		if new_parent != container and container.is_ancestor_of(new_parent):
+			moved.parent_path = container.get_path_to(new_parent)
+		after.append(moved)
+
+	return ModelingAction.new("reparent",
+		before, after,
+		live_ids,                    # nothing is freed; these stay the live nodes
+		container, spawner, material_mgr, hierarchy_mgr)
+
+
 # ── Ungroup ────────────────────────────────────────────────────
 
 static func ungroup(group_node: Node3D, container: Node3D,

@@ -32,3 +32,8 @@
 #   godot --headless --export-release "Windows Desktop" build/windows/EMC-Creative-Pathways.exe
 # Binaries are large and regenerable, and must never enter history.
 /build/
+
+# Python bytecode from the audit tools in tools/ (__pycache__ appears the moment
+# any of them is imported rather than run directly).
+__pycache__/
+*.pyc

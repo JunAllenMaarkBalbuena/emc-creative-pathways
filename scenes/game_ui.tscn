@@ -1,6 +1,6 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://brxhju8s5cb7y"]
 
-[ext_resource type="Script" path="res://scripts/game_ui.gd" id="1_game_ui"]
+[ext_resource type="Script" uid="uid://ds3gd2pvmlvsj" path="res://scripts/game_ui.gd" id="1_game_ui"]
 [ext_resource type="Script" uid="uid://ckqwko765wi11" path="res://scripts/virtual_joystick.gd" id="2_joystick"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_hud"]
@@ -8,11 +8,12 @@ font_size = 22
 outline_size = 6
 outline_color = Color(0.02, 0.04, 0.08, 0.85)
 
-[node name="GameUI" type="CanvasLayer"]
+[node name="GameUI" type="CanvasLayer" unique_id=1933861490]
 process_mode = 3
 script = ExtResource("1_game_ui")
 
-[node name="Overlay" type="Control" parent="."]
+[node name="Overlay" type="Control" parent="." unique_id=1464025014]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -24,7 +25,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Status" type="Label" parent="Overlay"]
+[node name="Status" type="Label" parent="Overlay" unique_id=1650769050]
+layout_mode = 0
 offset_left = 24.0
 offset_top = 20.0
 offset_right = 760.0
@@ -32,7 +34,7 @@ offset_bottom = 100.0
 text = "EMC Simulator"
 label_settings = SubResource("LabelSettings_hud")
 
-[node name="VirtualJoystick" type="Control" parent="Overlay"]
+[node name="VirtualJoystick" type="Control" parent="Overlay" unique_id=1689985372]
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
@@ -44,8 +46,8 @@ offset_bottom = -42.0
 grow_vertical = 0
 script = ExtResource("2_joystick")
 
-[node name="InteractionPrompt" type="PanelContainer" parent="Overlay"]
-anchors_preset = -1
+[node name="InteractionPrompt" type="PanelContainer" parent="Overlay" unique_id=1952041722]
+layout_mode = 0
 anchor_left = 0.483
 anchor_top = 0.625
 anchor_right = 0.95500004
@@ -54,13 +56,13 @@ offset_top = -0.2640381
 offset_right = -0.16003418
 offset_bottom = 0.11993408
 
-[node name="Content" type="VBoxContainer" parent="Overlay/InteractionPrompt"]
+[node name="Content" type="VBoxContainer" parent="Overlay/InteractionPrompt" unique_id=1212506476]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="Title" type="Label" parent="Overlay/InteractionPrompt/Content"]
+[node name="Title" type="Label" parent="Overlay/InteractionPrompt/Content" unique_id=1411647144]
 custom_minimum_size = Vector2(1, 1)
 layout_mode = 2
 size_flags_vertical = 6
@@ -68,13 +70,13 @@ size_flags_stretch_ratio = 0.0
 text = "Interact"
 autowrap_mode = 2
 
-[node name="Content" type="Label" parent="Overlay/InteractionPrompt/Content"]
+[node name="Content" type="Label" parent="Overlay/InteractionPrompt/Content" unique_id=1791270430]
 custom_minimum_size = Vector2(1, 1)
 layout_mode = 2
 size_flags_vertical = 3
 autowrap_mode = 2
 
-[node name="InteractButton" type="Button" parent="Overlay/InteractionPrompt/Content"]
+[node name="InteractButton" type="Button" parent="Overlay/InteractionPrompt/Content" unique_id=524960933]
 custom_minimum_size = Vector2(150, 40)
 custom_maximum_size = Vector2(300, 50)
 layout_mode = 2
@@ -86,9 +88,9 @@ offset_transform_position = Vector2(0.775, 0)
 offset_transform_visual_only = false
 text = "Interact"
 
-[node name="Feedback" type="Label" parent="Overlay"]
+[node name="Feedback" type="Label" parent="Overlay" unique_id=1625047256]
 custom_minimum_size = Vector2(1, 1)
-anchors_preset = 10
+layout_mode = 0
 anchor_right = 1.0
 offset_left = 145.0
 offset_top = 112.0
@@ -99,9 +101,9 @@ label_settings = SubResource("LabelSettings_hud")
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="MenuButton" type="Button" parent="Overlay"]
+[node name="MenuButton" type="Button" parent="Overlay" unique_id=1486355596]
 custom_minimum_size = Vector2(40, 40)
-anchors_preset = 1
+layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -52.0
@@ -111,8 +113,8 @@ offset_bottom = 52.0
 grow_horizontal = 0
 text = "☰"
 
-[node name="PausePanel" type="PanelContainer" parent="Overlay"]
-anchors_preset = 8
+[node name="PausePanel" type="PanelContainer" parent="Overlay" unique_id=1498031681]
+layout_mode = 0
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
@@ -124,42 +126,46 @@ offset_bottom = 120.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="Overlay/PausePanel"]
+[node name="VBox" type="VBoxContainer" parent="Overlay/PausePanel" unique_id=1158800831]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Title" type="Label" parent="Overlay/PausePanel/VBox"]
+[node name="Title" type="Label" parent="Overlay/PausePanel/VBox" unique_id=1582544556]
 layout_mode = 2
 text = "PAUSED"
 horizontal_alignment = 1
 
-[node name="Master" type="HBoxContainer" parent="Overlay/PausePanel/VBox"]
+[node name="Master" type="HBoxContainer" parent="Overlay/PausePanel/VBox" unique_id=1466150134]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Overlay/PausePanel/VBox/Master"]
+[node name="Label" type="Label" parent="Overlay/PausePanel/VBox/Master" unique_id=1969234374]
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 text = "Master"
 
-[node name="Slider" type="HSlider" parent="Overlay/PausePanel/VBox/Master"]
+[node name="Slider" type="HSlider" parent="Overlay/PausePanel/VBox/Master" unique_id=2109033912]
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = 0.0
 max_value = 1.0
 step = 0.01
 value = 1.0
 
-[node name="Buttons" type="HBoxContainer" parent="Overlay/PausePanel/VBox"]
+[node name="TouchControls" type="CheckButton" parent="Overlay/PausePanel/VBox" unique_id=1816949822]
+layout_mode = 2
+tooltip_text = "Show the on-screen joystick. Debug aid for testing mobile controls on desktop; always on for mobile and web builds."
+text = "Touch controls"
+
+[node name="Buttons" type="HBoxContainer" parent="Overlay/PausePanel/VBox" unique_id=1711780837]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="ResumeButton" type="Button" parent="Overlay/PausePanel/VBox/Buttons"]
+[node name="ResumeButton" type="Button" parent="Overlay/PausePanel/VBox/Buttons" unique_id=1763387065]
 custom_minimum_size = Vector2(130, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Resume"
 
-[node name="QuitButton" type="Button" parent="Overlay/PausePanel/VBox/Buttons"]
+[node name="QuitButton" type="Button" parent="Overlay/PausePanel/VBox/Buttons" unique_id=281448037]
 custom_minimum_size = Vector2(130, 40)
 layout_mode = 2
 size_flags_horizontal = 3

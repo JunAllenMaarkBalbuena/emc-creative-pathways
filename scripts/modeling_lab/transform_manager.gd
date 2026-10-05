@@ -13,6 +13,9 @@ var _original_bases: Array[Basis] = []
 var _original_scales: Array[Vector3] = []
 var _group_center: Vector3 = Vector3.ZERO
 var _transforming: bool = false
+## Axis and total angle of the rotation gesture in progress. See apply_rotate.
+var _rot_axis: Vector3 = Vector3.ZERO
+var _rot_accumulated: float = 0.0
 
 func _init(sm: SelectionManager, ss: SnapSettings, hm: HierarchyManager, ur: CommandManager, sp: PrimitiveSpawner, mm: MaterialManager):
 	_selection_manager = sm
@@ -74,9 +77,9 @@ func apply_move_delta(delta: Vector3):
 
 func end_move():
 	if _transforming:
-		var paths: Array = []
-		var befores: Array = []
-		var afters: Array = []
+		var paths: Array[NodePath] = []
+		var befores: Array[Transform3D] = []
+		var afters: Array[Transform3D] = []
 		for i in _nodes.size():
 			paths.append(_hierarchy_manager.get_container().get_path_to(_nodes[i]))
 			befores.append(Transform3D(_original_bases[i], _original_positions[i]))
@@ -84,25 +87,56 @@ func end_move():
 		var action := CommandFactory.transform(paths, befores, afters,
 			_hierarchy_manager.get_container(), _spawner, _material_mgr, _hierarchy_manager)
 		_undo_redo.execute_command(action)
-		# The command rebuilds node instances (frees originals, materializes
-		# fresh copies). Re-point the selection onto those new instances so the
-		# gizmo keeps tracking live nodes instead of silently going stale.
+		# transform mutates the live nodes in place, so the IDs handed back are
+		# the ones already selected. Re-pointing is idempotent and keeps this
+		# call site correct if that ever changes.
 		_selection_manager.reselect_from_ids(action.get_last_created_ids())
 	_transforming = false
 
 func begin_rotate(_axis: Vector3) -> bool:
 	_transforming = _snapshot()
+	_rot_axis = Vector3.ZERO
+	_rot_accumulated = 0.0
 	return _transforming
 
-func apply_rotate(axis: Vector3, delta_angle: float):
+## `gesture_angle` is the ABSUTE rotation for this drag, measured from the grab
+## point - NOT an increment. modeling_lab.gd computes
+## `(mouse_pos - _drag_start_mouse).dot(perp) * SENSITIVITY`, which is the
+## cursor's whole offset from where the button went down.
+##
+## Accumulating it here was a real bug: feeding an absolute offset into an
+## accumulator adds the whole gesture once per motion event, so the rotation
+## accelerated (40px of drag produced 22.9deg instead of 9.2deg) and dragging
+## BACK toward the grab point still rotated forward - 40px to 20px went 22.9deg
+## to 27.5deg. It only reversed once the cursor crossed back past the grab
+## point. Treat the value as absolute and the mapping is 1:1 and reversible.
+##
+## The snap applies to that total. It is off by default
+## (`SnapSettings.rotation_snap_enabled`); while it was on, every detent was a
+## dead band that read as the gizmo stalling and then snapping at random.
+func apply_rotate(axis: Vector3, gesture_angle: float):
 	if not _transforming: return
-	var snap := _snap_settings.rotation_snap if _snap_settings.snap_enabled else 0.0
-	var angle := delta_angle
-	if snap > 0:
-		angle = _snap_settings.snap_value(rad_to_deg(delta_angle), snap)
-		angle = deg_to_rad(angle)
-	var rot := Basis(axis, angle)
+	# A different axis mid-gesture means a fresh rotation, not a continuation.
+	if _rot_axis != Vector3.ZERO and _rot_axis != axis:
+		_rot_accumulated = 0.0
+	_rot_axis = axis
+	_rot_accumulated = gesture_angle
+	var total := _rot_accumulated
+	var snap := 0.0
+	if _snap_settings.snap_enabled and _snap_settings.rotation_snap_enabled:
+		snap = _snap_settings.rotation_snap
+	if snap > 0.0:
+		total = deg_to_rad(_snap_settings.snap_value(rad_to_deg(total), snap))
+	var rot := Basis(axis, total)
 	for i in _nodes.size():
+		# Compose the rotation onto the ORIGINAL basis rather than the live
+		# one. The live basis already carries the rotation from the previous
+		# frame, so composing onto it compounds the rotation every frame.
+		#
+		# Scale lives in the basis too, so `rot * original_basis` carries the
+		# snapshotted scale through - a scale change made while the rotation
+		# drag is live is reverted, which is the "rotating resets the object"
+		# half of the report.
 		var new_basis := rot * _original_bases[i]
 		var rel := _original_positions[i] - _group_center
 		var new_pos := _group_center + rot * rel
@@ -110,9 +144,9 @@ func apply_rotate(axis: Vector3, delta_angle: float):
 
 func end_rotate():
 	if _transforming:
-		var paths: Array = []
-		var befores: Array = []
-		var afters: Array = []
+		var paths: Array[NodePath] = []
+		var befores: Array[Transform3D] = []
+		var afters: Array[Transform3D] = []
 		for i in _nodes.size():
 			paths.append(_hierarchy_manager.get_container().get_path_to(_nodes[i]))
 			befores.append(Transform3D(_original_bases[i], _original_positions[i]))
@@ -122,6 +156,8 @@ func end_rotate():
 		_undo_redo.execute_command(action)
 		_selection_manager.reselect_from_ids(action.get_last_created_ids())
 	_transforming = false
+	_rot_axis = Vector3.ZERO
+	_rot_accumulated = 0.0
 
 func begin_scale(_uniform: bool = true) -> bool:
 	_transforming = _snapshot()
@@ -149,9 +185,9 @@ func apply_scale(axis: Vector3, delta: float, uniform: bool = true):
 
 func end_scale():
 	if _transforming:
-		var paths: Array = []
-		var befores: Array = []
-		var afters: Array = []
+		var paths: Array[NodePath] = []
+		var befores: Array[Transform3D] = []
+		var afters: Array[Transform3D] = []
 		for i in _nodes.size():
 			paths.append(_hierarchy_manager.get_container().get_path_to(_nodes[i]))
 			befores.append(Transform3D(_original_bases[i], _original_positions[i]))
@@ -169,9 +205,9 @@ func reset_selected():
 	var nodes := _selected_nodes()
 	if nodes.is_empty():
 		return
-	var paths: Array = []
-	var befores: Array = []
-	var afters: Array = []
+	var paths: Array[NodePath] = []
+	var befores: Array[Transform3D] = []
+	var afters: Array[Transform3D] = []
 	for n in nodes:
 		if not is_instance_valid(n):
 			continue

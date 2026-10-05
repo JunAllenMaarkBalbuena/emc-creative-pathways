@@ -36,7 +36,7 @@ var _stroke_sample_dist := 0.0
 var canvas_view: CanvasView
 var canvas_container: Control
 var _layer_entries_container: VBoxContainer
-var tool_buttons: Dictionary = {}
+var tool_buttons: Dictionary[int, Button] = {}
 var color_wheel: ColorPickerControl
 var size_slider: HSlider
 var opacity_slider: HSlider

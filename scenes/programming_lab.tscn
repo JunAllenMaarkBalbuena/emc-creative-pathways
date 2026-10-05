@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://bqiv2axnyc18q" path="res://scripts/programming_lab/flowchart_workspace.gd" id="2_ws"]
 [ext_resource type="Script" uid="uid://bkjqlh5uvkbbr" path="res://scripts/programming_lab/execution_player.gd" id="3_exec"]
 [ext_resource type="Script" uid="uid://b2ar0vjp2wevo" path="res://scripts/companion_character.gd" id="4_char"]
-[ext_resource type="Script" uid="uid://nt8ddcy21hwg" path="res://scripts/lab_cutscene_player.gd" id="5_labcs"]
+[ext_resource type="Script"  uid="uid://nt8ddcy21hwg" path="res://scripts/cutscene/lab_cutscene_player.gd" id="5_labcs"]
 
 [node name="ProgrammingLab" type="CanvasLayer" unique_id=1633015544]
 script = ExtResource("1_lab")

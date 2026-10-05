@@ -135,7 +135,7 @@ func restore_model(object_container: Node3D, data: ModelData, spawner: Primitive
 	for child in existing:
 		child.free()
 	var created: Array[MeshInstance3D] = []
-	var name_map: Dictionary = {}
+	var name_map: Dictionary[String, Node3D] = {}
 	for pd in data.primitives:
 		var parent: Node3D = object_container
 		if pd.parent_name != "" and name_map.has(pd.parent_name):

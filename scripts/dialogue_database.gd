@@ -2,6 +2,15 @@ class_name DialogueDatabase
 extends RefCounted
 
 const DIALOGUE_PATH := "res://data/dialogue.json"
+## Deliberately untyped: populated wholesale from parsed JSON (data/dialogue),
+## so element shapes are only known at runtime. A Dictionary[...] here would reject
+## a save with any unexpected member type instead of degrading gracefully.
+##
+## For the same reason get_dialogue_lines() and get_choices() below return a
+## plain `Array`. They hand back the JSON array object itself, and Godot does NOT
+## implicitly convert it to Array[Dictionary] on return - typing them raises
+## "Trying to return a value of type Array from a function whose return type is
+## Array[Dictionary]" at runtime. Convert at the call site if you need it.
 static var _entries: Dictionary = {}
 static var _is_loaded := false
 

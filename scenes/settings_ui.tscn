@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bif8qbymn8lwn"]
 
-[ext_resource type="Script" uid="uid://byrs1ktnlxy4m" path="res://scripts/settings_ui.gd" id="1_settings_ui"]
+[ext_resource type="Script"  uid="uid://byrs1ktnlxy4m" path="res://scripts/settings/settings_ui.gd" id="1_settings_ui"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_title"]
 font_size = 32

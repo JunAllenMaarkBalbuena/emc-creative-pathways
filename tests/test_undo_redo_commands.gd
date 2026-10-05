@@ -143,28 +143,46 @@ func _test_transform_undo_redo() -> void:
 	var before_t := Transform3D(mi.basis, Vector3(0, 0, 0))
 	var after_t := Transform3D(mi.basis, Vector3(5, 3, 0))
 
+	# Node identity must survive a transform command. The transform is a
+	# property change, not a creation, so the live node is mutated in place.
+	# Anything holding this reference (selection, _primitive_locked, signal
+	# connections) would otherwise be left holding a freed instance.
+	var orig_id := mi.get_instance_id()
+
 	cmd_mgr.execute_command(CommandFactory.transform(
 		[container.get_path_to(mi)], [before_t], [after_t],
 		container, spawner, material_mgr, hierarchy_mgr
 	))
 
+	if not is_instance_valid(mi):
+		_fail("transform: execute FREED the caller's node reference"); return
 	mi = _find_display("cube")
 	if not mi:
 		_fail("transform: node missing after execute"); return
+	if mi.get_instance_id() != orig_id:
+		_fail("transform: execute replaced the node (was %d, now %d)" % [orig_id, mi.get_instance_id()]); return
 	if mi.position.distance_to(Vector3(5, 3, 0)) > 0.01:
 		_fail("transform: position wrong, got %s" % str(mi.position)); return
 
 	cmd_mgr.undo()
+	if not is_instance_valid(mi):
+		_fail("transform undo: FREED the caller's node reference"); return
 	mi = _find_display("cube")
 	if not mi:
 		_fail("transform undo: node missing"); return
+	if mi.get_instance_id() != orig_id:
+		_fail("transform undo: replaced the node (was %d, now %d)" % [orig_id, mi.get_instance_id()]); return
 	if mi.position.distance_to(Vector3(0, 0, 0)) > 0.01:
 		_fail("transform undo: position wrong, got %s" % str(mi.position)); return
 
 	cmd_mgr.redo()
+	if not is_instance_valid(mi):
+		_fail("transform redo: FREED the caller's node reference"); return
 	mi = _find_display("cube")
 	if not mi:
 		_fail("transform redo: node missing"); return
+	if mi.get_instance_id() != orig_id:
+		_fail("transform redo: replaced the node (was %d, now %d)" % [orig_id, mi.get_instance_id()]); return
 	if mi.position.distance_to(Vector3(5, 3, 0)) > 0.01:
 		_fail("transform redo: position wrong, got %s" % str(mi.position)); return
 
@@ -280,21 +298,43 @@ func _test_rename_undo_redo() -> void:
 	var mi := spawner.spawn(PrimitiveDef.Type.CUBE, container, false)
 	HierarchyManager.assign_blender_name(container, mi, "cube")
 
+	# Rename is a property change, so the live node must be mutated in place —
+	# see the identity assertions in _test_transform_undo_redo.
+	var orig_id := mi.get_instance_id()
+
 	cmd_mgr.execute_command(CommandFactory.rename(mi, "cube", "renamed_cube", container, spawner, material_mgr, hierarchy_mgr))
 
+	if not is_instance_valid(mi):
+		_fail("rename: execute FREED the caller's node reference"); return
 	var renamed := _find_display("renamed_cube")
 	if not renamed:
 		_fail("rename: display name not changed"); return
+	if renamed.get_instance_id() != orig_id:
+		_fail("rename: execute replaced the node (was %d, now %d)" % [orig_id, renamed.get_instance_id()]); return
+	# HierarchyManager.set_blender_name keeps node.name as the engine-sanitized
+	# twin of the Blender-style display name, so both must move together.
+	if String(renamed.name) != "renamed_cube":
+		_fail("rename: node.name should track the display name, got '%s'" % renamed.name); return
 
 	cmd_mgr.undo()
+	if not is_instance_valid(mi):
+		_fail("rename undo: FREED the caller's node reference"); return
 	var restored := _find_display("cube")
 	if not restored:
 		_fail("rename undo: node with 'cube' not found"); return
+	if restored.get_instance_id() != orig_id:
+		_fail("rename undo: replaced the node (was %d, now %d)" % [orig_id, restored.get_instance_id()]); return
+	if String(restored.name) != "cube":
+		_fail("rename undo: node.name should be 'cube', got '%s'" % restored.name); return
 
 	cmd_mgr.redo()
+	if not is_instance_valid(mi):
+		_fail("rename redo: FREED the caller's node reference"); return
 	renamed = _find_display("renamed_cube")
 	if not renamed:
 		_fail("rename redo: node with 'renamed_cube' not found"); return
+	if renamed.get_instance_id() != orig_id:
+		_fail("rename redo: replaced the node (was %d, now %d)" % [orig_id, renamed.get_instance_id()]); return
 
 	_pass("rename undo/redo")
 

@@ -14,7 +14,7 @@ var score := 0
 var stars := 0
 var hints_used := 0
 var start_time := 0.0
-var puzzle_scores: Array = []
+var puzzle_scores: Array[int] = []
 
 @onready var workspace: FlowchartWorkspace = $Panel/Workspace
 @onready var execution_player: ExecutionPlayer = $Panel/ExecutionPlayer

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bvytj2pdbf2qf"]
 
-[ext_resource type="Script" uid="uid://bh4fly78xitmf" path="res://scripts/cutscene_player.gd" id="1_cs_player"]
+[ext_resource type="Script"  uid="uid://bh4fly78xitmf" path="res://scripts/cutscene/cutscene_player.gd" id="1_cs_player"]
 
 [node name="CutscenePlayer" type="CanvasLayer" unique_id=1925743303]
 process_mode = 3

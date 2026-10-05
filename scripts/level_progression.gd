@@ -9,9 +9,12 @@ signal progress_reset
 const SAVE_PATH := "user://level_progression.json"
 const SEQUENCE_PATH := "res://data/sequences/game_sequence.tres"
 
+## _completed and _unlocked are deliberately untyped: they are assigned wholesale
+## from JSON.parse_string() in _load_progress(). A Dictionary[String, bool] would
+## hard-fail on a hand-edited save holding 1 instead of true.
 var _completed: Dictionary = {}
 var _unlocked: Dictionary = {}
-var _spawn_positions: Dictionary = {}
+var _spawn_positions: Dictionary[String, Dictionary] = {}
 var _level_sequence: GameSequence
 
 func _ready() -> void:
@@ -130,7 +133,7 @@ func clear_spawn_position(scene_path: String) -> void:
 # --- Resume game state (in-memory only) ---
 
 var _resume_scene := ""
-var _resume_spawn: Dictionary = {}
+var _resume_spawn: Dictionary[String, Vector3] = {}
 
 func save_resume_state(scene_path: String, player_pos: Vector3, camera_offset: Vector3) -> void:
 	_resume_scene = scene_path
@@ -155,7 +158,7 @@ func clear_resume_state() -> void:
 # scene) is preserved so the lab exit can still restore the world position.
 
 var _lab_resume_scene := ""
-var _lab_resume_spawn: Dictionary = {}
+var _lab_resume_spawn: Dictionary[String, Vector3] = {}
 
 func save_lab_resume_state(scene_path: String, player_pos: Vector3, camera_offset: Vector3) -> void:
 	_lab_resume_scene = scene_path

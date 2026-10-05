@@ -11,8 +11,8 @@ extends Resource
 
 @export_group("Directional Animations")
 ## Maps direction key (e.g. "up", "down_left") to an animation name in sprite_frames.
-@export var walk_animations: Dictionary = {}
-@export var idle_animations: Dictionary = {}
+@export var walk_animations: Dictionary[String, String] = {}
+@export var idle_animations: Dictionary[String, String] = {}
 
 @export_group("Appearance")
 ## Scale of the AnimatedSprite3D when this skin is active (per-character sizing).

@@ -28,7 +28,7 @@ var _facing := "down"
 var _was_moving := false
 var _virtual_move := Vector2.ZERO
 var _current_interactable: Interactable
-var _nearby_interactables: Array = []
+var _nearby_interactables: Array[Area3D] = []
 var _current_skin: CharacterSkin
 var _skin_index := 0
 

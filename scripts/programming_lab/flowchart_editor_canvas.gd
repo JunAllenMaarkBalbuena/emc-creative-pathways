@@ -9,7 +9,7 @@ const SLOT_COLOR := Color(0.15, 0.2, 0.3, 0.5)
 var editor: FlowchartEditor
 var _gizmo_layer: Control
 
-var puzzle_slots: Array = []
+var puzzle_slots: Array[Dictionary] = []
 
 func redraw():
 	queue_redraw()

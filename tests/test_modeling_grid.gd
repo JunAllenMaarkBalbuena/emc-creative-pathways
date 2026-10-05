@@ -32,7 +32,7 @@ func _run() -> void:
 		fail += 1
 		print("FAIL: GridPlane material shader is not the grid shader (%s)" % mat.shader.resource_path)
 
-	var names: Array = []
+	var names: Array[String] = []
 	for u in mat.shader.get_shader_uniform_list():
 		names.append(u.get("name", ""))
 	for expected in ["grid_minor", "grid_major", "axis_color_x", "axis_color_z", "line_color", "base_color"]:

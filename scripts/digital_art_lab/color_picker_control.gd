@@ -143,8 +143,8 @@ func _draw_alpha_bar(origin: Vector2):
 	draw_rect(handle_rect, Color(0.2, 0.2, 0.25, 1), false, 1.0)
 
 
-func _checker_for(rect: Rect2, cell: int) -> Array:
-	var cells: Array = []
+func _checker_for(rect: Rect2, cell: int) -> Array[Array]:
+	var cells: Array[Array] = []
 	for y in range(0, int(rect.size.y), cell):
 		for x in range(0, int(rect.size.x), cell):
 			var cx := int(rect.position.x) + x

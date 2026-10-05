@@ -7,7 +7,7 @@
 
       1. Import - runs --headless --import so .godot/ and the class cache exist.
       2. Boot   - boots and asserts a clean exit with no engine errors.
-      3. Tests  - runs every tests\*.gd that extends SceneTree, reports PASS/FAIL.
+      3. Tests  - runs every runnable test in tests\, reports PASS/FAIL.
 
     Step 1 is not optional and --quit is not a substitute for --import. On a fresh
     clone .godot/ does not exist, so .godot/global_script_class_cache.cfg does not
@@ -19,7 +19,9 @@
 
     Exit code is NOT a test signal. The suite communicates through printed
     PASS:/FAIL: markers and several tests exit 0 while printing errors, so this
-    script parses the output rather than trusting $LASTEXITCODE.
+    script parses the output rather than trusting $LASTEXITCODE. That matters
+    most for the scene harnesses: they are killed by the --quit-after frame
+    budget, so their exit code is the budget running out, not the test result.
 
 .PARAMETER Godot
     Path to Godot_v4.7.2-stable_win64_console.exe. Autodetected if omitted. Use the
@@ -29,14 +31,27 @@
     Only run the warm-up and boot gates.
 
 .PARAMETER Only
-    Run only the named test scripts, e.g. -Only test_modeling_grid.gd
+    Run only the named tests, e.g. -Only test_modeling_grid.gd or
+    -Only test_modeling_group_select.tscn. Accepts either extension; the
+    extension is inferred when omitted.
+
+.PARAMETER Frames
+    Frame budget for the scene harnesses. Raise it if a test grows long enough
+    to be cut off mid-run - which is reported as FAIL, not as a pass.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File tools\verify-project.ps1
 
 .NOTES
-    Baseline on 2026-10-04: boot exits 0 with zero errors; 19-20 of 20 SceneTree
-    tests clean. test_full_lab_sweep.gd is flaky and is reported as WARN, not FAIL.
+    Baseline on 2026-10-05: boot exits 0 with zero errors; 31 pass, 1 warn,
+    1 fail of 33. test_full_lab_sweep.gd is flaky and is reported as WARN, not
+    FAIL. The one failure is a real open bug, not harness noise:
+
+      test_programming_lab  level_completed never fires.
+
+    Before 2026-10-05 this gate discovered only tests\*.gd extending SceneTree,
+    which silently excluded all 13 scene harnesses - three of which were
+    crashing. A green gate meant 20 of 33, not 33 of 33.
 
     The first run on a fresh clone imports every asset and takes minutes. Later
     runs are fast. The editor does this same import the first time it opens a
@@ -46,7 +61,8 @@
 param(
     [string]   $Godot,
     [switch]   $SkipTests,
-    [string[]] $Only
+    [string[]] $Only,
+    [int]      $Frames = 600
 )
 
 Set-StrictMode -Version Latest
@@ -182,23 +198,41 @@ if ($SkipTests) {
 } else {
     Write-Host "`n[3/3] test suite" -ForegroundColor Cyan
 
-    $tests = @()
+    # Two kinds of test live in tests\:
+    #   *.gd extending SceneTree - run headless with --script
+    #   *.tscn harness scenes whose root script extends Node - run as a scene
+    # Both are collected here. The scene harneses used to be invisible to this
+    # gate, which is how three of them went on crashing without anyone seeing.
+    $scriptTests = @()
+    $sceneTests  = @()
+
     if ($Only) {
-        $tests = $Only
+        foreach ($o in $Only) {
+            $stem = [IO.Path]::GetFileNameWithoutExtension($o)
+            if ([IO.Path]::GetExtension($o) -eq '.tscn' -or
+                (Test-Path (Join-Path $Root "tests\$stem.tscn"))) {
+                $sceneTests += "$stem.tscn"
+            } else {
+                $scriptTests += $o
+            }
+        }
     } else {
         Get-ChildItem (Join-Path $Root 'tests') -Filter '*.gd' -File -ErrorAction SilentlyContinue |
             ForEach-Object {
                 $head = (Get-Content $_.FullName -TotalCount 3) -join ' '
-                if ($head -match 'extends\s+SceneTree') { $tests += $_.Name }
+                if ($head -match 'extends\s+SceneTree') { $scriptTests += $_.Name }
             }
+        Get-ChildItem (Join-Path $Root 'tests') -Filter '*.tscn' -File -ErrorAction SilentlyContinue |
+            ForEach-Object { $sceneTests += $_.Name }
     }
 
-    if ($tests.Count -eq 0) {
+    $total = $scriptTests.Count + $sceneTests.Count
+    if ($total -eq 0) {
         Write-Warning 'no runnable tests found'
     }
 
     $ok = 0; $warn = 0; $bad = 0
-    foreach ($t in $tests) {
+    foreach ($t in $scriptTests) {
         $r = Invoke-Godot @('--script', "res://tests/$t")
         $fails = @($r.Lines | Where-Object { $_ -match '\bFAIL|\bFAILED|assertion failed' })
         $errs  = @(Test-EngineErrors $r.Lines)
@@ -217,7 +251,42 @@ if ($SkipTests) {
         }
     }
 
-    Write-Host ("`n      {0} pass, {1} warn, {2} fail  (of {3})" -f $ok, $warn, $bad, $tests.Count) -ForegroundColor Cyan
+    foreach ($t in $sceneTests) {
+        $r = Invoke-Godot @("res://tests/$t", '--quit-after', $Frames)
+        $fails  = @($r.Lines | Where-Object { $_ -match '\bFAIL|\bFAILED|assertion failed' })
+        $errs   = @(Test-EngineErrors $r.Lines)
+        $passes = @($r.Lines | Where-Object { $_ -match '\bPASS' }).Count
+
+        # A harness scene is killed by the frame budget, so exit 0 and silence
+        # both mean "the budget ran out", not "the assertions held". Requiring
+        # at least one PASS marker is what stops a test that never got far from
+        # being reported as green - the failure mode that hid three crashes.
+        #
+        # Assertion failures are checked FIRST. A test that ran and failed also
+        # tends to print no PASS marker at all, so testing for the missing
+        # marker first would misreport a real failure as a timeout.
+        $why = ''
+        if ($fails.Count -gt 0 -or $errs.Count -gt 0) {
+            $why = 'assertions failed'
+        } elseif ($passes -eq 0) {
+            $why = "no PASS marker - did not run within $Frames frames"
+        }
+
+        if ($why -eq '' -and $KnownFlaky -notcontains $t) {
+            $ok++
+            Write-Host ("      PASS  {0}" -f $t) -ForegroundColor DarkGray
+        } elseif ($KnownFlaky -contains $t) {
+            $warn++
+            Write-Host ("      WARN  {0}  (known flaky)" -f $t) -ForegroundColor Yellow
+        } else {
+            $bad++
+            $failed = $true
+            Write-Host ("      FAIL  {0}  ({1})" -f $t, $why) -ForegroundColor Red
+            @($fails + $errs) | Select-Object -First 3 | ForEach-Object { Write-Host "            $_" -ForegroundColor Red }
+        }
+    }
+
+    Write-Host ("`n      {0} pass, {1} warn, {2} fail  (of {3})" -f $ok, $warn, $bad, $total) -ForegroundColor Cyan
 }
 
 # ---------------------------------------------------------------------- verdict

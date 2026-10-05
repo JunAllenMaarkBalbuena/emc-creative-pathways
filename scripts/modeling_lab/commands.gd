@@ -49,6 +49,12 @@ func execute() -> void:
 		_execute_duplicate_group()
 	elif _type == "material":
 		_apply_material(_after)
+	elif _type == "transform":
+		_apply_transform(_after)
+	elif _type == "reparent":
+		_apply_reparent(_after)
+	elif _type == "rename":
+		_apply_rename(_after)
 	else:
 		_apply(_remove_after_ids, _after, _before)
 		_undo_remove_ids = _last_created_ids.duplicate()
@@ -65,6 +71,12 @@ func undo() -> void:
 		_undo_duplicate_group()
 	elif _type == "material":
 		_apply_material(_before)
+	elif _type == "transform":
+		_apply_transform(_before)
+	elif _type == "reparent":
+		_apply_reparent(_before)
+	elif _type == "rename":
+		_apply_rename(_before)
 	else:
 		_apply(_undo_remove_ids, _before, _after)
 		_remove_after_ids = _last_created_ids.duplicate()
@@ -78,12 +90,119 @@ func get_created_node() -> Node3D:
 	return _created_node
 
 
-## Instance IDs of every node materialized by the most recent _apply() call
-## (execute, undo, or redo). The snapshot-based command system FREES the original
-## nodes and REBUILDS fresh instances, so callers must re-point any cached
-## selection at these new IDs or the selection silently goes stale.
+## Instance IDs of every node touched by the most recent apply (execute, undo,
+## or redo). Callers that cache a selection use this to re-point at live nodes.
+##
+## Identity is preserved for the mutating action types (transform, rename,
+## material): they write properties onto the existing node, so the ID returned
+## is the one they already held. Only the creating/destroying types (spawn,
+## delete, duplicate, group, ungroup) free the old node and materialise a
+## replacement — those are the ones where a caller MUST re-read this list.
 func get_last_created_ids() -> Array[int]:
 	return _last_created_ids.duplicate()
+
+
+# ── In-place property writes ──────────────────────────────────
+## transform and rename do not change which nodes exist, so they deliberately
+## bypass the generic _apply() rebuild. That rebuild frees the live node and
+## materialises a fresh instance, which silently invalidates every reference the
+## lab holds to it — the selection, _primitive_locked, and any signal
+## connection made against that instance.
+##
+## Undo semantics are unchanged: undo still replays the same snapshot, it just
+## writes it onto the surviving node instead of onto a replacement.
+
+func _apply_transform(snapshot: Array) -> void:
+	if snapshot.is_empty():
+		return
+	_created_node = null
+	_last_created_ids.clear()
+	var applied := 0
+	for i in snapshot.size():
+		var entry: Dictionary = snapshot[i]
+		var node := _resolve_live_node(i, entry)
+		if node == null:
+			continue
+		node.position = entry.get("position", Vector3.ZERO)
+		node.rotation_degrees = entry.get("rotation_degrees", Vector3.ZERO)
+		node.scale = entry.get("scale", Vector3.ONE)
+		if not _created_node:
+			_created_node = node
+		_last_created_ids.append(node.get_instance_id())
+		applied += 1
+	_log("apply_transform applied=%d/%d ids=%s" % [applied, snapshot.size(), str(_last_created_ids)])
+
+
+## Detach these nodes from their current parent, or attach them to the one
+## named by each entry. reparent_preserve() restores the world transform, so
+## reparenting is not a transform change and _apply_transform() is not used.
+## Undo replays the `before` snapshot, which carries the original parent_path -
+## the same operation pointed the other way, not a rebuild.
+func _apply_reparent(snapshot: Array) -> void:
+	if snapshot.is_empty() or not is_instance_valid(_container):
+		return
+	_created_node = null
+	_last_created_ids.clear()
+	var moved := 0
+	for i in snapshot.size():
+		var entry: Dictionary = snapshot[i]
+		var node := _resolve_live_node(i, entry)
+		if node == null:
+			continue
+		var pp: NodePath = entry.get("parent_path", NodePath())
+		var target: Node3D = _container
+		if pp != NodePath():
+			target = _container.get_node_or_null(pp) as Node3D
+			if target == null:
+				# The named parent is gone - another action dissolved it. Leaving
+				# the node where it is beats reparenting it somewhere arbitrary.
+				_log("apply_reparent SKIPPED parent '%s' no longer exists" % String(pp))
+				continue
+		if node.get_parent() != target and _hierarchy_mgr.reparent_preserve(node, target):
+			moved += 1
+		if not _created_node:
+			_created_node = node
+		_last_created_ids.append(node.get_instance_id())
+	_log("apply_reparent moved=%d/%d" % [moved, snapshot.size()])
+
+
+## Only the display name moves; the mesh, material and transform are untouched.
+## set_blender_name keeps node.name as the engine-sanitized twin of the
+## Blender-style display name, which is the contract the rest of the lab reads.
+func _apply_rename(snapshot: Array) -> void:
+	if snapshot.is_empty():
+		return
+	var entry: Dictionary = snapshot[0]
+	var display: String = entry.get("display_name", "")
+	if display == "":
+		return
+	var node := _resolve_live_node(0, entry)
+	if node == null:
+		_log("apply_rename SKIPPED - no resolvable node (display=%s ids=%s)" % [display, str(_remove_after_ids)])
+		return
+	HierarchyManager.set_blender_name(node, display)
+	_created_node = node
+	_last_created_ids.clear()
+	_last_created_ids.append(node.get_instance_id())
+	_log("apply_rename -> '%s' id=%d" % [display, node.get_instance_id()])
+
+
+## Resolve snapshot slot `index` to its live node. _remove_after_ids was captured
+## when the command was built and, because nothing is freed here, still points at
+## the same instances. The display-name lookup is a fallback for the case where
+## something outside the command system freed and recreated the node.
+func _resolve_live_node(index: int, entry: Dictionary) -> Node3D:
+	if index < _remove_after_ids.size():
+		var by_id := instance_from_id(_remove_after_ids[index]) as Node3D
+		if is_instance_valid(by_id):
+			return by_id
+	var display: String = entry.get("display_name", "")
+	if display != "":
+		var by_display := _find_by_display_deep(_container, display)
+		if is_instance_valid(by_display):
+			return by_display
+	_log("resolve_live_node MISS index=%d display='%s'" % [index, display])
+	return null
 
 
 # ── Generic snapshot apply ─────────────────────────────────────
@@ -158,34 +277,38 @@ func _execute_group() -> void:
 
 
 func _undo_group() -> void:
-	var group_name: String = ""
-	for c in _container.get_children():
-		if c is Node3D and c not in _collect_meshes(_container):
-			group_name = HierarchyManager.display_of(c)
-			break
-
-	var group := _find_by_display(group_name) if group_name else null
-	if group:
-		var children: Array[Node] = []
-		for child in group.get_children():
-			children.append(child)
-		for child in children:
-			if child is Node3D:
-				_hierarchy_mgr.reparent_preserve(child, _container)
-		group.free()
+	# Resolve by the ID this action created, not by position in the container.
+	# The previous lookup took the first non-mesh child, which is the WRONG group
+	# as soon as a second group exists - undoing "group.001" dissolved "group".
+	var group := _resolve_group_node(_before)
+	if group == null:
+		_log("undo_group SKIPPED - group node no longer resolvable")
+		return
+	_promote_children(group)
+	group.free()
 
 
 func _execute_ungroup() -> void:
-	var group := _find_ungroup_target()
-	if not group:
+	# The group this command was built for, not "whichever group comes first".
+	# _find_ungroup_target() returned the first non-mesh child, so with two
+	# groups present every ungroup dissolved the wrong one.
+	var group := _resolve_group_node(_before)
+	if group == null:
+		_log("execute_ungroup SKIPPED - group node no longer resolvable")
 		return
+	_promote_children(group)
+	group.free()
+
+
+## Dissolving a group means every child goes back to the container. Collected
+## first because reparenting mutates the child list we would be iterating.
+func _promote_children(group: Node3D) -> void:
 	var children: Array[Node] = []
 	for child in group.get_children():
 		children.append(child)
 	for child in children:
 		if child is Node3D:
 			_hierarchy_mgr.reparent_preserve(child, _container)
-	group.free()
 
 
 func _undo_ungroup() -> void:
@@ -322,19 +445,25 @@ func _find_by_display_deep(root: Node, display: String) -> Node3D:
 	return null
 
 
-func _find_ungroup_target() -> Node3D:
-	for c in _container.get_children():
-		if c is Node3D and not c is MeshInstance3D:
-			return c
+## Find the group node a group/ungroup command is about.
+##
+## Preference order matters. The instance ID recorded when the action ran is
+## authoritative. Snapshot slot 0 carries the group's Blender display name,
+## which is uniquely allocated, so it is a safe fallback when the ID has gone
+## stale. Neither depends on the group's position among its siblings, which is
+## what made "first non-mesh child" resolve to the wrong group.
+func _resolve_group_node(snapshot: Array) -> Node3D:
+	if not _undo_remove_ids.is_empty():
+		var by_id := instance_from_id(_undo_remove_ids[0]) as Node3D
+		if is_instance_valid(by_id):
+			return by_id
+	if not snapshot.is_empty():
+		var display: String = snapshot[0].get("display_name", "")
+		if display != "":
+			var by_name := _find_by_display(display)
+			if is_instance_valid(by_name):
+				return by_name
 	return null
-
-
-func _collect_meshes(root: Node) -> Array[Node]:
-	var result: Array[Node] = []
-	for c in root.get_children():
-		if c is MeshInstance3D:
-			result.append(c)
-	return result
 
 
 func _rebuild_node(data: Dictionary) -> Node3D:

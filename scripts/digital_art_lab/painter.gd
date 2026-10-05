@@ -8,7 +8,7 @@ extends RefCounted
 # ── Brush tip cache ──────────────────────────────────────────
 # Pre-rendered circular brush tips keyed by (size, hardness).
 # Each tip is a 2D alpha map stored as a PackedFloat32Array of length size*size.
-var _brush_cache: Dictionary = {}  # key: "size_hardness" -> PackedFloat32Array
+var _brush_cache: Dictionary[String, PackedFloat32Array] = {}  # key: "size_hardness" -> PackedFloat32Array
 
 
 func get_brush_tip(size: int, hardness: float) -> PackedFloat32Array:

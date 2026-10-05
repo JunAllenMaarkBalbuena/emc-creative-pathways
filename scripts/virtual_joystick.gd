@@ -28,6 +28,22 @@ func _gui_input(event: InputEvent) -> void:
 	elif mouse_enabled and event is InputEventMouseMotion and _dragging:
 		_update_value(event.position)
 
+## Returns the control to neutral and reports a zero value, so a character
+## driven by it stops moving.
+##
+## Needed whenever the joystick is hidden while deflected. A hidden Control
+## stops receiving _gui_input, so the finger lift that would normally re-centre
+## the stick never arrives - without this the last deflected value is held
+## forever, and PlayerController keeps preferring it over keyboard input because
+## it only adopts the longer of the two.
+func reset() -> void:
+	_dragging = false
+	if _value.is_zero_approx():
+		return
+	_value = Vector2.ZERO
+	value_changed.emit(_value)
+	queue_redraw()
+
 func _update_value(touch_position: Vector2) -> void:
 	var center := size * 0.5
 	_value = ((touch_position - center) / radius).limit_length()

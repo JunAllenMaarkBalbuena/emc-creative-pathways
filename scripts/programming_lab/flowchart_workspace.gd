@@ -6,8 +6,7 @@ signal puzzle_completed
 signal wrong_drop_attempted
 
 var puzzle_data: FlowchartPuzzleData
-var placed_nodes: Dictionary = {}
-var _slot_rects: Dictionary = {}
+var placed_nodes: Dictionary[String, FlowchartNode] = {}
 var _zoom := 1.0
 var _offset := Vector2.ZERO
 var _line_start: String = ""
@@ -99,7 +98,6 @@ func draw_arrow(from: Vector2, to: Vector2, color: Color):
 func setup(data: FlowchartPuzzleData):
 	puzzle_data = data
 	placed_nodes.clear()
-	_slot_rects.clear()
 	for child in get_children():
 		if child is FlowchartNode:
 			child.queue_free()
@@ -260,8 +258,8 @@ func _check_complete() -> bool:
 			return false
 	return true
 
-func get_incorrect_slots() -> Array:
-	var result: Array = []
+func get_incorrect_slots() -> Array[String]:
+	var result: Array[String] = []
 	if puzzle_data == null:
 		return result
 	for slot in puzzle_data.slots:
@@ -299,16 +297,16 @@ func reset():
 		setup(puzzle_data)
 	queue_redraw()
 
-func get_execution_path() -> Array:
-	var result: Array = []
+func get_execution_path() -> Array[String]:
+	var result: Array[String] = []
 	if puzzle_data == null:
 		return result
-	var slot_map: Dictionary = {}
+	var slot_map: Dictionary[String, Dictionary] = {}
 	for slot in puzzle_data.slots:
 		slot_map[slot.get("id", "")] = slot
 
-	var visited: Dictionary = {}
-	var path: Array = []
+	var visited: Dictionary[String, bool] = {}
+	var path: Array[String] = []
 	var current_id: String = ""
 	for slot in puzzle_data.slots:
 		var ct: int = slot.get("correct_type", -1)

@@ -15,6 +15,7 @@ extends CanvasLayer
 @onready var menu_button: Button = $Overlay/MenuButton
 @onready var pause_panel: PanelContainer = $Overlay/PausePanel
 @onready var master_slider: HSlider = $Overlay/PausePanel/VBox/Master/Slider
+@onready var touch_toggle: CheckButton = $Overlay/PausePanel/VBox/TouchControls
 @onready var resume_button: Button = $Overlay/PausePanel/VBox/Buttons/ResumeButton
 @onready var quit_button: Button = $Overlay/PausePanel/VBox/Buttons/QuitButton
 
@@ -41,6 +42,11 @@ func _ready() -> void:
 	# hidden joystick simply contributes zero.
 	_touch_controls = Platform.wants_touch_controls()
 	joystick.visible = _touch_controls
+	# Seed the checkbox before connecting, so assigning button_pressed cannot
+	# loop back through _on_touch_controls_toggled and write an override that
+	# silently outranks the real platform decision.
+	touch_toggle.button_pressed = _touch_controls
+	touch_toggle.toggled.connect(_on_touch_controls_toggled)
 
 	prompt_panel.hide()
 	feedback_label.hide()
@@ -53,6 +59,20 @@ func _ready() -> void:
 	if settings != null:
 		master_slider.value = settings.master_volume
 	call_deferred("_setup_player")
+
+func _on_touch_controls_toggled(pressed: bool) -> void:
+	# Forces the decision for this session so the joystick can be switched on for
+	# desktop playtesting. Deliberately does not touch
+	# Platform.show_desktop_settings() - a desktop tester who enables the
+	# joystick keeps their fullscreen and resolution options.
+	Platform.set_touch_controls_override(pressed)
+	_touch_controls = pressed
+	if not pressed:
+		# Same reason as _on_dialogue_started: hiding a deflected joystick would
+		# strand the last value, because the release event lands on nothing.
+		joystick.reset()
+	joystick.visible = pressed
+
 
 func _on_master_volume_changed(value: float) -> void:
 	var settings = get_node_or_null("/root/SettingsManager")
@@ -104,13 +124,23 @@ func _setup_player() -> void:
 	_player.skin_changed.connect(_on_skin_changed)
 	var dialogue_ui := _get_dialogue_ui()
 	if dialogue_ui != null:
-		# Both handlers go through the flag rather than show()/hide() directly.
-		# Calling joystick.show() unconditionally here would bring the joystick
-		# back on a desktop build every time a conversation ended.
-		dialogue_ui.dialogue_started.connect(
-			func(): joystick.visible = false; prompt_panel.hide())
-		dialogue_ui.dialogue_ended.connect(
-			func(): joystick.visible = _touch_controls; refresh_prompt())
+		dialogue_ui.dialogue_started.connect(_on_dialogue_started)
+		dialogue_ui.dialogue_ended.connect(_on_dialogue_ended)
+
+## Both handlers go through the _touch_controls flag rather than show()/hide()
+## directly. Calling joystick.show() unconditionally on dialogue end would bring
+## the joystick back on a desktop build every time a conversation finished.
+func _on_dialogue_started() -> void:
+	# Neutralise before hiding. A hidden Control receives no _gui_input, so a
+	# thumb lifted mid-conversation would never re-centre the stick and the
+	# character would keep walking on its last deflected value.
+	joystick.reset()
+	joystick.visible = false
+	prompt_panel.hide()
+
+func _on_dialogue_ended() -> void:
+	joystick.visible = _touch_controls
+	refresh_prompt()
 
 func _find_player() -> PlayerController:
 	var root := get_tree().current_scene

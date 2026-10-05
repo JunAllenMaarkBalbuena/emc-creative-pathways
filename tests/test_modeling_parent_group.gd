@@ -157,6 +157,22 @@ func _ready() -> void:
 	await tree.process_frame
 	_check(_group_count(container) == group_count, "Parent with 1 selected creates no new group")
 
+	# ── 8) Detaching the last member leaves the emptied group behind ──
+	# Detach is a distinct command from ungroup, so its undo has to restore the
+	# member to the group it left rather than merely to the top level. This is
+	# also the extreme case of "empty groups stay behind": the group has no
+	# members at all once b has left.
+	lab.selection_manager.select_multi([b])
+	lab._on_hierarchy_unparent()
+	await tree.process_frame
+	_check(b.get_parent() == container, "detaching last member returns b to ObjectContainer")
+	_check(_group_named(container, "group") == group1, "group survives being emptied")
+
+	lab.undo_redo.undo()
+	await tree.process_frame
+	_check(b.get_parent() == group1, "undo of Clear Parent returns b to its group (got %s)" % b.get_parent().name)
+	_check(a.get_parent() == container, "undo of Clear Parent leaves a at the top level")
+
 	if _fail == 0:
 		print("PASS: parent/group + Blender naming")
 	else:

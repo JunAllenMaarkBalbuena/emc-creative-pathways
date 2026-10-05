@@ -46,8 +46,8 @@ func get_slot(slot_id: String) -> Dictionary:
 			return slot
 	return {}
 
-func get_slot_connections(slot_id: String) -> Array:
-	var result: Array = []
+func get_slot_connections(slot_id: String) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
 	for c in connections:
 		if c.get("from") == slot_id:
 			result.append(c)

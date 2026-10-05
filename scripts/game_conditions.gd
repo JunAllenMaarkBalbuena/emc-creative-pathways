@@ -1,7 +1,7 @@
 class_name GameConditions
 extends RefCounted
 
-static var _flags: Dictionary = {}
+static var _flags: Dictionary[String, bool] = {}
 
 static func set_flag(flag_id: String, value: bool) -> void:
 	_flags[flag_id] = value
