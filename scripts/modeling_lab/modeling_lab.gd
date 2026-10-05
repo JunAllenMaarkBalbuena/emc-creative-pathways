@@ -1313,9 +1313,9 @@ func _on_inspector_rot_changed(val: float, axis: String):
 	# scale, S*R mixes the row lengths and a (2,3,4) scale under yaw came back
 	# as (3.16,3.0,3.16). `R*S` is the true TRS order and decomposes cleanly.
 	#
-	# Read the scale from `sel.scale` (Node3D decomposes it properly), not
-	# `sel.basis.get_scale()` - the latter is row lengths, valid only while
-	# unrotated.
+	# Read the scale from `sel.scale` - let Node3D own that decomposition rather
+	# than re-deriving it from the basis. (`basis.get_scale()` also happens to be
+	# exact for R*S; the earlier comment here claimed otherwise and was wrong.)
 	var s: Vector3 = sel.scale
 	after.basis = Basis.from_euler(Vector3(deg_to_rad(r.x), deg_to_rad(r.y), deg_to_rad(r.z))) * Basis.from_scale(s)
 	var action := CommandFactory.transform([object_container.get_path_to(sel)], [before], [after], object_container, spawner, material_manager, hierarchy_manager)

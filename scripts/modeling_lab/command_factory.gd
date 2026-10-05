@@ -71,6 +71,34 @@ static func delete(nodes: Array[Node3D], container: Node3D,
 
 # ── Transform ──────────────────────────────────────────────────
 
+## Record one side of a transform change.
+##
+## `basis` is the authoritative value: the whole basis is copied verbatim, so
+## the snapshot is exact and `_apply_transform` can hand it straight back.
+##
+## This exists because the snapshot used to carry only position +
+## rotation_degrees + scale, with the euler angles read out via
+## `basis.get_euler()`. That call is only valid on an ORTHONORMAL basis - on a
+## basis that carries scale it returns the wrong angles (measured: a cube at
+## (45, 45, 0)deg with a uniform 1.5 scale reported X as 90deg instead of
+## 45deg; with a (2, 1, 0.5) scale it reported 20.7deg). Since every move,
+## scale and rotate gesture ends in a `transform` action and then executes it,
+## that decomposition rewrote the live object at the end of every drag, which
+## is the report "moving or scaling the object rotates it". The loss was 46deg
+## of phantom rotation, not a rounding wobble.
+##
+## `rotation_degrees` and `scale` are still filled in, correctly, so the
+## dictionary remains self-describing for any caller that inspects it. The
+## euler must come from the ORTHONORMALISED basis for the same reason; the
+## scale from `get_scale()`, which is exact for R*S and needs no such step.
+static func _snapshot_transform(data: Dictionary, t: Transform3D) -> Dictionary:
+	data.position = t.origin
+	data.basis = t.basis
+	var euler := t.basis.orthonormalized().get_euler()
+	data.rotation_degrees = Vector3(rad_to_deg(euler.x), rad_to_deg(euler.y), rad_to_deg(euler.z))
+	data.scale = t.basis.get_scale()
+	return data
+
 static func transform(paths: Array, befores: Array, afters: Array,
 		container: Node3D, spawner: PrimitiveSpawner,
 		material_mgr, hierarchy_mgr: HierarchyManager) -> ModelingAction:
@@ -81,20 +109,8 @@ static func transform(paths: Array, befores: Array, afters: Array,
 		var node := container.get_node_or_null(paths[i])
 		if not node:
 			continue
-		var b_data := _serialize_node(node, container)
-		var b_t: Transform3D = befores[i]
-		b_data.position = b_t.origin
-		var b_euler := b_t.basis.get_euler()
-		b_data.rotation_degrees = Vector3(rad_to_deg(b_euler.x), rad_to_deg(b_euler.y), rad_to_deg(b_euler.z))
-		b_data.scale = b_t.basis.get_scale()
-		before_snap.append(b_data)
-		var a_data := _serialize_node(node, container)
-		var a_t: Transform3D = afters[i]
-		a_data.position = a_t.origin
-		var a_euler := a_t.basis.get_euler()
-		a_data.rotation_degrees = Vector3(rad_to_deg(a_euler.x), rad_to_deg(a_euler.y), rad_to_deg(a_euler.z))
-		a_data.scale = a_t.basis.get_scale()
-		after_snap.append(a_data)
+		before_snap.append(_snapshot_transform(_serialize_node(node, container), befores[i]))
+		after_snap.append(_snapshot_transform(_serialize_node(node, container), afters[i]))
 		remove_ids.append(node.get_instance_id())
 	return ModelingAction.new("transform",
 		before_snap, after_snap,

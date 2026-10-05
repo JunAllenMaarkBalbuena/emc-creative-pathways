@@ -123,9 +123,22 @@ func _apply_transform(snapshot: Array) -> void:
 		var node := _resolve_live_node(i, entry)
 		if node == null:
 			continue
-		node.position = entry.get("position", Vector3.ZERO)
-		node.rotation_degrees = entry.get("rotation_degrees", Vector3.ZERO)
-		node.scale = entry.get("scale", Vector3.ONE)
+		# A transform snapshot carries the exact basis it captured. Write the
+		# whole local transform in one assignment rather than decomposing it
+		# into position / rotation_degrees / scale: rotation_degrees has no
+		# exact representation once scale is present, so the three-property
+		# form silently re-rotated the object (up to 46deg) on every move,
+		# scale and rotate commit. One write is also the only way to avoid an
+		# intermediate basis being observable mid-assignment.
+		#
+		# Snapshots that predate the basis key - and the hand-built ones in the
+		# tests - fall back to the three properties.
+		if entry.has("basis"):
+			node.transform = Transform3D(entry["basis"], entry.get("position", Vector3.ZERO))
+		else:
+			node.position = entry.get("position", Vector3.ZERO)
+			node.rotation_degrees = entry.get("rotation_degrees", Vector3.ZERO)
+			node.scale = entry.get("scale", Vector3.ONE)
 		if not _created_node:
 			_created_node = node
 		_last_created_ids.append(node.get_instance_id())
