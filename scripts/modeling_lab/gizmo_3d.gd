@@ -34,8 +34,65 @@ signal transform_ended
 
 var _handle_root: Node3D
 
+## The frame the handles are drawn in, relative to the gizmo. Basis.IDENTITY is
+## Global (handles along world axes); the target node's rotation is Local.
+##
+## This exists because scale was the odd one out. move adds a WORLD axis to
+## `position`, rotate left-multiplies by a WORLD rotation, and every handle was
+## built from world-aligned AXES - but scale wrote `node.scale`, which acts along
+## the object's OWN axes. So a rotated object's red X handle pointed along world
+## X while the stretch it produced ran along local X. The fix is to make the
+## drawing tell the truth: rotate the handles, and convert the picked axis to
+## world space at the point of use.
+##
+## The drag axis in each Area's meta stays LOCAL (it is read straight out of AXES
+## and identifies WHICH handle was grabbed). Callers that need a world direction
+## go through `axis_to_world()`.
+var _orientation: Basis = Basis.IDENTITY
+
 func set_camera(camera: Camera3D):
 	_camera = camera
+
+## Rotates every handle into `basis`. Idempotent, and safe to call before
+## `_ready` has built the handle tree.
+func set_orientation(basis: Basis) -> void:
+	# Orthonormalise because the target's basis is R*S, not a rotation. Passing
+	# it raw would scale the handles as well as turning them, making the
+	# constant-on-screen sizing below fight a non-uniform scale every frame.
+	_orientation = basis.orthonormalized()
+	_apply_orientation(1.0)
+
+func get_orientation() -> Basis:
+	return _orientation
+
+## Converts a handle axis out of the gizmo's own frame and into world space.
+##
+## Under Global this is the identity and callers can skip it, but going through
+## the gizmo unconditionally keeps the two modes from diverging: there is one
+## place that knows what the handles point along.
+func axis_to_world(local_axis: Vector3) -> Vector3:
+	return (_orientation * local_axis).normalized()
+
+## Writes the handle frame as `_orientation * uniform_scale`.
+##
+## One write path rather than two. `set_orientation` and the per-frame sizing
+## pass both land here, so the frame is only ever composed from `_orientation`.
+##
+## Measured, not assumed: an earlier version of this wrote `.scale` directly and
+## the plan predicted that a per-frame scale write would decompose the basis and
+## snap the handles back to world axes. That is WRONG - `Basis.set_scale`
+## preserves the rotation part, and reverting to `.scale` still left the
+## orientation intact across frames (rotation delta 0.0000). The plan's
+## prediction was never measured before it was written down.
+##
+## Composing is kept anyway because it keeps a single write path, not because
+## `.scale` was broken. Were `_orientation` ever non-orthonormal, `.scale` would
+## decompose the shear away; orthonormalising on the way in means that cannot
+## happen.
+func _apply_orientation(s: float = 1.0) -> void:
+	if not _handle_root:
+		return
+	_handle_root.basis = _orientation * Basis.from_scale(Vector3.ONE * s)
 
 # NOTE(regression): the constant-on-screen scaling in _process only activates
 # when set_camera() has been called. modeling_lab.gd MUST wire this exactly
@@ -327,5 +384,5 @@ func _process(_delta):
 			# scale the whole handle tree (shafts + pick collision shapes
 			# scale together; the drag axis / uniform flags live in Area meta,
 			# so picking and drags keep working at any zoom).
-			_handle_root.scale = Vector3.ONE * s
+			_apply_orientation(s)
 	visible = (_target != null) or _pivot_active

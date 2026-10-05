@@ -11,14 +11,45 @@ every handle is drawn world-aligned. Approach B fixes the behaviour while leavin
 the user-facing lie in place. Approach C duplicates ~200 lines of handle building
 for one `Basis` multiply.
 
-## Two facts confirmed in the code, not assumed
+## Facts about the code
 
 - `selection_manager.gd:100` — `select_multi` sets `_selected = fresh[0]`, so the
-  "first-selected object's rotation" reference needs **no new state**.
+  "first-selected object's rotation" reference needs **no new state**. Verified.
 - `modeling_lab.gd:517` — `_compute_drag_screen_basis` derives its screen axis
-  from `gizmo.global_position + _drag_axis`. Under Local the handles have
-  genuinely rotated, so this resolves correctly **unchanged**, and the 5f/5g
-  regression suites keep passing without modification.
+  from `gizmo.global_position + _drag_axis`. An earlier draft of this plan
+  claimed that stays correct unchanged under Local. **That was wrong.** The Area
+  meta stores the LOCAL axis (read straight out of `AXES`), so adding it to a
+  world position projects the wrong tip. This function **does** need the world
+  axis — via the new `Gizmo3D.axis_to_world()`.
+
+## Correction: the predicted `_process` clobber does not exist
+
+The draft predicted that the constant-on-screen sizing, which writes the handle
+frame every frame, would decompose the basis and snap the handles back to world
+axes. Tested by reverting the implementation to a plain `.scale` assignment: the
+rotation survived, delta 0.0000. `Basis.set_scale` preserves the rotation part.
+The prediction was written down before it was measured.
+
+`Gizmo3D._apply_orientation()` is kept anyway — one write path instead of two —
+but it is **not** load-bearing, and the test that covers it is labelled a smoke
+check rather than a regression test, because it cannot tell the two
+implementations apart.
+
+## Two axes, not one
+
+The subtle part of the whole feature, and it applies twice:
+
+| Consumer | Which axis | Why |
+|---|---|---|
+| `apply_scale` component pick | **local** | picks *which* of X/Y/Z was grabbed |
+| `apply_scale` frame | orientation basis | decides world vs local |
+| `_compute_drag_screen_basis` | **world** | projects a real world direction |
+| move / rotate | **world** | already world-space |
+
+Passing a world axis to `apply_scale` would be a real bug, not a cosmetic one:
+a local X handle on a 45°-yawed object has a world direction with *both* x and z
+components non-zero, so the `axis.x != 0` / `axis.z != 0` component test would
+scale two axes at once.
 
 ## Data flow
 

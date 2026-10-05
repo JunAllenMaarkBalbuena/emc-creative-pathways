@@ -8,6 +8,17 @@ signal lab_closed
 enum LabMode { LESSON, CREATIVE_STUDIO }
 enum Tool { MOVE, ROTATE, SCALE }
 
+## Which frame the gizmo handles are drawn in, and which frame SCALE acts in.
+##
+## Global is the default and is the honest one: move and rotate were already
+## world-space, and every handle used to be drawn world-aligned. Scale alone wrote
+## `node.scale`, which acts along the object's OWN axes — so on a rotated object
+## the red X handle pointed along world X while the stretch it produced ran along
+## local X. Global makes the drawing tell the truth. Local is offered because a
+## local frame is genuinely the more useful one for non-uniform scaling of a
+## rotated prop.
+enum Orientation { GLOBAL, LOCAL }
+
 const ColorPickerControlScript := preload("res://scripts/digital_art_lab/color_picker_control.gd")
 
 # Subsystems
@@ -29,13 +40,27 @@ var creative_studio_manager: CreativeStudioManager
 # Mode state
 var _mode: int = LabMode.LESSON
 var _current_tool: int = Tool.MOVE
+## See the Orientation enum. Global is the default; this single flag plus one
+## branch is the whole toggle, which is what makes the fallback (ship Local as
+## the default, keep Global behind the toggle) a one-line change.
+var _orientation: int = Orientation.GLOBAL
 var _current_assignment: AssignmentData = null
 var _primitive_locked: Array[bool] = []
 var _player_objects: Array[Node3D] = []
 var _scores: Array[float] = []
 var _all_assignments_completed: bool = false
 var _dragging: bool = false
+## Which handle was grabbed, in the GIZMO's own frame. Stays local on purpose:
+## it identifies *which* of X/Y/Z was grabbed, and that answer is needed in both
+## orientations. Under Local the handle is rotated, so this is NOT a world
+## direction — see `_drag_axis_world`.
 var _drag_axis: Vector3 = Vector3.ZERO
+## The same handle expressed in world space, FROZEN when the drag is armed.
+## Used only by the motion handler, and frozen deliberately: under Local the
+## gizmo's frame follows the object, so recomputing a rotate axis each frame would
+## have it chase the object being rotated. Press-time screen maths reads the live
+## frame instead — see `_world_drag_axis()`.
+var _drag_axis_world: Vector3 = Vector3.ZERO
 var _drag_uniform: bool = true
 var _drag_start_mouse: Vector2 = Vector2.ZERO
 var _drag_axis_screen: Vector2 = Vector2.RIGHT
@@ -452,6 +477,60 @@ func _on_tool_selected(tool: int):
 		gizmo.visible = true
 
 
+func gizmo_orientation() -> int:
+	return _orientation
+
+
+func set_gizmo_orientation(orientation: int) -> void:
+	_orientation = clampi(orientation, Orientation.GLOBAL, Orientation.LOCAL)
+	_apply_gizmo_orientation()
+
+
+func toggle_gizmo_orientation() -> void:
+	set_gizmo_orientation(
+			Orientation.LOCAL if _orientation == Orientation.GLOBAL
+			else Orientation.GLOBAL)
+
+
+## The frame the handles should be drawn in.
+##
+## Global is identity. Local is the rotation of the first-selected node —
+## `SelectionManager.select_multi` already ends with `_selected = fresh[0]`, so
+## "first-selected" is the existing selection order and needs no extra state.
+##
+## `global_basis` rather than `basis` because the result feeds
+## `Gizmo3D.axis_to_world`, which returns a WORLD direction; taking the rotation
+## in the object's parent frame would be wrong the moment a parent ever carries a
+## transform.
+func _orientation_basis() -> Basis:
+	if _orientation == Orientation.LOCAL:
+		var node := selection_manager.get_selected()
+		if node and is_instance_valid(node):
+			return node.global_basis.orthonormalized()
+	return Basis.IDENTITY
+
+
+## Pushes the current orientation onto the gizmo. Called on selection change and
+## while dragging, because under Local the handles must follow the object as it
+## rotates — otherwise the ring you grabbed would slide off the axis you are
+## turning.
+func _apply_gizmo_orientation() -> void:
+	if gizmo:
+		gizmo.set_orientation(_orientation_basis())
+
+
+## Reflects `_orientation` in the toolbar toggle.
+##
+## `KEY_X` changes the mode without going through the button, so without this the
+## button would show the opposite state from what the gizmo is actually doing.
+## `set_value_no_signal` because the button's own signal is what calls back into
+## `set_gizmo_orientation` — setting the value normally would recurse.
+func _sync_orientation_toggle() -> void:
+	var button := get_node_or_null("%LocalToggle") as BaseButton
+	if button:
+		button.set_pressed_no_signal(_orientation == Orientation.LOCAL)
+
+
 func _on_selection_changed(node: MeshInstance3D):
 	if node:
 		if selection_manager.selected_count() > 1:
@@ -469,6 +548,10 @@ func _on_selection_changed(node: MeshInstance3D):
 		# selected (only visible, not <null>, is what actually keeps it hidden).
 		gizmo.set_target(null)
 		gizmo.visible = false
+	# Local orientation is derived from the selected node, so it has to be
+	# recomputed whenever the selection changes — otherwise switching to Local
+	# while a rotated object is selected would draw world-aligned handles.
+	_apply_gizmo_orientation()
 	# The material panel must reflect the newly selected object immediately
 	# (its base color, metallic, roughness) — not only after the first
 	# transform drag. Deselect resets the panel to defaults.
@@ -514,7 +597,12 @@ func _compute_drag_screen_basis(grab_pos: Vector2,
 	# Projected from the gizmo position (the group centroid when multi-selected),
 	# not the primary node.
 	var origin := cam.unproject_position(gizmo.global_position)
-	var tip := cam.unproject_position(gizmo.global_position + _drag_axis)
+	# Read from the gizmo rather than reusing `_drag_axis`: this projects a real
+	# world point, so it needs a world direction. Under Local the handle has
+	# genuinely rotated, so adding the local axis to a world position would
+	# project the wrong tip and the drag would follow a direction the handle is
+	# not pointing along.
+	var tip := cam.unproject_position(gizmo.global_position + _world_drag_axis())
 	var delta := tip - origin
 
 	if delta.length() > AXIS_SCREEN_EPS:
@@ -564,10 +652,24 @@ func _compute_drag_screen_basis(grab_pos: Vector2,
 ##     as the camera moves. Measured: whole view/handle pairs reversed 48 of 72.
 ##     Intersecting the ray with the ring's plane fails too, because at edge-on
 ##     the camera lies IN that plane and `ray . n` is 0 for every ray.
+## World direction of the grabbed handle, read from the gizmo at CALL time.
+##
+## Deliberately distinct from `_drag_axis_world`, which is frozen at press. Under
+## Local the gizmo's frame follows the object as it rotates, so a rotate drag that
+## recomputed its axis each frame would have the axis chase the very object it is
+## turning. The screen basis and the ring tangent are press-time quantities about
+## what the user is looking at, so they read the live frame; applying the
+## transform reads the frozen one.
+func _world_drag_axis() -> Vector3:
+	return gizmo.axis_to_world(_drag_axis)
+
 func _compute_rotate_tangent(grab_pos: Vector2, origin: Vector2,
 		hit_3d: Vector3) -> Vector2:
 	var cam := camera_controller.camera
-	var n := _drag_axis.normalized()
+	# World axis, for the same reason as `_compute_drag_screen_basis`: the ring
+	# this derives a tangent for is a real world-space ring, and under Local it
+	# sits on the object's own axes rather than the world ones.
+	var n := _world_drag_axis().normalized()
 	if n.length() < 0.5:
 		return Vector2.UP
 
@@ -657,7 +759,15 @@ func _on_viewport_gui_input(event: InputEvent):
 			var pick := gizmo.pick(mouse_pos, camera_controller.camera)
 			if pick.get("picked", false):
 				_dragging = true
+				# Two axes, deliberately. `_drag_axis` stays in the gizmo's own
+				# frame because it answers "which handle was grabbed" — a world
+				# axis cannot answer that under Local, where a 45deg-yawed local
+				# X handle has a world direction with two non-zero components and
+				# would scale two axes at once. `_drag_axis_world` is the same
+				# handle in world space, for everything that projects a point or
+				# moves the object along it.
 				_drag_axis = pick.get("axis", Vector3.ZERO)
+				_drag_axis_world = gizmo.axis_to_world(_drag_axis)
 				_drag_uniform = pick.get("uniform", true)
 				_drag_start_mouse = mouse_pos
 				if _drag_uniform:
@@ -667,8 +777,8 @@ func _on_viewport_gui_input(event: InputEvent):
 					_compute_drag_screen_basis(mouse_pos,
 							pick.get("position", Vector3.INF))
 				match _current_tool:
-					Tool.MOVE: transform_manager.begin_move(_drag_axis)
-					Tool.ROTATE: transform_manager.begin_rotate(_drag_axis)
+					Tool.MOVE: transform_manager.begin_move(_drag_axis_world)
+					Tool.ROTATE: transform_manager.begin_rotate(_drag_axis_world)
 					Tool.SCALE: transform_manager.begin_scale(_drag_uniform)
 				get_viewport().set_input_as_handled()
 				return
@@ -730,7 +840,7 @@ func _on_viewport_gui_input(event: InputEvent):
 			var dist: float = moved.dot(_drag_axis_screen)
 			match _current_tool:
 				Tool.MOVE:
-					transform_manager.apply_move(_drag_axis, dist * 0.02)
+					transform_manager.apply_move(_drag_axis_world, dist * 0.02)
 				Tool.ROTATE:
 					var tangential: float = moved.dot(_drag_axis_perp)
 					# 0.001 rad/px needed ~5,600px of drag for a full turn, so a
@@ -739,12 +849,16 @@ func _on_viewport_gui_input(event: InputEvent):
 					# trackpad naturally. TransformManager accumulates this per
 					# frame and snaps the TOTAL, so raising it does not fight the
 					# snap - it only makes the detents arrive sooner.
-					transform_manager.apply_rotate(_drag_axis, tangential * 0.004)
+					transform_manager.apply_rotate(_drag_axis_world, tangential * 0.004)
 				Tool.SCALE:
-					if _drag_uniform:
-						transform_manager.apply_scale(_drag_axis, _scale_delta(mouse_pos, _drag_start_mouse, _drag_axis_screen), true)
-					else:
-						transform_manager.apply_scale(_drag_axis, _scale_delta(mouse_pos, _drag_start_mouse, _drag_axis_screen), false)
+					# `_drag_axis` (local) picks the component; `world_frame` picks
+					# the frame. Passing the world axis instead would scale two
+					# axes at once for any object yawed off 0/90deg.
+					var _world := _orientation == Orientation.GLOBAL
+					var _d := _scale_delta(mouse_pos, _drag_start_mouse,
+							_drag_axis_screen)
+					transform_manager.apply_scale(_drag_axis, _d, _drag_uniform,
+							_world)
 			_update_inspector(selection_manager.get_selected())
 		elif _body_drag_armed:
 			# The press armed a potential body-drag. Promote it to a real drag
@@ -766,6 +880,11 @@ func _on_viewport_gui_input(event: InputEvent):
 			KEY_R: %ScaleBtn.button_pressed = true; _on_tool_selected(Tool.SCALE)
 			KEY_D: _on_duplicate()
 			KEY_DELETE: _on_delete()
+			# Global/Local gizmo frame. X is unclaimed: the only KEY_G in the tree
+			# is the digital-art lab's fill tool, and no InputMap action takes X.
+			KEY_X:
+				toggle_gizmo_orientation()
+				_sync_orientation_toggle()
 			KEY_F: _focus_selected()
 			KEY_Z:
 				if event.ctrl_pressed:
@@ -844,6 +963,10 @@ func _update_gizmo_drag():
 		gizmo.set_pivot(selection_manager.get_centroid())
 	elif selection_manager.get_selected():
 		gizmo.global_position = selection_manager.get_selected().global_position
+	# Under Local the handles ride the object's rotation, so a rotate drag has to
+	# keep feeding the gizmo its new frame or the ring slides off the axis being
+	# turned. Cheap: one orthonormalise per frame on an already-loaded node.
+	_apply_gizmo_orientation()
 
 
 func _update_inspector(node: Node3D):

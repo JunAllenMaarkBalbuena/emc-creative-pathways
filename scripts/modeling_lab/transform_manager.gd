@@ -10,7 +10,6 @@ var _material_mgr: MaterialManager
 var _nodes: Array[MeshInstance3D] = []
 var _original_positions: Array[Vector3] = []
 var _original_bases: Array[Basis] = []
-var _original_scales: Array[Vector3] = []
 var _group_center: Vector3 = Vector3.ZERO
 var _transforming: bool = false
 ## Axis and total angle of the rotation gesture in progress. See apply_rotate.
@@ -32,7 +31,6 @@ func _snapshot() -> bool:
 	_nodes = nodes
 	_original_positions.clear()
 	_original_bases.clear()
-	_original_scales.clear()
 	var acc := Vector3.ZERO
 	for n in _nodes:
 		# Local position. The workspace root carries a world Y-offset, so
@@ -40,7 +38,6 @@ func _snapshot() -> bool:
 		# compares against the object's local position.
 		_original_positions.append(n.position)
 		_original_bases.append(n.transform.basis)
-		_original_scales.append(n.scale)
 		acc += n.position
 	_group_center = acc / _nodes.size()
 	return true
@@ -164,7 +161,28 @@ func begin_scale(_uniform: bool = true) -> bool:
 	_transforming = _snapshot()
 	return _transforming
 
-func apply_scale(axis: Vector3, delta: float, uniform: bool = true):
+## Scales the gesture's nodes.
+##
+## `world_frame` picks the frame the scale acts in. Global (the gizmo's default)
+## scales along WORLD axes; Local scales along the object's OWN axes.
+##
+## The two differ only in the ORDER of the same multiply — `factor_v * basis`
+## scales column i by factor_v[i], `basis * factor_v` likewise, but left vs
+## right multiplication is the whole difference between "stretched along world X"
+## and "stretched along the object's X". Both preserve shear; neither can be
+## expressed as a `.scale` write.
+##
+## `axis` must be the handle axis in the GIZMO's frame, not in world space. The
+## `axis.x != 0` component test below picks *which* handle was grabbed, and under
+## Local a 45deg-yawed local-X handle has a world direction with both x and z
+## non-zero — feeding that in would scale two axes at once.
+##
+## NEVER route this through `node.scale`. That setter decomposes the basis into
+## rotation + scale and discards the shear, which is the same bug class as the
+## get_euler() commit bug: measured, a round trip through `.scale` moves a
+## sheared basis by 0.707 while a direct basis write moves it by 0.
+func apply_scale(axis: Vector3, delta: float, uniform: bool = true,
+		world_frame: bool = false):
 	if not _transforming: return
 	var factor: float = max(0.01, 1.0 + delta * 0.003)
 	var factor_v := Vector3(factor, factor, factor)
@@ -174,15 +192,34 @@ func apply_scale(axis: Vector3, delta: float, uniform: bool = true):
 		if axis.y != 0: factor_v.y = factor
 		if axis.z != 0: factor_v.z = factor
 	for i in _nodes.size():
-		var s := _original_scales[i]
-		s *= factor_v
+		var orig: Basis = _original_bases[i]
+		# Column lengths, not `node.scale`. For a clean R*S basis the two are
+		# identical, but `node.scale` is only a DECOMPOSITION of a sheared basis
+		# and loses the shear, so it is the wrong quantity to scale from.
+		#
+		# `orig[i]` is Basis column indexing - there is no `get_column()` in
+		# GDScript.
+		var orig_len := Vector3(
+				orig[0].length(),
+				orig[1].length(),
+				orig[2].length())
+		orig_len = orig_len.max(Vector3(0.0001, 0.0001, 0.0001))
+		var target := orig_len * factor_v
 		if _snap_settings.snap_enabled:
-			s = _snap_settings.snap_vector3(s, _snap_settings.scale_snap)
-		s = s.max(Vector3(0.01, 0.01, 0.01))
-		_nodes[i].scale = s
+			target = _snap_settings.snap_vector3(target, _snap_settings.scale_snap)
+		target = target.max(Vector3(0.01, 0.01, 0.01))
+		# Snapping works on absolute axis lengths, so the applied factor has to be
+		# recomputed from the snapped length back through the original.
+		var applied := Vector3(
+				target.x / orig_len.x,
+				target.y / orig_len.y,
+				target.z / orig_len.z)
+		var scale_basis := Basis.from_scale(applied)
+		var node := _nodes[i]
+		node.basis = scale_basis * orig if world_frame else orig * scale_basis
 		var rel := _original_positions[i] - _group_center
 		if not rel.is_zero_approx():
-			_nodes[i].position = _group_center + rel * factor_v
+			node.position = _group_center + rel * factor_v
 
 func end_scale():
 	if _transforming:
