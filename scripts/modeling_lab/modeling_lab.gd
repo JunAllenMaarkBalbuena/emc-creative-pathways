@@ -190,6 +190,10 @@ func _connect_ui_signals():
 	%GridToggle.toggled.connect(_on_grid_toggled)
 	%SnapToggle.toggled.connect(_on_snap_toggled)
 	%SnapSize.value_changed.connect(_on_snap_size_changed)
+	%LocalToggle.toggled.connect(_on_local_toggled)
+	# The toggle is the second way in (KEY_X is the first), so start it agreeing
+	# with `_orientation` rather than trusting the scene's default to match.
+	_sync_orientation_toggle()
 
 	# Selection
 	selection_manager.selected_changed.connect(_on_selection_changed)
@@ -529,6 +533,13 @@ func _sync_orientation_toggle() -> void:
 	var button := get_node_or_null("%LocalToggle") as BaseButton
 	if button:
 		button.set_pressed_no_signal(_orientation == Orientation.LOCAL)
+
+
+## The toolbar's Local toggle. Unchecked is Global, which is the default and the
+## honest frame — checked is Local, where the handles follow the object's own axes.
+func _on_local_toggled(pressed: bool) -> void:
+	set_gizmo_orientation(
+			Orientation.LOCAL if pressed else Orientation.GLOBAL)
 
 
 func _on_selection_changed(node: MeshInstance3D):
@@ -969,6 +980,23 @@ func _update_gizmo_drag():
 	_apply_gizmo_orientation()
 
 
+## How long each of the object's axes actually is, in world units.
+##
+## The columns of a basis ARE its axes, so their lengths are the object's real
+## scale — and this is exactly what `node.scale` already reports. Measured, not
+## assumed: for `Basis.from_scale(1.5,1,1) * Basis.from_euler(0,45,0)` (a sheared
+## basis), `get_scale()` and the column lengths agree to the last digit on all
+## three axes. So the inspector's readout was never wrong and switching it to
+## this helper changes no displayed value.
+##
+## It is here because the WRITE side needs the quantity, and read and write have
+## to agree. `node.scale` is fine to READ and useless to WRITE BACK: three lengths
+## cannot reconstruct a sheared basis, so routing the write through it is what
+## flattened the shear. One helper, both halves, no chance of them drifting apart.
+func _effective_axis_lengths(basis: Basis) -> Vector3:
+	return Vector3(basis[0].length(), basis[1].length(), basis[2].length())
+
+
 func _update_inspector(node: Node3D):
 	if not node:
 		%NodeName.text = ""
@@ -988,9 +1016,13 @@ func _update_inspector(node: Node3D):
 	%RotX.set_value_no_signal(node.rotation_degrees.x)
 	%RotY.set_value_no_signal(node.rotation_degrees.y)
 	%RotZ.set_value_no_signal(node.rotation_degrees.z)
-	%ScaleX.set_value_no_signal(node.scale.x)
-	%ScaleY.set_value_no_signal(node.scale.y)
-	%ScaleZ.set_value_no_signal(node.scale.z)
+	# Same numbers `node.scale` would give (measured — see the helper), but read
+	# through the same helper the write path uses, so the panel cannot report one
+	# quantity and apply another.
+	var _axis_lengths := _effective_axis_lengths(node.basis)
+	%ScaleX.set_value_no_signal(_axis_lengths.x)
+	%ScaleY.set_value_no_signal(_axis_lengths.y)
+	%ScaleZ.set_value_no_signal(_axis_lengths.z)
 
 	var mat := material_manager.read_from(node as MeshInstance3D)
 	%ColorSwatch.color = mat.get("albedo", Color.WHITE)
@@ -1446,24 +1478,39 @@ func _on_inspector_rot_changed(val: float, axis: String):
 	selection_manager.reselect_from_ids(action.get_last_created_ids())
 
 
+## Inspector scale fields act along the object's OWN axes, always.
+##
+## This is deliberate and independent of the gizmo's Global/Local toggle: the
+## RotX/Y/Z fields beside them are local Euler angles, so ScaleX/Y/Z being local
+## axis lengths is what makes the panel coherent. Blender behaves the same way.
 func _on_inspector_scale_changed(val: float, axis: String):
 	var sel := selection_manager.get_selected()
 	if not sel: return
 	var before := sel.transform
 	var after := sel.transform
-	var s: Vector3 = sel.scale
-	match axis:
-		"x": s.x = val
-		"y": s.y = val
-		"z": s.z = val
-	# Rebuild as orthonormal * scale rather than scaling the live basis.
+	# Rebuild from the live basis by a RATIO rather than from `sel.scale`.
 	# `Basis.scaled(s)` is `S * basis` (it pre-multiplies), so against a basis
 	# that already carries scale the row lengths MULTIPLY instead of being
 	# replaced: dragging X from 2 to 5 on a (2,3,4) cube produced (10,9,16),
-	# corrupting the untouched axes too, and each repeat squared them. Strip
-	# the scale off, then rebuild R * S in true TRS order.
-	var rot_only: Basis = after.basis.orthonormalized()
-	after.basis = rot_only * Basis.from_scale(s)
+	# corrupting the untouched axes too, and each repeat squared them.
+	#
+	# The old fix orthonormalised first, which flattened a sheared basis back to
+	# R*S — so a Global-scaled object lost its shear the moment the panel was
+	# touched. Right-multiplying by the ratio scales one local axis and leaves
+	# everything else, shear included, untouched. For a clean R*S basis this is
+	# bit-identical to `rot_only * Basis.from_scale(s)`.
+	var basis := after.basis
+	var current := _effective_axis_lengths(basis)
+	var target := current
+	match axis:
+		"x": target.x = val
+		"y": target.y = val
+		"z": target.z = val
+	var applied := Vector3(
+			target.x / maxf(current.x, 0.0001),
+			target.y / maxf(current.y, 0.0001),
+			target.z / maxf(current.z, 0.0001))
+	after.basis = basis * Basis.from_scale(applied)
 	var action := CommandFactory.transform([object_container.get_path_to(sel)], [before], [after], object_container, spawner, material_manager, hierarchy_manager)
 	undo_redo.execute_command(action)
 	selection_manager.reselect_from_ids(action.get_last_created_ids())

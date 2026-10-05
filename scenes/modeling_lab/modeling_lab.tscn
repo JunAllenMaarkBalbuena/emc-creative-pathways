@@ -258,6 +258,12 @@ max_value = 10.0
 step = 0.01
 value = 0.25
 
+[node name="LocalToggle" type="CheckButton" parent="LeftToolbar" unique_id=1861678654]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Local: gizmo handles follow the object's own axes. Unchecked is Global, where scale acts along world axes."
+text = "Local"
+
 [node name="SubViewportContainer" type="SubViewportContainer" parent="." unique_id=1608512776]
 unique_name_in_owner = true
 anchors_preset = 15

@@ -62,8 +62,86 @@ func _ready() -> void:
 	await _test_global_scale_is_world_axis()
 	await _test_local_scale_stays_local()
 	await _test_shear_survives_undo()
+	await _test_inspector_reports_effective_lengths()
+	await _test_inspector_edit_preserves_shear()
 	await _test_global_is_the_default()
 	_finish()
+
+## The panel's Scale fields must report the object's real axis lengths.
+##
+## Worth pinning down even though it turns out `node.scale` already reported the
+## same thing: `Basis.get_scale()` returns the column lengths, verified equal to
+## the last digit on a sheared basis, so the readout was never the broken half.
+## This locks the number in so a future refactor to `node.scale` on the write
+## side cannot quietly start rounding the display to a decomposition.
+func _test_inspector_reports_effective_lengths() -> void:
+	await _reset_cube()
+	_lab.transform_manager.begin_scale(false)
+	_apply_scale(Vector3.RIGHT, 40.0, false, true)
+	_lab.transform_manager.end_scale()
+	await get_tree().process_frame
+
+	if not _is_sheared(_cube.basis):
+		_fail += 1
+		print("FAIL: setup produced no shear; this sub-test is not testing anything")
+		return
+
+	_lab._update_inspector(_cube)
+	var expected := _effective_axis_lengths(_cube.basis)
+	var shown := Vector3(_spin("ScaleX"), _spin("ScaleY"), _spin("ScaleZ"))
+	# The Scale fields are SpinBoxes with step 0.01, so they quantise whatever they
+	# are given. That was equally true when they were fed `node.scale` — it is the
+	# widget's resolution, not a fault in this change — so the invariant is that
+	# the readout is correct TO the widget's resolution, i.e. within half a step.
+	if shown.distance_to(expected) > 0.005:
+		_fail += 1
+		print("FAIL: inspector shows %s but the object's axes are %s" % [shown, expected])
+	else:
+		print("      inspector reports effective axis lengths %s (widget quantises to "
+			% shown + "0.01; true values %s)" % expected)
+
+## Read and write must be the same quantity. The old write orthonormalised first,
+## so touching the panel flattened a sheared object back to R*S; and it read
+## `sel.scale` while the readout uses real lengths, so a round trip through the
+## panel turned one basis into a different one.
+func _test_inspector_edit_preserves_shear() -> void:
+	await _reset_cube()
+	_lab.transform_manager.begin_scale(false)
+	_apply_scale(Vector3.RIGHT, 40.0, false, true)
+	_lab.transform_manager.end_scale()
+	await get_tree().process_frame
+	if not _is_sheared(_cube.basis):
+		_fail += 1
+		print("FAIL: setup produced no shear; this sub-test is not testing anything")
+		return
+
+	var before: Basis = _cube.basis
+	var before_len := _effective_axis_lengths(before)
+	# Move the Y axis. X and Z must be untouched and the shear must survive.
+	_lab._on_inspector_scale_changed(before_len.y * 2.0, "y")
+	await get_tree().process_frame
+	# The command rebuilds node instances, so re-fetch rather than trust the old
+	# reference (same trap as the undo sub-test).
+	var after_node := _lab.selection_manager.get_selected()
+	if after_node == null:
+		_fail += 1
+		print("FAIL: selection lost after the inspector edit")
+		return
+	var after: Basis = after_node.basis
+	var after_len := _effective_axis_lengths(after)
+
+	if not _is_sheared(after):
+		_fail += 1
+		print("FAIL: editing an inspector scale field flattened the shear")
+	if absf(after_len.y - before_len.y * 2.0) > 0.0005:
+		_fail += 1
+		print("FAIL: Y length went %.4f -> %.4f, expected %.4f"
+			% [before_len.y, after_len.y, before_len.y * 2.0])
+	if absf(after_len.x - before_len.x) > 0.0005 \
+			or absf(after_len.z - before_len.z) > 0.0005:
+		_fail += 1
+		print("FAIL: editing Y also moved X or Z (%.4f,%.4f -> %.4f,%.4f)"
+			% [before_len.x, before_len.z, after_len.x, after_len.z])
 
 ## A 90-degree yaw about UP sends the X handle to world -Z (Godot's Y rotation
 ## is right-handed: X -> (cos, 0, -sin)).
@@ -311,6 +389,21 @@ func _test_global_is_the_default() -> void:
 	else:
 		_fail += 1
 		print("FAIL: default orientation is %d, expected 0 (GLOBAL)" % orient)
+
+## Same quantity the production read path uses: a basis's columns ARE its axes,
+## so their lengths are the real scale even under shear.
+func _effective_axis_lengths(basis: Basis) -> Vector3:
+	return Vector3(basis[0].length(), basis[1].length(), basis[2].length())
+
+
+func _spin(name: String) -> float:
+	var box := _lab.get_node_or_null("%" + name) as SpinBox
+	if box == null:
+		_fail += 1
+		print("FAIL: no inspector field named %s" % name)
+		return NAN
+	return box.value
+
 
 func _reset_cube() -> void:
 	_cube.rotation_degrees = Vector3(0, YAW, 0)
