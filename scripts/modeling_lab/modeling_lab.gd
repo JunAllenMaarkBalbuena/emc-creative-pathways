@@ -478,6 +478,63 @@ func _on_selection_changed(node: MeshInstance3D):
 
 # ── Viewport Input ──────────────────────────────────────────────
 
+## Minimum screen-space length, in pixels, before an axis' projected direction
+## counts as well-defined. Below this the axis is treated as parallel to the
+## view ray. 4px matches the thinnest ring: at the default view a 1-unit axis
+## measures 45-90px, so 4px is roughly 15deg off-axis.
+const AXIS_SCREEN_EPS := 4.0
+
+## Builds `_drag_axis_screen` / `_drag_axis_perp` for the handle that was just
+## grabbed. Both move and scale read the first; rotate reads the second.
+##
+## The screen direction of a world axis is the pixel delta between the gizmo
+## centre and the centre displaced along that axis. That delta collapses to
+## (0, 0) when the axis points at, or away from, the camera, because
+## `unproject_position` returns the SAME pixel for both points. `.normalized()`
+## leaves the zero vector as zero, so every `moved.dot(...)` is exactly 0 and the
+## handle is grabbed, dragged, and does nothing at all.
+##
+## This is reachable from ordinary play, which is why it looked arbitrary:
+## ViewOrbitGizmo's axis buttons call `CameraController.set_view_axis()`, which
+## aligns the camera to the axis EXACTLY, and hand-orbiting lands in the same
+## place. Measured at every `set_view_axis` angle: screen length 0.0000px,
+## rotate delta 0.000, move delta 0.000. From the default tilted view the same
+## three axes measure 45-90px and respond normally - the difference between
+## "sometimes dead" and "always fine".
+func _compute_drag_screen_basis(grab_pos: Vector2) -> void:
+	var cam := camera_controller.camera
+	# Projected from the gizmo position (the group centroid when multi-selected),
+	# not the primary node.
+	var origin := cam.unproject_position(gizmo.global_position)
+	var tip := cam.unproject_position(gizmo.global_position + _drag_axis)
+	var delta := tip - origin
+
+	if delta.length() > AXIS_SCREEN_EPS:
+		_drag_axis_screen = delta.normalized()
+		_drag_axis_perp = Vector2(-_drag_axis_screen.y, _drag_axis_screen.x)
+		return
+
+	# Degenerate: the axis is parallel to the view ray, so there is no projected
+	# axis to follow. Fall back to the radius from the gizmo centre to the point
+	# that was grabbed, and the tangent to it.
+	#
+	# For ROTATE the ring is face-on in this situation, so this is also the
+	# correct answer rather than merely a safe one: the handle sits on a circle,
+	# and the tangent to a circle at the cursor IS the direction the ring moves
+	# under the cursor. Dragging around the ring spins the object the way the
+	# cursor travels.
+	var radial := grab_pos - origin
+	if radial.length() > AXIS_SCREEN_EPS:
+		_drag_axis_screen = radial.normalized()
+		_drag_axis_perp = Vector2(-_drag_axis_screen.y, _drag_axis_screen.x)
+		return
+
+	# Grabbed within a few pixels of the gizmo centre, so there is no usable
+	# radius either. Screen-up keeps the handle responsive rather than silently
+	# doing nothing, which is the failure being fixed.
+	_drag_axis_screen = Vector2.UP
+	_drag_axis_perp = Vector2.LEFT
+
 func _on_viewport_gui_input(event: InputEvent):
 	var sv: SubViewport = %SubViewport
 	var mouse_pos: Vector2 = sv.get_mouse_position()
@@ -523,12 +580,7 @@ func _on_viewport_gui_input(event: InputEvent):
 					_drag_axis_screen = Vector2.RIGHT
 					_drag_axis_perp = Vector2.UP
 				else:
-					# Screen axis is computed from gizmo position (the group
-					# centroid when multi-selected), not the primary node.
-					var origin := camera_controller.camera.unproject_position(gizmo.global_position)
-					var tip := camera_controller.camera.unproject_position(gizmo.global_position + _drag_axis)
-					_drag_axis_screen = (tip - origin).normalized()
-					_drag_axis_perp = Vector2(-_drag_axis_screen.y, _drag_axis_screen.x)
+					_compute_drag_screen_basis(mouse_pos)
 				match _current_tool:
 					Tool.MOVE: transform_manager.begin_move(_drag_axis)
 					Tool.ROTATE: transform_manager.begin_rotate(_drag_axis)
