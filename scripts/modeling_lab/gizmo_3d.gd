@@ -113,6 +113,11 @@ func pick(screen_pos: Vector2, camera: Camera3D) -> Dictionary:
 			"picked": true,
 			"axis": collider.get_meta("axis", Vector3.ZERO),
 			"uniform": collider.get_meta("uniform", false),
+			# The 3D point the cursor actually struck. Screen position cannot
+			# separate the two halves of a rotate ring that is exactly edge-on
+			# (they project to the same pixel), so callers that need to know
+			# which side was grabbed need this.
+			"position": result.position,
 		}
 	return {"picked": false, "axis": Vector3.ZERO, "uniform": false}
 

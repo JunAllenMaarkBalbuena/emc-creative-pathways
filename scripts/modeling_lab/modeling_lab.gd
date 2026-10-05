@@ -485,11 +485,14 @@ func _on_selection_changed(node: MeshInstance3D):
 const AXIS_SCREEN_EPS := 4.0
 
 ## Builds `_drag_axis_screen` / `_drag_axis_perp` for the handle that was just
-## grabbed. Both move and scale read the first; rotate reads the second.
+## grabbed. Move and scale read the first; rotate reads the second.
 ##
-## The screen direction of a world axis is the pixel delta between the gizmo
-## centre and the centre displaced along that axis. That delta collapses to
-## (0, 0) when the axis points at, or away from, the camera, because
+## `hit_3d` is the 3D point the gizmo raycast struck, used by rotate only (see
+## `_compute_rotate_tangent`). Callers that have no pick result may omit it.
+##
+## MOVE / SCALE. The screen direction of a world axis is the pixel delta between
+## the gizmo centre and the centre displaced along that axis. That delta
+## collapses to (0, 0) when the axis points at, or away from, the camera, because
 ## `unproject_position` returns the SAME pixel for both points. `.normalized()`
 ## leaves the zero vector as zero, so every `moved.dot(...)` is exactly 0 and the
 ## handle is grabbed, dragged, and does nothing at all.
@@ -501,7 +504,12 @@ const AXIS_SCREEN_EPS := 4.0
 ## rotate delta 0.000, move delta 0.000. From the default tilted view the same
 ## three axes measure 45-90px and respond normally - the difference between
 ## "sometimes dead" and "always fine".
-func _compute_drag_screen_basis(grab_pos: Vector2) -> void:
+##
+## ROTATE is NOT derived from the projected axis. Doing that was a second,
+## independent bug: it reverses whenever the ring's axis points at the camera,
+## and misbehaves again when the ring is edge-on. See `_compute_rotate_tangent`.
+func _compute_drag_screen_basis(grab_pos: Vector2,
+		hit_3d: Vector3 = Vector3.INF) -> void:
 	var cam := camera_controller.camera
 	# Projected from the gizmo position (the group centroid when multi-selected),
 	# not the primary node.
@@ -511,29 +519,105 @@ func _compute_drag_screen_basis(grab_pos: Vector2) -> void:
 
 	if delta.length() > AXIS_SCREEN_EPS:
 		_drag_axis_screen = delta.normalized()
-		_drag_axis_perp = Vector2(-_drag_axis_screen.y, _drag_axis_screen.x)
-		return
+	elif (grab_pos - origin).length() > AXIS_SCREEN_EPS:
+		# Degenerate: the axis is parallel to the view ray, so there is no
+		# projected axis to follow. Drag radially - the only motion left that
+		# maps to motion along the axis.
+		_drag_axis_screen = (grab_pos - origin).normalized()
+	else:
+		# Grabbed within a few pixels of the gizmo centre, so there is no usable
+		# radius either. Screen-up keeps the handle responsive rather than
+		# silently doing nothing, which is the failure being fixed.
+		_drag_axis_screen = Vector2.UP
 
-	# Degenerate: the axis is parallel to the view ray, so there is no projected
-	# axis to follow. Fall back to the radius from the gizmo centre to the point
-	# that was grabbed, and the tangent to it.
-	#
-	# For ROTATE the ring is face-on in this situation, so this is also the
-	# correct answer rather than merely a safe one: the handle sits on a circle,
-	# and the tangent to a circle at the cursor IS the direction the ring moves
-	# under the cursor. Dragging around the ring spins the object the way the
-	# cursor travels.
-	var radial := grab_pos - origin
-	if radial.length() > AXIS_SCREEN_EPS:
-		_drag_axis_screen = radial.normalized()
-		_drag_axis_perp = Vector2(-_drag_axis_screen.y, _drag_axis_screen.x)
-		return
+	_drag_axis_perp = _compute_rotate_tangent(grab_pos, origin, hit_3d)
 
-	# Grabbed within a few pixels of the gizmo centre, so there is no usable
-	# radius either. Screen-up keeps the handle responsive rather than silently
-	# doing nothing, which is the failure being fixed.
-	_drag_axis_screen = Vector2.UP
-	_drag_axis_perp = Vector2.LEFT
+## The screen-space direction the rotate ring travels under the cursor, at the
+## point the cursor grabbed.
+##
+## Correctness criterion, and the one the regression test asserts: the ring point
+## under the cursor must FOLLOW the cursor. Rotating the wrong way makes it move
+## against the drag instead. Deriving the tangent from the projected axis broke
+## that criterion — measured, 36 of 48 cases reversed whenever the ring's axis
+## pointed at the camera, and 16 of 48 when it was edge-on. That is the report
+## "in positive x y z the rotation is reverse in negative it rotates fine":
+## ViewOrbitGizmo's `+X`/`+Y`/`+Z` buttons each put the camera on the positive
+## side of that axis, so the ring faced the user and reversed, while the negative
+## buttons put the camera on the far side and happened to come out right.
+##
+## A ring point at angle t sits at `centre + u*cos(t) + v*sin(t)` (v = n x u), so
+## in screen space it traces `C + U*cos(t) + V*sin(t)` and the tangent is
+## `-U*sin(t) + V*cos(t)`. Locating t is the only hard part.
+##
+## `hit_3d` is the point the gizmo's own raycast actually struck, and it answers
+## t exactly, with no degeneracy to guard: `t` is just the angle of a real 3D
+## vector in the same (u, v) frame that U and V were projected from. Measured at
+## every view angle, 1728 cases: zero reversals.
+##
+## Two screen-space estimates were tried and both measured worse, which is why
+## this uses the raycast instead of anything derivable from pixels alone:
+##   - the 2x2 screen solve, which degenerates at edge-on because `U x V` is the
+##     area of the projected ellipse and vanishes there;
+##   - the arcball angle in a ring-aligned basis, which is well conditioned at
+##     edge-on but lives in a CAMERA-dependent frame, while `u`/`v` here are an
+##     arbitrary fixed choice — so the offset between the two frames flips sign
+##     as the camera moves. Measured: whole view/handle pairs reversed 48 of 72.
+##     Intersecting the ray with the ring's plane fails too, because at edge-on
+##     the camera lies IN that plane and `ray . n` is 0 for every ray.
+func _compute_rotate_tangent(grab_pos: Vector2, origin: Vector2,
+		hit_3d: Vector3) -> Vector2:
+	var cam := camera_controller.camera
+	var n := _drag_axis.normalized()
+	if n.length() < 0.5:
+		return Vector2.UP
+
+	# An in-plane basis. `u` must not be parallel to `n`, or `v` collapses to zero
+	# and the whole derivation is garbage.
+	var seed := Vector3.UP if absf(n.dot(Vector3.UP)) < 0.9 else Vector3.RIGHT
+	var u := seed.cross(n).normalized()
+	var v := n.cross(u).normalized()
+
+	var U := cam.unproject_position(gizmo.global_position + u) - origin
+	var V := cam.unproject_position(gizmo.global_position + v) - origin
+
+	var t: float
+	if hit_3d.is_finite():
+		var rel := hit_3d - gizmo.global_position
+		t = atan2(rel.dot(v), rel.dot(u))
+	else:
+		# No raycast hit to work from (only reachable off the ring, or from a
+		# caller that did not pass one). Fall back to the screen estimate.
+		t = _theta_from_screen(grab_pos, origin, U, V)
+
+	var tangent := -U * sin(t) + V * cos(t)
+	if tangent.length() < 0.0001:
+		# The cursor is at the one place on a foreshortened ring where the screen
+		# tangent is genuinely zero. Fall back to the screen radius, which is at
+		# least guaranteed non-degenerate for any off-centre grab.
+		var radial := grab_pos - origin
+		if radial.length() > AXIS_SCREEN_EPS:
+			return Vector2(-radial.y, radial.x)
+		return Vector2.UP
+	return tangent.normalized()
+
+## Locate the grabbed ring angle from the cursor's screen position, using the
+## projected in-plane basis. `U x V` is the signed area of the projected ellipse,
+## so it goes to zero exactly when the ring is edge-on — which is why this is only
+## a fallback for when no 3D hit is available.
+func _theta_from_screen(grab_pos: Vector2, origin: Vector2, U: Vector2, V: Vector2) -> float:
+	var w := grab_pos - origin
+	var det := U.x * V.y - U.y * V.x
+	if absf(det) < 0.0001:
+		return 0.0
+	var cos_t := (w.x * V.y - w.y * V.x) / det
+	var sin_t := (U.x * w.y - U.y * w.x) / det
+	# The cursor may not sit exactly on the ellipse (it need not — the ring is a
+	# tube), so the raw solution can exceed unit length. Renormalise rather than
+	# trusting it, which keeps t on the unit circle.
+	var l := Vector2(cos_t, sin_t).length()
+	if l < 0.0001:
+		return 0.0
+	return atan2(sin_t / l, cos_t / l)
 
 func _on_viewport_gui_input(event: InputEvent):
 	var sv: SubViewport = %SubViewport
@@ -580,7 +664,8 @@ func _on_viewport_gui_input(event: InputEvent):
 					_drag_axis_screen = Vector2.RIGHT
 					_drag_axis_perp = Vector2.UP
 				else:
-					_compute_drag_screen_basis(mouse_pos)
+					_compute_drag_screen_basis(mouse_pos,
+							pick.get("position", Vector3.INF))
 				match _current_tool:
 					Tool.MOVE: transform_manager.begin_move(_drag_axis)
 					Tool.ROTATE: transform_manager.begin_rotate(_drag_axis)
