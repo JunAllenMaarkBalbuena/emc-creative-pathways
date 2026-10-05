@@ -73,6 +73,7 @@ func _ready() -> void:
 	await _test_rotation_responds_to_short_drag(cube)
 	await _test_rotation_tracks_one_to_one(cube)
 	await _test_rotation_reverses(cube)
+	await _test_rotation_snaps_live_during_drag(cube)
 	await _test_inspector_rotate_preserves_scale(cube)
 	await _test_inspector_scale_replaces_not_compounds(cube)
 	await _test_move_does_not_reset_rotation(cube)
@@ -160,6 +161,44 @@ func _test_rotation_reverses(cube: MeshInstance3D) -> void:
 	_lab.transform_manager.end_rotate()
 	await get_tree().process_frame
 	_lab.snap_settings.snap_enabled = true
+
+## 1d) Snap must be applied LIVE, on every motion event, exactly like
+##     `apply_move` snaps position - NOT deferred to mouse release. The check is
+##     made while the drag is still in progress, before end_rotate(), because a
+##     release-time snap would pass a post-drag assertion.
+func _test_rotation_snaps_live_during_drag(cube: MeshInstance3D) -> void:
+	var step: float = _lab.snap_settings.rotation_snap
+	if step <= 0.0:
+		_fail += 1
+		print("FAIL: rotation_snap must be a positive step for live snapping")
+		_finish()
+		return
+
+	if not _lab.snap_settings.rotation_snap_enabled:
+		_fail += 1
+		print("FAIL: rotation snap is disabled, so rotation will not snap live like move does")
+
+	_lab.transform_manager.begin_rotate(Vector3.UP)
+	var start_deg: float = rad_to_deg(cube.basis.get_euler().y)
+
+	# 63px at 0.004 rad/px is ~14.4deg, which is NOT a multiple of 5deg. Still
+	# mid-drag, so the live snap must have already pulled it onto a detent.
+	_lab.transform_manager.apply_rotate(Vector3.UP, 0.004 * 63.0)
+
+	var live_deg: float = rad_to_deg(cube.basis.get_euler().y) - start_deg
+	if absf(snappedf(live_deg, step) - live_deg) > 0.05:
+		_fail += 1
+		print("FAIL: mid-drag (before release) angle %.3f deg is not on a %.1f deg detent - snap is deferred to mouse-up"
+			% [live_deg, step])
+
+	# Releasing must not be what makes it snap; it must already be sitting there.
+	_lab.transform_manager.end_rotate()
+	await get_tree().process_frame
+	var after_deg: float = rad_to_deg(cube.basis.get_euler().y) - start_deg
+	if absf(after_deg - live_deg) > 0.05:
+		_fail += 1
+		print("FAIL: angle moved on release (%.3f -> %.3f deg) - that is a release-time snap, not a live one"
+			% [live_deg, after_deg])
 
 ## 2) Inspector rotation must not reset scale.
 func _test_inspector_rotate_preserves_scale(cube: MeshInstance3D) -> void:

@@ -111,9 +111,10 @@ func begin_rotate(_axis: Vector3) -> bool:
 ## to 27.5deg. It only reversed once the cursor crossed back past the grab
 ## point. Treat the value as absolute and the mapping is 1:1 and reversible.
 ##
-## The snap applies to that total. It is off by default
-## (`SnapSettings.rotation_snap_enabled`); while it was on, every detent was a
-## dead band that read as the gizmo stalling and then snapping at random.
+## The snap is applied to that total ON EVERY MOUSE-MOTION EVENT, exactly as
+## `apply_move` snaps position - there is no deferred snap on mouse release, and
+## `end_rotate()` only commits the undo record. So the object visibly clicks
+## between detents as you drag rather than jumping once you let go.
 func apply_rotate(axis: Vector3, gesture_angle: float):
 	if not _transforming: return
 	# A different axis mid-gesture means a fresh rotation, not a continuation.

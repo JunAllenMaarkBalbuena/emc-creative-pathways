@@ -2,16 +2,20 @@ class_name SnapSettings
 extends RefCounted
 
 @export var position_snap: float = 0.25
-@export var rotation_snap: float = 15.0
+## 5deg, not the Blender/Maya 15deg. At 0.004 rad/px one pixel is 0.229deg, so a
+## 15deg step needed ~65px of drag per detent and a +/-32px dead band - the
+## object would sit still for most of a correction and then jump. 5deg is ~22px
+## per detent and +/-11px of stall, which still lands on round angles without
+## the gizmo reading as stuck.
+@export var rotation_snap: float = 5.0
 @export var scale_snap: float = 0.1
 @export var grid_visible: bool = true
 @export var snap_enabled: bool = true
-## Off by default: rotation is the one transform users drive continuously, and
-## any snap step is a dead band around each detent. At 15deg the object refuses
-## to move for the first 7.5deg of cursor travel, then jumps a whole step, so a
-## small correction reads as "the gizmo ignored me". Position and scale snap
-## stay on - a dropped 0.25 is far less annoying than a sticky rotation.
-@export var rotation_snap_enabled: bool = false
+## Snap is applied to the live gesture angle on every mouse-motion event, the
+## same way `apply_move` snaps position - not deferred to mouse release. This
+## flag exists so rotation can be excluded without touching position/scale; it
+## is on, so rotation snaps in real time like move does.
+@export var rotation_snap_enabled: bool = true
 
 func snap_value(value: float, snap: float) -> float:
 	if not snap_enabled or snap <= 0:
