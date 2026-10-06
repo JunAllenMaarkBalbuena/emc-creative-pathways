@@ -118,6 +118,12 @@ deliberately cheap.
 **That exit was taken on 2026-10-06** — Local now ships as the default. See the
 reversal note above for what that costs and what it does not answer.
 
+What a *rotation edit* does to a sheared object is a different decision and was
+settled separately on 2026-10-06: it cleans the skew (per user request, growth
+included) — see `docs/audit-2026-10-05.md` section 5q. This record covers scale
+modes only; 5p once read it as covering the rotation write path, which 5q
+records as an over-read.
+
 Scale feel is still unmeasured in *either* mode. No headless test can say whether
 a 1.5x drag reads as "half again as big" to a human hand. The toolbar toggle
 exists precisely so both modes can be compared on one object in two clicks.
