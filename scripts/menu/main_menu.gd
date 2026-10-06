@@ -6,6 +6,7 @@ extends Control
 @export_file("*.tscn") var flowchart_editor_path := "res://scenes/flowchart_editor.tscn"
 @export_file("*.tscn") var digital_art_lab_path := "res://scenes/digital_art_lab/digital_art_lab.tscn"
 @export_file("*.tscn") var modeling_lab_path := "res://scenes/modeling_lab/modeling_lab.tscn"
+@export_file("*.tscn") var animation_production_lab_path := "res://scenes/animation_production_lab/animation_production_lab.tscn"
 @export var intro_cutscene: CutsceneDefinition
 
 @onready var play_button: Button = $PlayButton
@@ -14,6 +15,7 @@ extends Control
 @onready var editor_button: Button = $EditorButton
 @onready var art_button: Button = $ArtButton
 @onready var model_button: Button = $ModelButton
+@onready var anim_button: Button = $AnimButton
 @onready var settings_button: Button = $SettingsButton
 @onready var quit_button: Button = $ExitButton
 @onready var title_label: Label = $TitleLabel
@@ -47,6 +49,8 @@ func _ready() -> void:
 		art_button.pressed.connect(_on_art_pressed)
 	if model_button:
 		model_button.pressed.connect(_on_model_pressed)
+	if anim_button:
+		anim_button.pressed.connect(_on_anim_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	settings_ui.settings_closed.connect(_on_settings_closed)
@@ -71,6 +75,9 @@ func _on_art_pressed() -> void:
 
 func _on_model_pressed() -> void:
 	SceneTransition.change_scene(modeling_lab_path)
+
+func _on_anim_pressed() -> void:
+	SceneTransition.change_scene(animation_production_lab_path)
 
 func _on_continue_pressed() -> void:
 	if LevelProgression.has_lab_resume_state():
