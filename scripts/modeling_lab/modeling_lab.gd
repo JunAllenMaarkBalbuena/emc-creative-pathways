@@ -254,6 +254,18 @@ func _connect_ui_signals():
 	%ScaleX.value_changed.connect(_on_inspector_scale_changed.bind("x"))
 	%ScaleY.value_changed.connect(_on_inspector_scale_changed.bind("y"))
 	%ScaleZ.value_changed.connect(_on_inspector_scale_changed.bind("z"))
+	# The World set. Wired to the same handlers pattern as the Local set, but each
+	# handler operates in world space; see _commit_inspector_change for why they
+	# share one undo path.
+	%WPosX.value_changed.connect(_on_inspector_world_pos_changed.bind("x"))
+	%WPosY.value_changed.connect(_on_inspector_world_pos_changed.bind("y"))
+	%WPosZ.value_changed.connect(_on_inspector_world_pos_changed.bind("z"))
+	%WRotX.value_changed.connect(_on_inspector_world_rot_changed.bind("x"))
+	%WRotY.value_changed.connect(_on_inspector_world_rot_changed.bind("y"))
+	%WRotZ.value_changed.connect(_on_inspector_world_rot_changed.bind("z"))
+	%WScaleX.value_changed.connect(_on_inspector_world_scale_changed.bind("x"))
+	%WScaleY.value_changed.connect(_on_inspector_world_scale_changed.bind("y"))
+	%WScaleZ.value_changed.connect(_on_inspector_world_scale_changed.bind("z"))
 
 	# Portfolio
 	portfolio_manager.portfolio_changed.connect(_on_portfolio_changed)
@@ -1033,6 +1045,65 @@ func _effective_axis_lengths(basis: Basis) -> Vector3:
 	return Vector3(basis[0].length(), basis[1].length(), basis[2].length())
 
 
+## How much each axis of the FRAME this basis lives in is scaled: the lengths of
+## the basis's ROWS.
+##
+## A basis's COLUMNS are the object's own axes, which is why their lengths are
+## `get_scale()` and what the Local Scale row shows. Row lengths answer the
+## different question "how much is this frame's X scaled by". Measured on a cube
+## rotated 37 degrees with scale (2,3,4): columns (2.000, 3.000, 4.000), rows
+## (2.889, 3.000, 3.414) - the two genuinely disagree, which is the whole reason
+## the panel carries two scale rows.
+##
+## Rows are also the right choice because they make the read/write pair exactly
+## invertible: scaling row i by f multiplies that row's length by f and touches no
+## other row. See _on_inspector_world_scale_changed.
+func _row_lengths(basis: Basis) -> Vector3:
+	return Vector3(
+			Vector3(basis[0][0], basis[1][0], basis[2][0]).length(),
+			Vector3(basis[0][1], basis[1][1], basis[2][1]).length(),
+			Vector3(basis[0][2], basis[1][2], basis[2][2]).length())
+
+
+## The basis's rotation, in degrees.
+##
+## Deliberately NOT `Basis.get_euler()`. That is only defined on an ORTHONORMAL
+## basis, and this panel hands it bases carrying non-uniform scale all the time.
+## Measured: a rotation of (20, 37, -11) with scale (2, 3, 4) came back as
+## **(90.00, 35.52, 0.00)** - a different orientation, not a rounding difference.
+## `ShearWarning` disclosed shear but nothing disclosed this, so the panel was
+## reporting a rotation the user never set, and worse, writing one back carried
+## the other two axes' drift into the result.
+##
+## `orthonormalized()` strips scale and leaves R exactly for a clean R*S basis.
+## For a SHEARED basis it yields the nearest orthonormal frame, which is an
+## approximation - the same disclosure ShearWarning already makes.
+func _read_rotation_degrees(basis: Basis) -> Vector3:
+	# Componentwise rather than `rad_to_deg(v)`: Godot 4.7's rad_to_deg takes a
+	# float, not a Vector3.
+	var e := basis.orthonormalized().get_euler()
+	return Vector3(rad_to_deg(e.x), rad_to_deg(e.y), rad_to_deg(e.z))
+
+
+## R*S in the true TRS order, so it decomposes cleanly. Order matters:
+## `Basis.from_scale(s)` PRE-multiplies, so the scale must go on the right.
+func _basis_from_rotation_and_scale(rot_deg: Vector3, axis_lengths: Vector3) -> Basis:
+	return Basis.from_euler(Vector3(
+			deg_to_rad(rot_deg.x), deg_to_rad(rot_deg.y), deg_to_rad(rot_deg.z))) \
+			* Basis.from_scale(axis_lengths)
+
+
+## Writes a Vector3 into the three SpinBoxes named <prefix>X / Y / Z.
+##
+## `set_value_no_signal` because these boxes' `value_changed` signal is what calls
+## the handlers that refresh the panel - writing the value normally would recurse.
+func _set_axis_triplet(prefix: String, v: Vector3) -> void:
+	for axis in ["x", "y", "z"]:
+		var box := get_node_or_null("%" + prefix + axis.to_upper()) as SpinBox
+		if box:
+			box.set_value_no_signal(v[axis])
+
+
 ## True when the basis cannot be written as rotation * scale, i.e. it carries
 ## shear. "The three columns are not mutually orthogonal" is the direct test and
 ## needs no quaternion round-trip to compare matrices.
@@ -1053,9 +1124,12 @@ func _is_sheared(basis: Basis) -> bool:
 func _update_inspector(node: Node3D):
 	if not node:
 		%NodeName.text = ""
-		%PosX.set_value_no_signal(0); %PosY.set_value_no_signal(0); %PosZ.set_value_no_signal(0)
-		%RotX.set_value_no_signal(0); %RotY.set_value_no_signal(0); %RotZ.set_value_no_signal(0)
-		%ScaleX.set_value_no_signal(1); %ScaleY.set_value_no_signal(1); %ScaleZ.set_value_no_signal(1)
+		_set_axis_triplet("Pos", Vector3.ZERO)
+		_set_axis_triplet("Rot", Vector3.ZERO)
+		_set_axis_triplet("Scale", Vector3.ONE)
+		_set_axis_triplet("WPos", Vector3.ZERO)
+		_set_axis_triplet("WRot", Vector3.ZERO)
+		_set_axis_triplet("WScale", Vector3.ONE)
 		%ColorSwatch.color = Color.WHITE
 		if _base_color_wheel:
 			_base_color_wheel.set_color(Color.WHITE)
@@ -1064,24 +1138,26 @@ func _update_inspector(node: Node3D):
 		%ShearWarning.visible = false
 		return
 	%NodeName.text = HierarchyManager.display_of(node)
-	%PosX.set_value_no_signal(node.position.x)
-	%PosY.set_value_no_signal(node.position.y)
-	%PosZ.set_value_no_signal(node.position.z)
-	%RotX.set_value_no_signal(node.rotation_degrees.x)
-	%RotY.set_value_no_signal(node.rotation_degrees.y)
-	%RotZ.set_value_no_signal(node.rotation_degrees.z)
+	var gt := node.global_transform
+	# ── Local set: the object's own frame ──
+	_set_axis_triplet("Pos", node.position)
+	_set_axis_triplet("Rot", _read_rotation_degrees(node.basis))
 	# Same numbers `node.scale` would give (measured — see the helper), but read
 	# through the same helper the write path uses, so the panel cannot report one
 	# quantity and apply another.
-	var _axis_lengths := _effective_axis_lengths(node.basis)
-	%ScaleX.set_value_no_signal(_axis_lengths.x)
-	%ScaleY.set_value_no_signal(_axis_lengths.y)
-	%ScaleZ.set_value_no_signal(_axis_lengths.z)
-	# `node.rotation_degrees` above runs get_euler() on whatever the basis is, and
-	# on a sheared basis that is not the rotation the user set - measured 11.3
-	# degrees of drift after a Global X scale at 45 degrees of yaw. The fields are
-	# left editable on purpose; this just makes the approximation visible, because
-	# writing one back flattens the shear to R*S (see _on_inspector_rot_changed).
+	_set_axis_triplet("Scale", _effective_axis_lengths(node.basis))
+	# ── World set: the same three quantities in world space ──
+	# Position and rotation come off the global transform. Scale is the ROW
+	# lengths, not the columns the Local row shows: columns are the object's own
+	# axes, rows are this frame's axes. See _row_lengths.
+	_set_axis_triplet("WPos", gt.origin)
+	_set_axis_triplet("WRot", _read_rotation_degrees(gt.basis))
+	_set_axis_triplet("WScale", _row_lengths(gt.basis))
+	# Both rotation rows run _read_rotation_degrees, which is exact for a clean
+	# R*S basis and approximate for a sheared one - the same class of
+	# approximation the warning below discloses. Writing a rotation back still
+	# flattens the shear to R*S (see _on_inspector_rot_changed); the fields stay
+	# editable on purpose.
 	%ShearWarning.visible = _is_sheared(node.basis)
 
 	var mat := material_manager.read_from(node as MeshInstance3D)
@@ -1490,10 +1566,46 @@ func _on_inspector_name_changed(new_name: String):
 			_rebuild_hierarchy_request()
 
 
+## The one place an inspector edit becomes an undoable command.
+##
+## All twelve rows - six Local, six World - funnel through here, so undo and redo
+## behave identically whichever set was edited and whichever frame the edit was
+## expressed in. The command stores the whole Transform3D verbatim (the 5h fix),
+## so undo restores the exact basis rather than an R*S approximation of it.
+##
+## `after` is a LOCAL-space transform. `before` is read here rather than passed
+## in because the caller's copy is already mutated while the node itself is not:
+## `Transform3D` is a value type, so writing to the caller's `after` has not
+## touched the scene yet.
+func _commit_inspector_change(node: Node3D, after: Transform3D) -> void:
+	var before := node.transform
+	var action := CommandFactory.transform(
+			[object_container.get_path_to(node)], [before], [after],
+			object_container, spawner, material_manager, hierarchy_manager)
+	undo_redo.execute_command(action)
+	selection_manager.reselect_from_ids(action.get_last_created_ids())
+	# Repopulate BOTH sets. The world rows are derived from the very transform that
+	# just changed, so leaving them alone would show pre-edit numbers next to
+	# post-edit ones - the specific way a two-set panel goes wrong.
+	var node_after := selection_manager.get_selected() as Node3D
+	if node_after:
+		_update_inspector(node_after)
+		_update_bottom_bar(node_after)
+
+
+## Maps a world-space point into `node`'s parent space, i.e. the inverse of the
+## parent's global transform. Identity when there is no 3D parent, which is the
+## only case in which that is the correct answer.
+func _parent_global_inverse(node: Node3D) -> Transform3D:
+	var parent := node.get_parent_node_3d()
+	if parent == null:
+		return Transform3D.IDENTITY
+	return parent.global_transform.affine_inverse()
+
+
 func _on_inspector_pos_changed(val: float, axis: String):
 	var sel := selection_manager.get_selected()
 	if not sel: return
-	var before := sel.transform
 	var after := sel.transform
 	var p: Vector3 = sel.position
 	match axis:
@@ -1501,64 +1613,94 @@ func _on_inspector_pos_changed(val: float, axis: String):
 		"y": p.y = val
 		"z": p.z = val
 	after.origin = p
-	var action := CommandFactory.transform([object_container.get_path_to(sel)], [before], [after], object_container, spawner, material_manager, hierarchy_manager)
-	undo_redo.execute_command(action)
-	selection_manager.reselect_from_ids(action.get_last_created_ids())
-	_update_bottom_bar(selection_manager.get_selected())
+	_commit_inspector_change(sel, after)
 
 
+## World position. Undo still records the LOCAL transform, which is correct: the
+## parent is static, so the before/after locals fully determine the world change.
+func _on_inspector_world_pos_changed(val: float, axis: String):
+	var sel := selection_manager.get_selected()
+	if not sel: return
+	var after := sel.transform
+	var p: Vector3 = sel.global_position
+	match axis:
+		"x": p.x = val
+		"y": p.y = val
+		"z": p.z = val
+	after.origin = _parent_global_inverse(sel) * p
+	_commit_inspector_change(sel, after)
+
+
+## Local rotation.
+##
+## Scale is baked into a Transform3D's basis, so rebuilding from euler angles
+## alone silently discards it: rotating a scaled object reset it to unit size.
+## Rebuild the rotation, then re-apply the axis lengths on the right.
+##
+## The base rotation comes from `_read_rotation_degrees`, NOT
+## `sel.rotation_degrees`. Using the latter would carry the read-side get_euler()
+## error into the write: editing X would bake the drift measured on Y and Z into
+## the result. `_effective_axis_lengths` is read the same way the Scale row shows
+## it, so the panel reports and applies one quantity.
+##
+## This still flattens a sheared basis to R*S. That is disclosed by ShearWarning
+## rather than prevented, and the fields are editable on purpose.
 func _on_inspector_rot_changed(val: float, axis: String):
 	var sel := selection_manager.get_selected()
 	if not sel: return
-	var before := sel.transform
 	var after := sel.transform
-	var r: Vector3 = sel.rotation_degrees
+	var r := _read_rotation_degrees(sel.basis)
 	match axis:
 		"x": r.x = val
 		"y": r.y = val
 		"z": r.z = val
-	# Scale is baked into a Transform3D's basis, so rebuilding the basis from
-	# euler angles alone silently discards it: rotating a scaled object in the
-	# inspector reset it to unit size. Rebuild the rotation, then re-apply the
-	# object's scale on top.
-	#
-	# The multiply order matters. `Basis.scaled(s)` PRE-multiplies, so
-	# `Basis.from_euler(r).scaled(s)` is S*R. That only reads back correctly
-	# while the incoming basis is a bare rotation; when it already carries
-	# scale, S*R mixes the row lengths and a (2,3,4) scale under yaw came back
-	# as (3.16,3.0,3.16). `R*S` is the true TRS order and decomposes cleanly.
-	#
-	# Read the scale from `sel.scale` - let Node3D own that decomposition rather
-	# than re-deriving it from the basis. (`basis.get_scale()` also happens to be
-	# exact for R*S; the earlier comment here claimed otherwise and was wrong.)
-	var s: Vector3 = sel.scale
-	after.basis = Basis.from_euler(Vector3(deg_to_rad(r.x), deg_to_rad(r.y), deg_to_rad(r.z))) * Basis.from_scale(s)
-	var action := CommandFactory.transform([object_container.get_path_to(sel)], [before], [after], object_container, spawner, material_manager, hierarchy_manager)
-	undo_redo.execute_command(action)
-	selection_manager.reselect_from_ids(action.get_last_created_ids())
+	after.basis = _basis_from_rotation_and_scale(r, _effective_axis_lengths(sel.basis))
+	_commit_inspector_change(sel, after)
 
 
-## Inspector scale fields act along the object's OWN axes, always.
+## World rotation. Composed in world space and then brought back into local space,
+## so the row means what it says even if an ancestor is ever rotated. With the
+## shipped hierarchy that mapping is the identity, but a parent with a rotation
+## would otherwise make this row silently wrong.
 ##
-## This is deliberate and independent of the gizmo's Global/Local toggle: the
-## RotX/Y/Z fields beside them are local Euler angles, so ScaleX/Y/Z being local
-## axis lengths is what makes the panel coherent. Blender behaves the same way.
+## Keeps the object's world row lengths, and flattens shear exactly as the Local
+## rotation row does - same trade-off, same disclosure.
+func _on_inspector_world_rot_changed(val: float, axis: String):
+	var sel := selection_manager.get_selected()
+	if not sel: return
+	var world := sel.global_transform
+	var r := _read_rotation_degrees(world.basis)
+	match axis:
+		"x": r.x = val
+		"y": r.y = val
+		"z": r.z = val
+	var parent_inv := _parent_global_inverse(sel)
+	world.basis = parent_inv.basis \
+			* _basis_from_rotation_and_scale(r, _row_lengths(world.basis)) \
+			* parent_inv.basis.inverse()
+	_commit_inspector_change(sel, parent_inv * world)
+
+
+## Local scale - acts along the object's OWN axes.
+##
+## Independent of the gizmo's Global/Local toggle: the RotX/Y/Z fields beside
+## these are local angles, so ScaleX/Y/Z being local axis lengths is what makes
+## each SET coherent. The World set carries its own scale row for world axes.
+##
+## Rebuild from the live basis by a RATIO rather than from `sel.scale`.
+## `Basis.scaled(s)` is `S * basis` (it pre-multiplies), so against a basis that
+## already carries scale the row lengths MULTIPLY instead of being replaced:
+## dragging X from 2 to 5 on a (2,3,4) cube produced (10,9,16), corrupting the
+## untouched axes too, and each repeat squared them.
+##
+## The old fix orthonormalised first, which flattened a sheared basis back to
+## R*S — so a Global-scaled object lost its shear the moment the panel was
+## touched. Right-multiplying by the ratio scales one local axis and leaves
+## everything else, shear included, untouched.
 func _on_inspector_scale_changed(val: float, axis: String):
 	var sel := selection_manager.get_selected()
 	if not sel: return
-	var before := sel.transform
 	var after := sel.transform
-	# Rebuild from the live basis by a RATIO rather than from `sel.scale`.
-	# `Basis.scaled(s)` is `S * basis` (it pre-multiplies), so against a basis
-	# that already carries scale the row lengths MULTIPLY instead of being
-	# replaced: dragging X from 2 to 5 on a (2,3,4) cube produced (10,9,16),
-	# corrupting the untouched axes too, and each repeat squared them.
-	#
-	# The old fix orthonormalised first, which flattened a sheared basis back to
-	# R*S — so a Global-scaled object lost its shear the moment the panel was
-	# touched. Right-multiplying by the ratio scales one local axis and leaves
-	# everything else, shear included, untouched. For a clean R*S basis this is
-	# bit-identical to `rot_only * Basis.from_scale(s)`.
 	var basis := after.basis
 	var current := _effective_axis_lengths(basis)
 	var target := current
@@ -1566,14 +1708,45 @@ func _on_inspector_scale_changed(val: float, axis: String):
 		"x": target.x = val
 		"y": target.y = val
 		"z": target.z = val
-	var applied := Vector3(
+	after.basis = basis * Basis.from_scale(_ratio_to_reach(target, current))
+	_commit_inspector_change(sel, after)
+
+
+## World scale - acts along the axes of the frame the object is in.
+##
+## PRE-multiplies where the Local row right-multiplies, and that is the whole point
+## rather than a copy-paste difference: scaling row i by f_i scales THIS frame's
+## axis i, which is exactly what `_row_lengths` displays and exactly what the
+## Global gizmo scale handle does. Because row i's length scales by f_i and no
+## other row moves, the read/write pair is exactly invertible.
+##
+## Pre-multiplying an orthogonal basis by a diagonal keeps its columns orthogonal,
+## so this does not invent shear. Against a SHEARED basis it changes the skew
+## rather than removing it, which is the intended world-axis behaviour and is why
+## a world-axis scale is a legitimate way to shear an object in the first place.
+func _on_inspector_world_scale_changed(val: float, axis: String):
+	var sel := selection_manager.get_selected()
+	if not sel: return
+	var after := sel.transform
+	var basis := after.basis
+	var current := _row_lengths(basis)
+	var target := current
+	match axis:
+		"x": target.x = val
+		"y": target.y = val
+		"z": target.z = val
+	after.basis = Basis.from_scale(_ratio_to_reach(target, current)) * basis
+	_commit_inspector_change(sel, after)
+
+
+## Per-axis factor taking each component of `current` to `target`, with a floor so
+## a degenerate zero-length axis cannot divide by zero. Both scale paths use it, so
+## the Local and World rows cannot drift apart in how they handle that edge.
+func _ratio_to_reach(target: Vector3, current: Vector3) -> Vector3:
+	return Vector3(
 			target.x / maxf(current.x, 0.0001),
 			target.y / maxf(current.y, 0.0001),
 			target.z / maxf(current.z, 0.0001))
-	after.basis = basis * Basis.from_scale(applied)
-	var action := CommandFactory.transform([object_container.get_path_to(sel)], [before], [after], object_container, spawner, material_manager, hierarchy_manager)
-	undo_redo.execute_command(action)
-	selection_manager.reselect_from_ids(action.get_last_created_ids())
 
 
 # ── Save / Load ────────────────────────────────────────────────

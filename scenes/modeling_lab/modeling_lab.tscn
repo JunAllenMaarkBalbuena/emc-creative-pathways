@@ -377,6 +377,13 @@ unique_name_in_owner = true
 layout_mode = 2
 placeholder_text = "Selected object name"
 
+[node name="LocalHeader" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113001]
+layout_mode = 2
+text = "Local - the object's own axes"
+
+[node name="LocalHeaderSpacer" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113002]
+layout_mode = 2
+
 [node name="PosLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=415123395]
 layout_mode = 2
 text = "Position:"
@@ -430,15 +437,6 @@ min_value = -360.0
 max_value = 360.0
 suffix = "°"
 
-[node name="ShearWarning" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900112233]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
-theme_override_font_sizes/font_size = 11
-text = "Sheared - rotation is approximate here; editing it removes the skew."
-autowrap_mode = 3
-
 [node name="ScaleLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=1129608229]
 layout_mode = 2
 text = "Scale:"
@@ -461,6 +459,106 @@ step = 0.01
 value = 1.0
 
 [node name="ScaleZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/ScaleContainer" unique_id=553893658]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.01
+step = 0.01
+value = 1.0
+
+[node name="ShearWarning" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900112233]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
+theme_override_font_sizes/font_size = 11
+text = "Sheared - rotation is approximate here; editing it removes the skew."
+autowrap_mode = 3
+
+[node name="ShearSpacer" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113010]
+layout_mode = 2
+
+[node name="WorldHeader" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113011]
+layout_mode = 2
+text = "World - world axes"
+
+[node name="WorldHeaderSpacer" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113012]
+layout_mode = 2
+
+[node name="WPosLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113013]
+layout_mode = 2
+text = "Position:"
+
+[node name="WPosContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113014]
+layout_mode = 2
+
+[node name="WPosX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WPosContainer" unique_id=9900113015]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -100.0
+step = 0.01
+
+[node name="WPosY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WPosContainer" unique_id=9900113016]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -100.0
+step = 0.01
+
+[node name="WPosZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WPosContainer" unique_id=9900113017]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -100.0
+step = 0.01
+
+[node name="WRotLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113018]
+layout_mode = 2
+text = "Rotation:"
+
+[node name="WRotContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113019]
+layout_mode = 2
+
+[node name="WRotX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WRotContainer" unique_id=9900113020]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+suffix = "°"
+
+[node name="WRotY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WRotContainer" unique_id=9900113021]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+suffix = "°"
+
+[node name="WRotZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WRotContainer" unique_id=9900113022]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -360.0
+max_value = 360.0
+suffix = "°"
+
+[node name="WScaleLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113023]
+layout_mode = 2
+text = "Scale:"
+
+[node name="WScaleContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113024]
+layout_mode = 2
+
+[node name="WScaleX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WScaleContainer" unique_id=9900113025]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.01
+step = 0.01
+value = 1.0
+
+[node name="WScaleY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WScaleContainer" unique_id=9900113026]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.01
+step = 0.01
+value = 1.0
+
+[node name="WScaleZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WScaleContainer" unique_id=9900113027]
 unique_name_in_owner = true
 layout_mode = 2
 min_value = 0.01
