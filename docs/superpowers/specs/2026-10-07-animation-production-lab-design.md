@@ -206,7 +206,7 @@ evaluated live so the UI can show a progress checklist:
 | Category | Measure |
 |---|---|
 | Story & Sequence | storyboard order correct; begin/middle/end present |
-| Scene Staging | required objects placed; character in front of background; depth grouping ≥ 2 layers |
+| Scene Staging | required categories all present (null textures reduce the score); character before background, prop near the action (stage gate) |
 | Asset Usage | required categories all present; no null textures |
 | Camera Composition | position/distance within framing bounds at final keyframe |
 | Lighting | intensity ≥ floor; key light exists |
