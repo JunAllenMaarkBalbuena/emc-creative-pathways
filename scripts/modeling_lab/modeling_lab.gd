@@ -503,6 +503,9 @@ func gizmo_orientation() -> int:
 func set_gizmo_orientation(orientation: int) -> void:
 	_orientation = clampi(orientation, Orientation.GLOBAL, Orientation.LOCAL)
 	_apply_gizmo_orientation()
+	# Synced from here rather than by each caller, so the toolbar checkbox and the
+	# bottom-bar button cannot drift from each other or from the real frame.
+	_sync_orientation_toggle()
 
 
 func toggle_gizmo_orientation() -> void:
@@ -544,14 +547,31 @@ func _apply_gizmo_orientation() -> void:
 ## button would show the opposite state from what the gizmo is actually doing.
 ## `set_value_no_signal` because the button's own signal is what calls back into
 ## `set_gizmo_orientation` — setting the value normally would recurse.
+## The one place the orientation controls are written.
+##
+## There are two of them and they are the SAME setting, not two: a Local checkbox
+## in the toolbar and a World/Object button in the bottom bar. Both are written
+## from `_orientation` here, and `set_gizmo_orientation` calls this, so whichever
+## one the user pressed, the state and both labels follow from a single value.
+##
+## `set_pressed_no_signal` because the checkbox's own signal is what calls back
+## into `set_gizmo_orientation` — writing the value normally would recurse.
 func _sync_orientation_toggle() -> void:
+	var local := _orientation == Orientation.LOCAL
 	var button := get_node_or_null("%LocalToggle") as BaseButton
 	if button:
-		button.set_pressed_no_signal(_orientation == Orientation.LOCAL)
+		button.set_pressed_no_signal(local)
+	# Named "Object"/"World" rather than "Local"/"Global": the bottom bar sits
+	# beside the transform readout, where the question is "whose axes am I
+	# dragging?" rather than Blender's vocabulary. The toolbar checkbox keeps
+	# "Local" because that is the term its tooltip explains.
+	var mode := get_node_or_null("%ModeBtn") as Button
+	if mode:
+		mode.text = "Object" if local else "World"
 
 
-## The toolbar's Local toggle. Unchecked is Global, which is the default and the
-## honest frame — checked is Local, where the handles follow the object's own axes.
+## The toolbar's Local toggle. Unchecked is Global (handles along world axes);
+## checked is Local, where the handles follow the object's own axes.
 func _on_local_toggled(pressed: bool) -> void:
 	set_gizmo_orientation(
 			Orientation.LOCAL if pressed else Orientation.GLOBAL)
@@ -908,9 +928,10 @@ func _on_viewport_gui_input(event: InputEvent):
 			KEY_DELETE: _on_delete()
 			# Global/Local gizmo frame. X is unclaimed: the only KEY_G in the tree
 			# is the digital-art lab's fill tool, and no InputMap action takes X.
+			# No explicit sync: `toggle_gizmo_orientation` reaches
+			# `set_gizmo_orientation`, which writes both controls.
 			KEY_X:
 				toggle_gizmo_orientation()
-				_sync_orientation_toggle()
 			KEY_F: _focus_selected()
 			KEY_Z:
 				if event.ctrl_pressed:
@@ -1640,8 +1661,15 @@ func _rebuild_portfolio_browser():
 
 # ── Mode ────────────────────────────────────────────────────────
 
+## The bottom bar's World/Object button — the SAME setting as the toolbar's Local
+## checkbox, not a second one.
+##
+## It used to do nothing but rewrite its own label, which is worse than having no
+## button at all: it sits directly beside the transform readout, reads as the
+## frame control, and pressing it changed nothing except the text. A control that
+## looks live and is not teaches the user that this app is broken.
 func _on_mode_toggle():
-	%ModeBtn.text = "Local" if %ModeBtn.text == "World" else "World"
+	toggle_gizmo_orientation()
 
 
 func _update_zoom_display():

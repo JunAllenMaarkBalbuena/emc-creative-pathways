@@ -65,7 +65,80 @@ func _ready() -> void:
 	await _test_inspector_reports_effective_lengths()
 	await _test_inspector_edit_preserves_shear()
 	await _test_local_is_the_default()
+	await _test_both_frame_controls_are_wired_and_agree()
 	_finish()
+
+
+## The frame choice must be reachable from BOTH controls, and they must be the
+## same setting rather than two.
+##
+## This is here because the bottom-bar `%ModeBtn` was fully wired — `%ModeBtn.
+## pressed.connect(_on_mode_toggle)` at :279 — and its handler did nothing except
+## rewrite its own label. So the button was live, sat directly beside the
+## transform readout, read as the frame control, and pressing it changed nothing
+## the user could observe. A control that looks live and is not is worse than a
+## missing one, and it is why "is there a way to transform by object or by world?"
+## had to be asked.
+##
+## Emits the real signal rather than calling the handler directly, so the
+## connection itself is under test. If the wiring were dropped, the emit becomes
+## a no-op and this reports a legible FAIL instead of silently passing.
+func _test_both_frame_controls_are_wired_and_agree() -> void:
+	var mode := _lab.get_node_or_null("%ModeBtn") as Button
+	var checkbox := _lab.get_node_or_null("%LocalToggle") as BaseButton
+	if mode == null or checkbox == null:
+		_fail += 1
+		print("FAIL: the frame controls are missing (ModeBtn %s, LocalToggle %s)"
+			% [mode, checkbox])
+		return
+
+	var before: int = _lab.gizmo_orientation()
+	var label_before: String = mode.text
+
+	# Drive the button the way a click does.
+	mode.emit_signal("pressed")
+	var after: int = _lab.gizmo_orientation()
+
+	if after == before:
+		_fail += 1
+		print("FAIL: pressing the bottom-bar frame button left the frame at %d. "
+			% after + "It must be wired to the same state as the toolbar checkbox, "
+			+ "not just relabel itself.")
+		return
+	if after != 1 - before:
+		_fail += 1
+		print("FAIL: the frame button set the frame to %d, expected the other one "
+			% after + "of %d" % before)
+		return
+
+	# Both controls must now agree with the state, or the user is shown two
+	# different answers to the same question.
+	var want_local: bool = after == 1
+	if checkbox.button_pressed != want_local:
+		_fail += 1
+		print("FAIL: the toolbar checkbox reads %s but the frame is %d - the two "
+			% [checkbox.button_pressed, after] + "controls have drifted apart")
+		return
+	var want_label: String = "Object" if want_local else "World"
+	if mode.text != want_label:
+		_fail += 1
+		print("FAIL: the frame button reads %r, expected %r for frame %d"
+			% [mode.text, want_label, after])
+		return
+	if label_before == mode.text:
+		_fail += 1
+		print("FAIL: the frame button did not even relabel itself (%r)" % mode.text)
+		return
+
+	# And going back through the OTHER control must land on the same value, which
+	# is what proves there is one setting and not two.
+	_lab._on_local_toggled(before == 1)
+	if _lab.gizmo_orientation() != before:
+		_fail += 1
+		print("FAIL: returning via the toolbar checkbox gave frame %d, expected %d"
+			% [_lab.gizmo_orientation(), before])
+		return
+	print("      both frame controls drive the one setting and always agree")
 
 ## The panel's Scale fields must report the object's real axis lengths.
 ##
@@ -457,8 +530,14 @@ func _arity(obj: Object, method: String) -> int:
 
 func _finish() -> void:
 	if _fail == 0:
+		# This string used to end "global is the default" while the assertion
+		# above it reported LOCAL. A summary that contradicts its own results is
+		# worse than no summary - it is the one line a reader trusts without
+		# checking - so it names the default rather than restating a claim that
+		# can drift silently.
 		print("PASS: global scale is world-axis with shear, local scale is local, "
-			+ "shear survives undo, global is the default")
+			+ "shear survives undo, the default frame is LOCAL, and both frame "
+			+ "controls drive the one setting")
 	get_tree().quit(1 if _fail else 0)
 
 func _on_watchdog() -> void:
