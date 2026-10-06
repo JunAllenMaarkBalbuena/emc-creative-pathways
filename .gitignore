@@ -37,3 +37,4 @@
 # any of them is imported rather than run directly).
 __pycache__/
 *.pyc
+.superpowers/
