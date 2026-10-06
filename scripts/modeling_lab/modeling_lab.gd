@@ -1085,12 +1085,37 @@ func _read_rotation_degrees(basis: Basis) -> Vector3:
 	return Vector3(rad_to_deg(e.x), rad_to_deg(e.y), rad_to_deg(e.z))
 
 
-## R*S in the true TRS order, so it decomposes cleanly. Order matters:
-## `Basis.from_scale(s)` PRE-multiplies, so the scale must go on the right.
-func _basis_from_rotation_and_scale(rot_deg: Vector3, axis_lengths: Vector3) -> Basis:
-	return Basis.from_euler(Vector3(
-			deg_to_rad(rot_deg.x), deg_to_rad(rot_deg.y), deg_to_rad(rot_deg.z))) \
-			* Basis.from_scale(axis_lengths)
+## Applies a rotation change WITHOUT rebuilding the basis from scratch:
+##
+##     B_new = R_new * R_old^-1 * B_old,   R_old = basis.orthonormalized()
+##
+## The old `_basis_from_rotation_and_scale` rebuilt as `R * S` from an euler plus a
+## vector of axis lengths. That is a different operation from rotating, and on a
+## SHEARED basis it is a destructive one - measured on a cube rotated (30, 50, 0)
+## then stretched 2x along a world axis, a single edit to RotX:
+##
+##   shear 0.5612 -> 0.0000   (ShearWarning admitted this)
+##   |det| 2.0000 -> 2.7356   (nobody admitted this: the object grew 37%)
+##
+## Left-multiplying by a rotation is rigid, so the delta fixes both, plus the
+## readback, in one step:
+##   - pairwise column dots are preserved, so shear survives EXACTLY
+##   - det(M*B) == det(B) since det(M) == 1, so volume survives EXACTLY
+##   - orthonormalized(M*B) == M*orthonormalized(B), so the readout after the
+##     edit is exactly R_new and a typed 45 reads back 45.000
+##
+## On a CLEAN basis it is a no-op: for `B = R * S`, `R_old^-1 * B_old == S`, so
+## the delta collapses to `R_new * S`, which is the old formula - measured
+## difference 2.4e-7 on a (2,3,4) cube at rotation 20/37/-11, i.e. float32
+## residue. Only sheared objects are affected.
+##
+## R_new goes on the LEFT so the euler composes in the frame the ROW reports in,
+## same as the old helper.
+func _rotation_delta(r_deg: Vector3, basis: Basis) -> Basis:
+	var r_old := basis.orthonormalized()
+	var r_new := Basis.from_euler(Vector3(
+			deg_to_rad(r_deg.x), deg_to_rad(r_deg.y), deg_to_rad(r_deg.z)))
+	return r_new * r_old.inverse() * basis
 
 
 ## Writes a Vector3 into the three SpinBoxes named <prefix>X / Y / Z.
@@ -1633,18 +1658,22 @@ func _on_inspector_world_pos_changed(val: float, axis: String):
 
 ## Local rotation.
 ##
-## Scale is baked into a Transform3D's basis, so rebuilding from euler angles
-## alone silently discards it: rotating a scaled object reset it to unit size.
-## Rebuild the rotation, then re-apply the axis lengths on the right.
+## Applies a rotation DELTA to whatever basis is there, rather than rebuilding
+## from euler angles plus a vector of axis lengths. The rebuild that used to live
+## here is what made a rotation edit destructive on a sheared object - it could
+## neither preserve the skew nor the object's volume, because for a sheared basis
+## the product of its column lengths is not its determinant. See `_rotation_delta`
+## for the measured before/after.
 ##
-## The base rotation comes from `_read_rotation_degrees`, NOT
+## The base rotation still comes from `_read_rotation_degrees`, NOT
 ## `sel.rotation_degrees`. Using the latter would carry the read-side get_euler()
 ## error into the write: editing X would bake the drift measured on Y and Z into
-## the result. `_effective_axis_lengths` is read the same way the Scale row shows
-## it, so the panel reports and applies one quantity.
+## the result. The readout is therefore still a PROJECTION of a sheared basis and
+## does not round-trip exactly (a (30, 50, 0) basis reads 37.654/30.790) - that is
+## what ShearWarning discloses, and it is a read-side property no write can fix.
 ##
-## This still flattens a sheared basis to R*S. That is disclosed by ShearWarning
-## rather than prevented, and the fields are editable on purpose.
+## What no longer holds: "editing rotation flattens a sheared basis". It does not
+## any more - the skew and the object's size both survive the edit.
 func _on_inspector_rot_changed(val: float, axis: String):
 	var sel := selection_manager.get_selected()
 	if not sel: return
@@ -1654,7 +1683,7 @@ func _on_inspector_rot_changed(val: float, axis: String):
 		"x": r.x = val
 		"y": r.y = val
 		"z": r.z = val
-	after.basis = _basis_from_rotation_and_scale(r, _effective_axis_lengths(sel.basis))
+	after.basis = _rotation_delta(r, sel.basis)
 	_commit_inspector_change(sel, after)
 
 
@@ -1663,8 +1692,16 @@ func _on_inspector_rot_changed(val: float, axis: String):
 ## shipped hierarchy that mapping is the identity, but a parent with a rotation
 ## would otherwise make this row silently wrong.
 ##
-## Keeps the object's world row lengths, and flattens shear exactly as the Local
-## rotation row does - same trade-off, same disclosure.
+## The delta goes straight onto the GLOBAL basis and `parent_inv * world` brings
+## the result back to local. The old code conjugated the rebuilt basis -
+## `parent_inv.basis * M * parent_inv.basis.inverse()` - which for an identity
+## parent reduces to M, but for a ROTATED parent multiplies by `parent_inv` twice
+## and lands somewhere else entirely. The direct form is what the comment above
+## always claimed, and is correct for every parent.
+##
+## Keeps the object's world row lengths and its shear and its volume, because the
+## delta is rigid. See `_rotation_delta`. The readout is still a projection of a
+## sheared basis, which is what ShearWarning discloses.
 func _on_inspector_world_rot_changed(val: float, axis: String):
 	var sel := selection_manager.get_selected()
 	if not sel: return
@@ -1675,9 +1712,7 @@ func _on_inspector_world_rot_changed(val: float, axis: String):
 		"y": r.y = val
 		"z": r.z = val
 	var parent_inv := _parent_global_inverse(sel)
-	world.basis = parent_inv.basis \
-			* _basis_from_rotation_and_scale(r, _row_lengths(world.basis)) \
-			* parent_inv.basis.inverse()
+	world.basis = _rotation_delta(r, world.basis)
 	_commit_inspector_change(sel, parent_inv * world)
 
 

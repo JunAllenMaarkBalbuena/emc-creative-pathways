@@ -505,7 +505,7 @@ visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
 theme_override_font_sizes/font_size = 11
-text = "Sheared - rotation is approximate here; editing it removes the skew."
+text = "Sheared - rotation is a projection of the skewed basis, so it reads back approximately. Editing it keeps the skew."
 autowrap_mode = 3
 
 [node name="WorldSeparator" type="HSeparator" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113047]
