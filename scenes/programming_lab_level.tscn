@@ -45,7 +45,7 @@ shape = SubResource("Shape_floor")
 [node name="Player" parent="." instance=ExtResource("4_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 
-[node name="PlayerFollowCamera" type="Node3D" parent="."]
+[node name="PlayerFollowCamera" type="Camera3D" parent="."]
 script = ExtResource("7_camera")
 transform = Transform3D(1, 0, 0, 0, 0.938, -0.345, 0, 0.345, 0.938, 0, 3, 5)
 target_node = NodePath("../Player")
