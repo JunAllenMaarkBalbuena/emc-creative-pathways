@@ -310,7 +310,7 @@ anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -373.0
+offset_left = -393.0
 offset_top = 60.0
 offset_right = -13.0
 offset_bottom = -44.0
@@ -364,108 +364,142 @@ visible = false
 layout_mode = 2
 metadata/_tab_index = 1
 
-[node name="Grid" type="GridContainer" parent="RightPanel/TabContainer/Inspector" unique_id=531170908]
+[node name="Scroll" type="ScrollContainer" parent="RightPanel/TabContainer/Inspector" unique_id=9900113040]
 layout_mode = 2
-columns = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
 
-[node name="NameLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=1342358291]
+[node name="Rows" type="VBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll" unique_id=9900113041]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NameRow" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113042]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/NameRow" unique_id=1342358291]
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 text = "Name:"
 
-[node name="NodeName" type="LineEdit" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=230144444]
+[node name="NodeName" type="LineEdit" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/NameRow" unique_id=230144444]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 placeholder_text = "Selected object name"
 
-[node name="LocalHeader" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113001]
-layout_mode = 2
-text = "Local - the object's own axes"
-
-[node name="LocalHeaderSpacer" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113002]
+[node name="LocalSeparator" type="HSeparator" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113043]
 layout_mode = 2
 
-[node name="PosLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=415123395]
+[node name="LocalHeader" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113001]
+layout_mode = 2
+text = "Local"
+
+[node name="PosRow" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113044]
+layout_mode = 2
+
+[node name="PosLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/PosRow" unique_id=415123395]
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 text = "Position:"
 
-[node name="PosContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=247989525]
+[node name="PosContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/PosRow" unique_id=247989525]
 layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="PosX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/PosContainer" unique_id=541202019]
+[node name="PosX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/PosRow/PosContainer" unique_id=541202019]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -100.0
 step = 0.01
 
-[node name="PosY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/PosContainer" unique_id=2146106461]
+[node name="PosY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/PosRow/PosContainer" unique_id=2146106461]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -100.0
 step = 0.01
 
-[node name="PosZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/PosContainer" unique_id=416290087]
+[node name="PosZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/PosRow/PosContainer" unique_id=416290087]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -100.0
 step = 0.01
 
-[node name="RotLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=696444760]
+[node name="RotRow" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113045]
+layout_mode = 2
+
+[node name="RotLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/RotRow" unique_id=696444760]
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 text = "Rotation:"
 
-[node name="RotContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=574630923]
+[node name="RotContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/RotRow" unique_id=574630923]
 layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="RotX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/RotContainer" unique_id=1756608392]
+[node name="RotX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/RotRow/RotContainer" unique_id=1756608392]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -360.0
 max_value = 360.0
 suffix = "°"
 
-[node name="RotY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/RotContainer" unique_id=305723135]
+[node name="RotY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/RotRow/RotContainer" unique_id=305723135]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -360.0
 max_value = 360.0
 suffix = "°"
 
-[node name="RotZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/RotContainer" unique_id=2106851695]
+[node name="RotZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/RotRow/RotContainer" unique_id=2106851695]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -360.0
 max_value = 360.0
 suffix = "°"
 
-[node name="ScaleLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=1129608229]
+[node name="ScaleRow" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113046]
+layout_mode = 2
+
+[node name="ScaleLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/ScaleRow" unique_id=1129608229]
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 text = "Scale:"
 
-[node name="ScaleContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=1785715629]
+[node name="ScaleContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/ScaleRow" unique_id=1785715629]
 layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="ScaleX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/ScaleContainer" unique_id=1348524792]
+[node name="ScaleX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/ScaleRow/ScaleContainer" unique_id=1348524792]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = 0.01
 step = 0.01
 value = 1.0
 
-[node name="ScaleY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/ScaleContainer" unique_id=1226793437]
+[node name="ScaleY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/ScaleRow/ScaleContainer" unique_id=1226793437]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = 0.01
 step = 0.01
 value = 1.0
 
-[node name="ScaleZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/ScaleContainer" unique_id=553893658]
+[node name="ScaleZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/ScaleRow/ScaleContainer" unique_id=553893658]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = 0.01
 step = 0.01
 value = 1.0
 
-[node name="ShearWarning" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900112233]
+[node name="ShearWarning" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900112233]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -474,93 +508,114 @@ theme_override_font_sizes/font_size = 11
 text = "Sheared - rotation is approximate here; editing it removes the skew."
 autowrap_mode = 3
 
-[node name="ShearSpacer" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113010]
+[node name="WorldSeparator" type="HSeparator" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113047]
 layout_mode = 2
 
-[node name="WorldHeader" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113011]
+[node name="WorldHeader" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113011]
 layout_mode = 2
-text = "World - world axes"
+text = "World"
 
-[node name="WorldHeaderSpacer" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113012]
+[node name="WPosRow" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113048]
 layout_mode = 2
 
-[node name="WPosLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113013]
+[node name="WPosLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WPosRow" unique_id=9900113013]
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 text = "Position:"
 
-[node name="WPosContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113014]
+[node name="WPosContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WPosRow" unique_id=9900113014]
 layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="WPosX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WPosContainer" unique_id=9900113015]
+[node name="WPosX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WPosRow/WPosContainer" unique_id=9900113015]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -100.0
 step = 0.01
 
-[node name="WPosY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WPosContainer" unique_id=9900113016]
+[node name="WPosY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WPosRow/WPosContainer" unique_id=9900113016]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -100.0
 step = 0.01
 
-[node name="WPosZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WPosContainer" unique_id=9900113017]
+[node name="WPosZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WPosRow/WPosContainer" unique_id=9900113017]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -100.0
 step = 0.01
 
-[node name="WRotLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113018]
+[node name="WRotRow" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113049]
+layout_mode = 2
+
+[node name="WRotLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WRotRow" unique_id=9900113018]
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 text = "Rotation:"
 
-[node name="WRotContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113019]
+[node name="WRotContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WRotRow" unique_id=9900113019]
 layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="WRotX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WRotContainer" unique_id=9900113020]
+[node name="WRotX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WRotRow/WRotContainer" unique_id=9900113020]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -360.0
 max_value = 360.0
 suffix = "°"
 
-[node name="WRotY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WRotContainer" unique_id=9900113021]
+[node name="WRotY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WRotRow/WRotContainer" unique_id=9900113021]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -360.0
 max_value = 360.0
 suffix = "°"
 
-[node name="WRotZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WRotContainer" unique_id=9900113022]
+[node name="WRotZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WRotRow/WRotContainer" unique_id=9900113022]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = -360.0
 max_value = 360.0
 suffix = "°"
 
-[node name="WScaleLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113023]
+[node name="WScaleRow" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113050]
+layout_mode = 2
+
+[node name="WScaleLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WScaleRow" unique_id=9900113023]
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 text = "Scale:"
 
-[node name="WScaleContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900113024]
+[node name="WScaleContainer" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WScaleRow" unique_id=9900113024]
 layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="WScaleX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WScaleContainer" unique_id=9900113025]
+[node name="WScaleX" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WScaleRow/WScaleContainer" unique_id=9900113025]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = 0.01
 step = 0.01
 value = 1.0
 
-[node name="WScaleY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WScaleContainer" unique_id=9900113026]
+[node name="WScaleY" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WScaleRow/WScaleContainer" unique_id=9900113026]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = 0.01
 step = 0.01
 value = 1.0
 
-[node name="WScaleZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Grid/WScaleContainer" unique_id=9900113027]
+[node name="WScaleZ" type="SpinBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/WScaleRow/WScaleContainer" unique_id=9900113027]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 min_value = 0.01
 step = 0.01
 value = 1.0
