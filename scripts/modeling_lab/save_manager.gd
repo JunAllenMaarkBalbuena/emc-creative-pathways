@@ -99,8 +99,15 @@ func _capture_mesh(mi: MeshInstance3D, parent_display: String) -> PrimitiveSaveD
 	pd.node_name = mi.name
 	pd.display_name = HierarchyManager.display_of(mi)
 	pd.position = mi.position
+	# `rotation_degrees` and `scale` are denormalised copies kept for readability
+	# and for the pre-`has_basis` path. On a sheared basis the `rotation_degrees`
+	# getter is meaningless (it runs get_euler() on a non-orthonormal matrix, the
+	# same 5h bug the commit path had) - which is exactly why `basis_rows` is the
+	# authority and these two are not.
 	pd.rotation_degrees = mi.rotation_degrees
 	pd.scale = mi.scale
+	pd.basis_rows = basis_to_rows(mi.basis)
+	pd.has_basis = true
 	pd.parent_name = parent_display
 	if mat:
 		pd.material_albedo = mat.albedo_color
@@ -117,8 +124,42 @@ func _capture_group(group: Node3D, parent_display: String) -> PrimitiveSaveData:
 	pd.position = group.position
 	pd.rotation_degrees = group.rotation_degrees
 	pd.scale = group.scale
+	pd.basis_rows = basis_to_rows(group.basis)
+	pd.has_basis = true
 	pd.parent_name = parent_display
 	return pd
+
+
+## Serialize a basis as 9 floats, row-major, matching Godot's own text format so
+## a hand-inspected .tres reads the same way the engine writes one.
+static func basis_to_rows(b: Basis) -> PackedFloat32Array:
+	var rows := PackedFloat32Array()
+	rows.resize(9)
+	var i := 0
+	for r in 3:
+		for c in 3:
+			rows[i] = b[r][c]
+			i += 1
+	return rows
+
+
+## The basis to restore. Prefers the exact stored one; falls back to
+## rotation_degrees * scale for saves written before the basis field existed.
+## Requires all 9 floats - a short or long array is a corrupt file, and silently
+## reading half a basis would be worse than falling back to the legacy path.
+static func basis_of(pd: PrimitiveSaveData) -> Basis:
+	if pd.has_basis and pd.basis_rows.size() == 9:
+		var b := Basis.IDENTITY
+		var i := 0
+		for r in 3:
+			for c in 3:
+				b[r][c] = pd.basis_rows[i]
+				i += 1
+		return b
+	return Basis.from_euler(Vector3(
+			deg_to_rad(pd.rotation_degrees.x),
+			deg_to_rad(pd.rotation_degrees.y),
+			deg_to_rad(pd.rotation_degrees.z))) * Basis.from_scale(pd.scale)
 
 
 func _has_mesh_descendant(node: Node) -> bool:
@@ -143,18 +184,14 @@ func restore_model(object_container: Node3D, data: ModelData, spawner: Primitive
 		if pd.node_type == PrimitiveSaveData.TYPE_GROUP:
 			var group := Node3D.new()
 			HierarchyManager.set_blender_name(group, _display_or(pd))
-			group.position = pd.position
-			group.rotation_degrees = pd.rotation_degrees
-			group.scale = pd.scale
+			group.transform = Transform3D(basis_of(pd), pd.position)
 			parent.add_child(group)
 			group.owner = object_container.owner if object_container.owner else object_container
 			name_map[_display_or(pd)] = group
 		else:
 			var mi := spawner.spawn(pd.type, parent)
 			HierarchyManager.set_blender_name(mi, _display_or(pd))
-			mi.position = pd.position
-			mi.rotation_degrees = pd.rotation_degrees
-			mi.scale = pd.scale
+			mi.transform = Transform3D(basis_of(pd), pd.position)
 			var mat := StandardMaterial3D.new()
 			mat.albedo_color = pd.material_albedo
 			mat.transparency = StandardMaterial3D.TRANSPARENCY_ALPHA \

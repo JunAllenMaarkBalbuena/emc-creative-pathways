@@ -430,6 +430,15 @@ min_value = -360.0
 max_value = 360.0
 suffix = "°"
 
+[node name="ShearWarning" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=9900112233]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
+theme_override_font_sizes/font_size = 11
+text = "Sheared - rotation is approximate here; editing it removes the skew."
+autowrap_mode = 3
+
 [node name="ScaleLabel" type="Label" parent="RightPanel/TabContainer/Inspector/Grid" unique_id=1129608229]
 layout_mode = 2
 text = "Scale:"

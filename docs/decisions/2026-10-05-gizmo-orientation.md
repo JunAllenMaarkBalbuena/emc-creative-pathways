@@ -8,13 +8,49 @@ object-relative gizmo the way Blender has one.
 
 | Decision | Choice | Why | Revisit when |
 |---|---|---|---|
-| Default orientation | **Global** (world) | The handles are *already* drawn world-aligned and move/rotate already act in world space. Making Global the default makes the drawing honest; Local as the default would be the surprising one, since it would mean the drawing lies in the other direction | Users ask for Blender-identical defaults |
-| Global scale of a rotated object | **Keep true shear** (`basis = S*R`), written **directly** to `.basis` | Geometrically correct, matches Blender, matches the behaviour the report asked for. Clamping to an un-sheared basis invents a third behaviour nobody requested | The inspector's `(1.58, 1, 1.58)` readout proves harmful in play |
+| Default orientation | **Local** (object-relative) — **changed 2026-10-06, was Global** | Scale must not shear: the object stays a clean box and only its dimensions change. Global skews a rotated object into a parallelogram, and that skew is not wanted. See the reversal note below | A third mode appears that scales to the world-axis size *without* shearing |
+| Global scale of a rotated object | **Keep true shear** (`basis = S*R`), written **directly** to `.basis` — implementation unchanged, now behind the toggle | Geometrically correct and matches Blender, so the mode stays available and honest. What changed is that it is no longer the default | — |
 | Inspector readout under shear | Show the **effective axis lengths**, not `node.scale` | `node.scale` cannot express a sheared basis, so it reports a decomposition. Showing it teaches a wrong number | — |
 | Multi-select "Local" reference | **First-selected object's** rotation | Blender uses the active object. Averaging rotations across a selection yields an axis matching no object, which feels broken | Selection gains an explicit "active" concept distinct from order |
 | Which tools the toggle affects | **All three** — move, rotate, scale | A toggle that works on two of three tools is more confusing than none: set Local, drag move, silently get world behaviour | — |
 | Fallback if shear misbehaves | Ship **Local as default**, keep Global behind the toggle | One flag, one branch. The risky path stays reachable but stops being load-bearing, so nothing needs reverting | — |
 
+## The default reversal, 2026-10-06
+
+The fallback row was taken up, not merely kept in reserve. Global is still
+implemented and still reachable in one click; it is no longer what ships as the
+default.
+
+**Why.** Global is mathematically exact and Blender's own default, and that is
+not in dispute — measured, dragging the world-X handle by 1.5 on a cube yawed 45°
+takes the world-X extent from 1.414 to exactly 2.121. The problem is the price of
+that exactness: the same drag turns the front face into a parallelogram tilted
+11.3°, and a sheared box is not a modelling-tool behaviour anyone asked for. A
+third report, after the maths had been verified against Blender, asked for scale
+that changes the object's **dimensions without skewing it**. Local is that.
+
+**What the reversal costs, stated plainly.** Local is not "Global without the
+shear". On the same cube and the same 1.5 drag, world-X extent goes 1.414 ->
+**1.768**, and world-Z extent goes 1.414 -> **1.768** as well — because the
+stretch lands on the object's own axis, which runs diagonally through world space.
+So under Local **no world axis is scaled by the factor you typed**.
+
+| | world-X extent | world-Z extent | front face | sheared |
+|---|---|---|---|---|
+| before | 1.414 | 1.414 | 1x1, square | no |
+| Global (toggle off) | **2.121** | 1.414 | 1.275x1, tilted 11.3 deg | **yes** |
+| **Local (toggle on, default)** | 1.768 | 1.768 | 1x1, square | **no** |
+
+There is a third possibility that is neither: keep the box rectangular *and* have
+the world-X span grow by exactly the factor — world-X 1.414 -> 2.121 with no
+skew. It does not exist, it is not one line, and it was not requested, so it is
+not built. If the 1.768 above is the wrong number, that mode is what is being
+asked for.
+
+**The symmetry of the argument.** The original case for Global was "the drawing
+lies; make the drawing honest". A Local default inverts that lie — the handle you
+grab is not the one that moves — but it is a far smaller lie than silently
+skewing the geometry underneath the user. That trade is what settled it.
 ## The finding that reframed the request
 
 This was **not** "add a second mode". It is a **mismatch between the drawing and
@@ -66,6 +102,9 @@ contained change rather than a new risk.
 - **The toggle's UI placement and keyboard shortcut** — assumed a button in the
   existing gizmo toolbar plus `X`-style double-press if an input action already
   exists; *assumed*, not confirmed. Revisit if the toolbar has no room.
+- **A third scale mode: rectangular and sized to the world axis.** The one thing
+  neither Global nor Local does. Not built — not asked for — but it is the only
+  remaining candidate if Local's world-axis numbers feel wrong.
 - **Hardware verification of scale feel** — *assumed* the maths suffices. Direction
   and rate of a scale drag cannot be judged headlessly; a human must drag it.
 
@@ -75,3 +114,10 @@ Whether Global-with-shear is *pleasant*. The maths is measured; the feel is not,
 and no headless test can decide it. If shear proves to make the inspector or
 save/load behave badly, the fallback row above is the intended exit and it is
 deliberately cheap.
+
+**That exit was taken on 2026-10-06** — Local now ships as the default. See the
+reversal note above for what that costs and what it does not answer.
+
+Scale feel is still unmeasured in *either* mode. No headless test can say whether
+a 1.5x drag reads as "half again as big" to a human hand. The toolbar toggle
+exists precisely so both modes can be compared on one object in two clicks.

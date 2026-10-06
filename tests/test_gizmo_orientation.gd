@@ -64,7 +64,7 @@ func _ready() -> void:
 	await _test_shear_survives_undo()
 	await _test_inspector_reports_effective_lengths()
 	await _test_inspector_edit_preserves_shear()
-	await _test_global_is_the_default()
+	await _test_local_is_the_default()
 	_finish()
 
 ## The panel's Scale fields must report the object's real axis lengths.
@@ -370,9 +370,16 @@ func _test_shear_survives_undo() -> void:
 	else:
 		print("      a sheared basis survives an undo round trip")
 
-## The decision record makes Global the default. A Local default would mean the
-## default drawing lies in the other direction, which is the bug being fixed.
-func _test_global_is_the_default() -> void:
+## The default is LOCAL: scale the object's own axes, so no face becomes a
+## parallelogram. Global shears a rotated object and that skew is not wanted.
+##
+## The reason the original test asserted the opposite is the point worth keeping.
+## Global is Blender's own default, and at the time that was the argument for it -
+## "the drawing lies" cuts both ways, and under a Local default the lie is that
+## the handle you grab is not the one that moves. That is a much smaller lie than
+## silently skewing the geometry, which is why the default flipped. This test now
+## pins the decision so it cannot drift back by accident.
+func _test_local_is_the_default() -> void:
 	if not _lab.has_method("set_gizmo_orientation"):
 		_fail += 1
 		print("FAIL: ModelingLab has no set_gizmo_orientation() - the orientation "
@@ -384,11 +391,11 @@ func _test_global_is_the_default() -> void:
 		return
 
 	var orient: int = _lab.gizmo_orientation()
-	if orient == 0:
-		print("      default orientation is GLOBAL - correct")
+	if orient == 1:
+		print("      default orientation is LOCAL - correct, scale stays shear-free")
 	else:
 		_fail += 1
-		print("FAIL: default orientation is %d, expected 0 (GLOBAL)" % orient)
+		print("FAIL: default orientation is %d, expected 1 (LOCAL)" % orient)
 
 ## Same quantity the production read path uses: a basis's columns ARE its axes,
 ## so their lengths are the real scale even under shear.

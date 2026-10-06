@@ -40,10 +40,25 @@ var creative_studio_manager: CreativeStudioManager
 # Mode state
 var _mode: int = LabMode.LESSON
 var _current_tool: int = Tool.MOVE
-## See the Orientation enum. Global is the default; this single flag plus one
-## branch is the whole toggle, which is what makes the fallback (ship Local as
-## the default, keep Global behind the toggle) a one-line change.
-var _orientation: int = Orientation.GLOBAL
+## See the Orientation enum. LOCAL is the default.
+##
+## Global scales along world axes, which is Blender's own default and is
+## mathematically exact - the world axis you drag grows by exactly the factor,
+## no other world axis moves, and anything off-axis skews. That skew is shear,
+## and shear is not wanted here: the object should stay a clean box and only its
+## dimensions should change. Local does that - it scales the object's own axes,
+## so no face ever becomes a parallelogram.
+##
+## The cost of Local, stated plainly because it is not nothing: on a cube yawed
+## 45 degrees, dragging the X handle by 1.5 takes the world-X extent from 1.414
+## to 1.768, NOT to 2.121. The stretch lands on the object's own axis, which
+## runs diagonally through world space, so no world axis is scaled by the factor
+## you typed. Global reaches 2.121 but shears to get there. Neither does both.
+##
+## This single flag plus one branch is the whole toggle, so Global stays one
+## click away in the toolbar and putting it back as the default is a one-line
+## change.
+var _orientation: int = Orientation.LOCAL
 var _current_assignment: AssignmentData = null
 var _primitive_locked: Array[bool] = []
 var _player_objects: Array[Node3D] = []
@@ -997,6 +1012,23 @@ func _effective_axis_lengths(basis: Basis) -> Vector3:
 	return Vector3(basis[0].length(), basis[1].length(), basis[2].length())
 
 
+## True when the basis cannot be written as rotation * scale, i.e. it carries
+## shear. "The three columns are not mutually orthogonal" is the direct test and
+## needs no quaternion round-trip to compare matrices.
+##
+## The columns are normalised first so the epsilon means the same thing at any
+## object size: an absolute dot product scales with the square of the axis
+## lengths, so on a 1000-unit object a raw 1e-6 cutoff would classify clean
+## R*S geometry as sheared. 1e-5 is ~100x the float32 residue a basis picks up
+## round-tripping through `PrimitiveSaveData.basis_rows`.
+func _is_sheared(basis: Basis) -> bool:
+	const EPS := 1e-5
+	var x := basis[0].normalized()
+	var y := basis[1].normalized()
+	var z := basis[2].normalized()
+	return absf(x.dot(y)) > EPS or absf(x.dot(z)) > EPS or absf(y.dot(z)) > EPS
+
+
 func _update_inspector(node: Node3D):
 	if not node:
 		%NodeName.text = ""
@@ -1008,6 +1040,7 @@ func _update_inspector(node: Node3D):
 			_base_color_wheel.set_color(Color.WHITE)
 		%MetallicSlider.set_value_no_signal(0.0)
 		%RoughnessSlider.set_value_no_signal(0.5)
+		%ShearWarning.visible = false
 		return
 	%NodeName.text = HierarchyManager.display_of(node)
 	%PosX.set_value_no_signal(node.position.x)
@@ -1023,6 +1056,12 @@ func _update_inspector(node: Node3D):
 	%ScaleX.set_value_no_signal(_axis_lengths.x)
 	%ScaleY.set_value_no_signal(_axis_lengths.y)
 	%ScaleZ.set_value_no_signal(_axis_lengths.z)
+	# `node.rotation_degrees` above runs get_euler() on whatever the basis is, and
+	# on a sheared basis that is not the rotation the user set - measured 11.3
+	# degrees of drift after a Global X scale at 45 degrees of yaw. The fields are
+	# left editable on purpose; this just makes the approximation visible, because
+	# writing one back flattens the shear to R*S (see _on_inspector_rot_changed).
+	%ShearWarning.visible = _is_sheared(node.basis)
 
 	var mat := material_manager.read_from(node as MeshInstance3D)
 	%ColorSwatch.color = mat.get("albedo", Color.WHITE)

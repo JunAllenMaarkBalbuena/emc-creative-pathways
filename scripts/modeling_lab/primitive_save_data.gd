@@ -11,6 +11,19 @@ const TYPE_GROUP := 1
 @export var position: Vector3
 @export var rotation_degrees: Vector3
 @export var scale: Vector3 = Vector3.ONE
+## Exact basis, row-major 9 floats. `rotation_degrees` + `scale` cannot express
+## a sheared basis (a Global-axis scale of a rotated object is S*R, not R*S), so
+## capturing only those two silently reloaded the object as its decomposition.
+## Empty means "not stored" - see `has_basis`.
+@export var basis_rows: PackedFloat32Array = PackedFloat32Array()
+## Whether `basis_rows` is authoritative. A plain `basis_rows.is_empty()` check
+## cannot tell "this save predates the field" from "this object's basis really
+## is empty", so the flag makes absence explicit and survives round-tripping an
+## unrotated, unscaled object. Old files simply lack this property and load with
+## the default false, which routes them through the legacy rotation+scale path
+## unchanged - that is the whole backward-compatibility story, so do not add a
+## version integer on top of it without a migration to go with it.
+@export var has_basis: bool = false
 @export var parent_name: String = ""     # display_name of the parent group
 @export var material_albedo: Color = Color.WHITE
 @export var material_metallic: float = 0.0
