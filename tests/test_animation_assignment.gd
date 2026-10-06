@@ -33,12 +33,22 @@ func _run() -> Array[String]:
 	if manager.assignment.story_beats.size() != 3:
 		failures.append("assignment should carry 3 story beats")
 
-	# Gating: at BRIEF the story is not yet ordered, so advance must fail.
+	# Gating: BRIEF is a read-only intro (spec §4.1 "read the assignment,
+	# Continue") — a loaded assignment is all it needs, so a fresh manager
+	# advances to PLAN. The story-order gate lives at PLAN and SUBMIT, where
+	# the storyboard is actually drafted.
 	if manager.current_stage() != AnimationAssignmentManager.Stage.BRIEF:
 		failures.append("fresh manager should sit at BRIEF")
+	if not manager.advance_stage():
+		failures.append("advance from BRIEF should succeed once the assignment is loaded")
+	if manager.current_stage() != AnimationAssignmentManager.Stage.PLAN:
+		failures.append("advancing from BRIEF should land on PLAN")
+
+	# A stage with a live unmet gate (PLAN: story beats still unordered) must
+	# refuse to advance and leave the stage put.
 	if manager.advance_stage():
-		failures.append("advance from BRIEF must fail while the story is unordered")
-	if manager.current_stage() != AnimationAssignmentManager.Stage.BRIEF:
+		failures.append("advance from PLAN must fail while the story is unordered")
+	if manager.current_stage() != AnimationAssignmentManager.Stage.PLAN:
 		failures.append("a failed advance must not move the stage")
 
 	manager.go_to(AnimationAssignmentManager.Stage.STAGING)

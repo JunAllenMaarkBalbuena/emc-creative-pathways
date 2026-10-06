@@ -575,6 +575,8 @@ func _apply_project_data(data: AnimationLabSaveData) -> void:
 		world.set_object_rotation(object_id, obj.get("rotation_degrees", Vector3.ZERO) as Vector3)
 		world.set_object_scale(object_id, obj.get("scale", Vector3.ONE) as Vector3)
 		world.set_object_visible(object_id, bool(obj.get("visible", true)))
+		world.set_object_depth(object_id, float(obj.get("depth", 0.0)))
+		world.set_object_layer(object_id, int(obj.get("layer", 0)))
 	var cam := camera.camera()
 	if cam != null:
 		camera.set_transform(
@@ -663,6 +665,8 @@ func _collect_scene_objects() -> Array[Dictionary]:
 			"rotation_degrees": data.get("rotation_degrees", Vector3.ZERO),
 			"scale": data.get("scale", Vector3.ONE),
 			"visible": bool(data.get("visible", false)),
+			"depth": float(data.get("depth", 0.0)),
+			"layer": int(data.get("layer", 0)),
 		})
 	return out
 

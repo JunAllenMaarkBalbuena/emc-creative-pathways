@@ -52,6 +52,8 @@ func load_texture(data: EMCAssetData) -> Texture2D:
 
 
 func _register(a: EMCAssetData) -> void:
+	if a == null:
+		return
 	_assets.append(a)
 	if not a.asset_id.is_empty():
 		_by_id[a.asset_id] = a

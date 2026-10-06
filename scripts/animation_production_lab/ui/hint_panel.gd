@@ -9,7 +9,9 @@ var hints_used := 0
 
 func set_hints(hints: Array[String]) -> void:
 	hint_text.text = hints[0] if not hints.is_empty() else ""
-	if not hints.is_empty():
+	# Only count views while the panel is actually shown (PREVIEW stage);
+	# set_hints also fires on other stage transitions where the panel hides.
+	if not hints.is_empty() and visible:
 		hints_used += 1
 
 func clear_hints() -> void:

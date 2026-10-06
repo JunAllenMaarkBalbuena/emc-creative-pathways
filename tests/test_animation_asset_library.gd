@@ -63,4 +63,28 @@ func _run() -> Array[String]:
 	if rg.load_texture(dead_user) != null:
 		failures.append("user-art load_texture returned a texture for a dead path")
 
+	# Review Focus 3: a foreign/corrupt .tres in a user root (other labs' save
+	# files may land in the scanned folders) must be skipped — never a crash,
+	# never registered.
+	var dir := "user://animation_lab_foreign_scan"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var foreign := dir + "/foreign.tres"
+	var ff := FileAccess.open(foreign, FileAccess.WRITE)
+	if ff == null:
+		failures.append("could not write the foreign .tres")
+	else:
+		ff.store_string("[gd_resource type=\"Resource\" script_class=\"LevelDefinition\" load_steps=2 format=3]\n")
+		ff.store_string("[ext_resource type=\"Script\" path=\"res://scripts/level_definition.gd\" id=\"1\"]\n")
+		ff.store_string("[resource]\n")
+		ff.store_string("script = ExtResource(\"1\")\n")
+		ff.store_string("level_id = \"foreign\"\n")
+		ff.close()
+	var rf := EMCAssetLibrary.new()
+	rf.user_roots = [dir]
+	rf.refresh()
+	if rf.list().size() != StarterAssets.build().size():
+		failures.append("foreign .tres should be skipped, not registered")
+	DirAccess.remove_absolute(foreign)
+	DirAccess.remove_absolute(dir)
+
 	return failures

@@ -73,7 +73,7 @@ func stage_requirements() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	match current_stage():
 		Stage.BRIEF:
-			_add_requirement(result, "Story beats ordered", _story_order_ok)
+			_add_requirement(result, "Assignment loaded", _assignment_loaded_ok)
 		Stage.PLAN:
 			_add_requirement(result, "Storyboard drafted", _story_order_ok)
 		Stage.ASSETS:
