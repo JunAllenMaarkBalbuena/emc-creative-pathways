@@ -263,6 +263,16 @@ func apply_scale(axis: Vector3, delta: float, uniform: bool = true,
 
 func end_scale():
 	if _transforming:
+		# The Global gizmo frame PRE-multiplies a diagonal (see apply_scale), which
+		# is one of the two ways this app creates shear. Mirror that on the per-node
+		# Skew switch so it reports reality - the object is now being worked on in a
+		# skew-enabled state. One-direction (only ever ON): a scale commit can
+		# create shear but never removes it - see
+		# docs/decisions/2026-10-06-skew-toggle.md. Set BEFORE the action is built
+		# so the snapshots carry the flag.
+		for i in _nodes.size():
+			if _is_sheared_basis(_nodes[i].basis):
+				_nodes[i].set_meta(&"skew_enabled", true)
 		var paths: Array[NodePath] = []
 		var befores: Array[Transform3D] = []
 		var afters: Array[Transform3D] = []
@@ -309,3 +319,17 @@ func center_selected():
 		_hierarchy_manager.get_container(), _spawner, _material_mgr, _hierarchy_manager)
 	_undo_redo.execute_command(action)
 	_selection_manager.reselect_from_ids(action.get_last_created_ids())
+
+
+## The same test the lab's `_is_sheared` runs (modelling_lab.gd), duplicated here
+## because this manager owns the gizmo scale commit and the lab does not see the
+## nodes mid-drag. Three columns not mutually orthogonal, tested on a NORMALISED
+## basis so the epsilon means the same thing at any object size (an absolute dot
+## product scales with the square of the axis lengths). 1e-5 is ~100x the float32
+## residue a basis picks up round-tripping through PrimitiveSaveData.basis_rows.
+func _is_sheared_basis(basis: Basis) -> bool:
+	const EPS := 1e-5
+	var x := basis[0].normalized()
+	var y := basis[1].normalized()
+	var z := basis[2].normalized()
+	return absf(x.dot(y)) > EPS or absf(x.dot(z)) > EPS or absf(y.dot(z)) > EPS

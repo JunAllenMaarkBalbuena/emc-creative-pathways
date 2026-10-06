@@ -108,6 +108,7 @@ func _capture_mesh(mi: MeshInstance3D, parent_display: String) -> PrimitiveSaveD
 	pd.scale = mi.scale
 	pd.basis_rows = basis_to_rows(mi.basis)
 	pd.has_basis = true
+	pd.skew_enabled = mi.get_meta(&"skew_enabled", false)
 	pd.parent_name = parent_display
 	if mat:
 		pd.material_albedo = mat.albedo_color
@@ -126,6 +127,7 @@ func _capture_group(group: Node3D, parent_display: String) -> PrimitiveSaveData:
 	pd.scale = group.scale
 	pd.basis_rows = basis_to_rows(group.basis)
 	pd.has_basis = true
+	pd.skew_enabled = group.get_meta(&"skew_enabled", false)
 	pd.parent_name = parent_display
 	return pd
 
@@ -185,6 +187,7 @@ func restore_model(object_container: Node3D, data: ModelData, spawner: Primitive
 			var group := Node3D.new()
 			HierarchyManager.set_blender_name(group, _display_or(pd))
 			group.transform = Transform3D(basis_of(pd), pd.position)
+			group.set_meta(&"skew_enabled", pd.skew_enabled)
 			parent.add_child(group)
 			group.owner = object_container.owner if object_container.owner else object_container
 			name_map[_display_or(pd)] = group
@@ -199,6 +202,7 @@ func restore_model(object_container: Node3D, data: ModelData, spawner: Primitive
 			mat.metallic = pd.material_metallic
 			mat.roughness = pd.material_roughness
 			mi.set_surface_override_material(0, mat)
+			mi.set_meta(&"skew_enabled", pd.skew_enabled)
 			created.append(mi)
 	return created
 

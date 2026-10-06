@@ -139,6 +139,12 @@ func _apply_transform(snapshot: Array) -> void:
 			node.position = entry.get("position", Vector3.ZERO)
 			node.rotation_degrees = entry.get("rotation_degrees", Vector3.ZERO)
 			node.scale = entry.get("scale", Vector3.ONE)
+		# The Skew switch rides the snapshot so undo/redo restore it exactly like
+		# the shape. Transform actions write the LIVE node in place (no rebuild),
+		# so without this the flag set at commit time would not come back on undo.
+		# Old / hand-built snapshots predate the field and simply skip it.
+		if entry.has("skew_enabled"):
+			node.set_meta(&"skew_enabled", entry.skew_enabled)
 		if not _created_node:
 			_created_node = node
 		_last_created_ids.append(node.get_instance_id())
@@ -506,6 +512,10 @@ func _rebuild_node(data: Dictionary) -> Node3D:
 
 	if data.get("display_name", ""):
 		mi.set_meta(&"blender_display", data.display_name)
+
+	# The Skew switch rides the same snapshot plumbing as the basis, so undo/redo
+	# and graph rebuilds re-apply it (see docs/decisions/2026-10-06-skew-toggle.md).
+	mi.set_meta(&"skew_enabled", data.get("skew_enabled", false))
 
 	if not is_group and data.get("material_albedo", Color.WHITE) != Color.WHITE:
 		_material_mgr.apply_to(mi, {

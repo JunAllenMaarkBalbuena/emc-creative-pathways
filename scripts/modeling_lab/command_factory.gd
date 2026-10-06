@@ -21,6 +21,7 @@ static func _serialize_node(mi: Node3D, container: Node3D) -> Dictionary:
 		position = mi.position,
 		rotation_degrees = mi.rotation_degrees,
 		scale = mi.scale,
+		skew_enabled = mi.get_meta(&"skew_enabled", false),
 		material_albedo = mat.albedo_color if mat else Color.WHITE,
 		material_metallic = mat.metallic if mat else 0.0,
 		material_roughness = mat.roughness if mat else 1.0,
@@ -34,6 +35,7 @@ static func _serialize_group_node(group_node: Node3D) -> Dictionary:
 		position = group_node.position,
 		rotation_degrees = group_node.rotation_degrees,
 		scale = group_node.scale,
+		skew_enabled = group_node.get_meta(&"skew_enabled", false),
 		parent_path = NodePath(),
 		is_group = true,
 	}

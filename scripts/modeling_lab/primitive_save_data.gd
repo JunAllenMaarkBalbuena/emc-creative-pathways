@@ -24,6 +24,11 @@ const TYPE_GROUP := 1
 ## unchanged - that is the whole backward-compatibility story, so do not add a
 ## version integer on top of it without a migration to go with it.
 @export var has_basis: bool = false
+## Whether the Skew switch is on for this object (docs/decisions/2026-10-06-skew-toggle.md).
+## Same absence story as `has_basis`: old files lack this property and load with
+## the default false - i.e. the switch is OFF for every legacy save, which is the
+## safe reading (rotation keeps flattening those, the pre-switch contract).
+@export var skew_enabled: bool = false
 @export var parent_name: String = ""     # display_name of the parent group
 @export var material_albedo: Color = Color.WHITE
 @export var material_metallic: float = 0.0

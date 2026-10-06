@@ -266,6 +266,7 @@ func _connect_ui_signals():
 	%WScaleX.value_changed.connect(_on_inspector_world_scale_changed.bind("x"))
 	%WScaleY.value_changed.connect(_on_inspector_world_scale_changed.bind("y"))
 	%WScaleZ.value_changed.connect(_on_inspector_world_scale_changed.bind("z"))
+	%SkewToggle.toggled.connect(_on_skew_toggle_toggled)
 
 	# Portfolio
 	portfolio_manager.portfolio_changed.connect(_on_portfolio_changed)
@@ -1103,6 +1104,19 @@ func _basis_from_rotation_and_scale(rot_deg: Vector3, axis_lengths: Vector3) -> 
 			* Basis.from_scale(axis_lengths)
 
 
+## The skew-PRESERVING rotation write (the other half of 5r): applies the typed
+## euler delta on the LEFT of the live basis, so the edit is a rigid rotation of
+## the current frame. Rigid means shear, volume and column lengths all survive -
+## this is what "Skew is on" means. It is 5p's helper, which 5q deleted when the
+## flatten-on-rotate contract was restored; the Skew switch now picks between the
+## two: ON goes through here, OFF goes through _basis_from_rotation_and_scale.
+func _rotation_delta(r_deg: Vector3, basis: Basis) -> Basis:
+	var r_old := basis.orthonormalized()
+	var r_new := Basis.from_euler(Vector3(
+			deg_to_rad(r_deg.x), deg_to_rad(r_deg.y), deg_to_rad(r_deg.z)))
+	return r_new * r_old.inverse() * basis
+
+
 ## Writes a Vector3 into the three SpinBoxes named <prefix>X / Y / Z.
 ##
 ## `set_value_no_signal` because these boxes' `value_changed` signal is what calls
@@ -1131,6 +1145,15 @@ func _is_sheared(basis: Basis) -> bool:
 	return absf(x.dot(y)) > EPS or absf(x.dot(z)) > EPS or absf(y.dot(z)) > EPS
 
 
+## The per-object Skew switch. Default OFF: rotation edits flatten a sheared basis
+## (the 5q contract). ON: rotation edits preserve it. It lives in node meta so it
+## survives undo/redo graph rebuilds (the command snapshots carry it) and in
+## PrimitiveSaveData for save/load - see
+## docs/decisions/2026-10-06-skew-toggle.md.
+func _skew_enabled(node: Node3D) -> bool:
+	return node.get_meta(&"skew_enabled", false)
+
+
 func _update_inspector(node: Node3D):
 	if not node:
 		%NodeName.text = ""
@@ -1146,6 +1169,9 @@ func _update_inspector(node: Node3D):
 		%MetallicSlider.set_value_no_signal(0.0)
 		%RoughnessSlider.set_value_no_signal(0.5)
 		%ShearWarning.visible = false
+		if %SkewToggle:
+			%SkewToggle.set_pressed_no_signal(false)
+			%SkewToggle.visible = false
 		return
 	%NodeName.text = HierarchyManager.display_of(node)
 	var gt := node.global_transform
@@ -1165,10 +1191,19 @@ func _update_inspector(node: Node3D):
 	_set_axis_triplet("WScale", _row_lengths(gt.basis))
 	# Both rotation rows run _read_rotation_degrees, which is exact for a clean
 	# R*S basis and approximate for a sheared one - the same class of
-	# approximation the warning below discloses. Writing a rotation back still
-	# flattens the shear to R*S (see _on_inspector_rot_changed); the fields stay
-	# editable on purpose.
-	%ShearWarning.visible = _is_sheared(node.basis)
+	# approximation the warning below discloses. Writing a rotation back flattens
+	# the shear only while the Skew switch is OFF; while it is ON the edit is a
+	# rigid delta that keeps it (see _on_inspector_rot_changed). The fields stay
+	# editable on purpose either way.
+	var sheared := _is_sheared(node.basis)
+	%ShearWarning.visible = sheared
+	var skew_on := _skew_enabled(node)
+	%ShearWarning.text = "Skew on - rotating keeps the skew. Switch it off to " \
+			+ "flatten (the object's size changes)." if sheared and skew_on else \
+			"Skew off - rotating flattens the skew; the object's size changes."
+	if %SkewToggle:
+		%SkewToggle.visible = sheared
+		%SkewToggle.set_pressed_no_signal(sheared and skew_on)
 
 	var mat := material_manager.read_from(node as MeshInstance3D)
 	%ColorSwatch.color = mat.get("albedo", Color.WHITE)
@@ -1641,12 +1676,16 @@ func _on_inspector_world_pos_changed(val: float, axis: String):
 	_commit_inspector_change(sel, after)
 
 
-## Local rotation. REBUILDS the basis as `R * S`, which is the shear-removal
-## feature by design: rebuilding from an euler plus a vector of axis lengths
-## cannot preserve skew, so the first rotation after an object is sheared
-## flattens it. The object grows on that edit - the volume lands on the product
-## of its column lengths, an excess that exists exactly when there is shear -
-## and holds from then on. See `_basis_from_rotation_and_scale`.
+## Local rotation. Two writes, chosen by the Skew switch (5r):
+##   - OFF (default): REBUILDS the basis as `R * S`, the shear-removal feature by
+##     design - rebuilding from an euler plus a vector of axis lengths cannot
+##     preserve skew, so the first rotation after an object is sheared flattens
+##     it (the 5q contract). The object grows on that edit - the volume lands on
+##     the product of its column lengths, an excess that exists exactly when
+##     there is shear - and holds from then on.
+##   - ON: applies `_rotation_delta` instead, a rigid edit, so shear, scale and
+##     volume all survive - the "Skew is on" behaviour.
+## See `_basis_from_rotation_and_scale` and `_rotation_delta`.
 ##
 ## The base rotation comes from `_read_rotation_degrees`, NOT
 ## `sel.rotation_degrees`. Using the latter would carry the read-side get_euler()
@@ -1663,7 +1702,10 @@ func _on_inspector_rot_changed(val: float, axis: String):
 		"x": r.x = val
 		"y": r.y = val
 		"z": r.z = val
-	after.basis = _basis_from_rotation_and_scale(r, _effective_axis_lengths(sel.basis))
+	if _skew_enabled(sel):
+		after.basis = _rotation_delta(r, sel.basis)
+	else:
+		after.basis = _basis_from_rotation_and_scale(r, _effective_axis_lengths(sel.basis))
 	_commit_inspector_change(sel, after)
 
 
@@ -1676,9 +1718,11 @@ func _on_inspector_rot_changed(val: float, axis: String):
 ## Column lengths are idempotent under the rebuild (the column lengths of
 ## `R * diag(cols)` are `cols` again), so the Local Scale row does not move, the
 ## skew is removed like the Local row removes it, and the growth happens exactly
-## once. The pre-5p row used ROW lengths, which is what made its Local Scale row
-## snap to (2, 1, 1) on the first edit and ratchet the volume to 135.7% over
-## three - neither is being brought back.
+## once - on sheared objects whose Skew switch is OFF. While the switch is ON the
+## same edit goes through `_rotation_delta` and keeps the skew and size (5r;
+## docs/decisions/2026-10-06-skew-toggle.md). The pre-5p row used ROW lengths,
+## which is what made its Local Scale row snap to (2, 1, 1) on the first edit and
+## ratchet the volume to 135.7% over three - neither is being brought back.
 ##
 ## The mapping stays the direct `parent_inv * world`. The old code conjugated
 ## the rebuilt basis - `parent_inv.basis * M * parent_inv.basis.inverse()` -
@@ -1695,7 +1739,10 @@ func _on_inspector_world_rot_changed(val: float, axis: String):
 		"y": r.y = val
 		"z": r.z = val
 	var parent_inv := _parent_global_inverse(sel)
-	world.basis = _basis_from_rotation_and_scale(r, _effective_axis_lengths(world.basis))
+	if _skew_enabled(sel):
+		world.basis = _rotation_delta(r, world.basis)
+	else:
+		world.basis = _basis_from_rotation_and_scale(r, _effective_axis_lengths(world.basis))
 	_commit_inspector_change(sel, parent_inv * world)
 
 
@@ -1754,7 +1801,45 @@ func _on_inspector_world_scale_changed(val: float, axis: String):
 		"y": target.y = val
 		"z": target.z = val
 	after.basis = Basis.from_scale(_ratio_to_reach(target, current)) * basis
+	if _is_sheared(after.basis):
+		# 5r: this edit CREATED shear, so mirror it on the Skew switch. Set before
+		# the commit so the action snapshots carry it (a stale ON left behind by an
+		# undo is benign - see docs/decisions/2026-10-06-skew-toggle.md).
+		sel.set_meta(&"skew_enabled", true)
 	_commit_inspector_change(sel, after)
+
+
+## The Skew switch. Pressing it ON is intent only - it flattens nothing (the row
+## only appears on an already-sheared object); it just tells the rotation
+## handlers to preserve the skew from here on. Toggling it OFF is the explicit
+## "remove the skew" action this switch replaces "rotate the object" with: the
+## basis is rebuilt as R * S right here, shear goes to zero, and the volume lands
+## on the column-length product - the same intended one-time growth 5q discloses
+## (on a sheared basis that product always exceeds |det|).
+##
+## Undo of a toggle-off restores the sheared shape exactly. The flag is written
+## AFTER the commit on purpose: the action's snapshots then carry the pre-toggle
+## value (on), and _apply_transform re-applies snapshot flags on undo/redo, so
+## undoing brings the sheared object back WITH the switch on. Redo re-flattens
+## with the switch still on - a stale on-flag on a clean object is invisible and
+## behaviour-neutral (deltas and R*S rebuilds agree on clean bases), so no
+## ordering of undo/redo leaves the user in a lying state.
+func _on_skew_toggle_toggled(pressed: bool) -> void:
+	var sel := selection_manager.get_selected()
+	if not sel:
+		return
+	if pressed:
+		sel.set_meta(&"skew_enabled", true)
+		_update_inspector(sel)
+		return
+	var after := sel.transform
+	after.basis = _basis_from_rotation_and_scale(
+			_read_rotation_degrees(sel.basis), _effective_axis_lengths(sel.basis))
+	_commit_inspector_change(sel, after)
+	# Re-fetch: the commit rebuilt the object graph, so `sel` may be freed.
+	var live := selection_manager.get_selected() as Node3D
+	if live:
+		live.set_meta(&"skew_enabled", false)
 
 
 ## Per-axis factor taking each component of `current` to `target`, with a floor so

@@ -499,13 +499,23 @@ min_value = 0.01
 step = 0.01
 value = 1.0
 
+[node name="SkewRow" type="HBoxContainer" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113051]
+layout_mode = 2
+
+[node name="SkewToggle" type="CheckBox" parent="RightPanel/TabContainer/Inspector/Scroll/Rows/SkewRow" unique_id=9900113052]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Skew"
+tooltip_text = "Keep the object's skew through rotation edits. Off: a sheared object is cleaned - rotating flattens it and the size changes."
+
 [node name="ShearWarning" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900112233]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.25, 0.25, 1)
 theme_override_font_sizes/font_size = 11
-text = "Sheared - rotating flattens the skew, and the object's size changes on that edit."
+text = "Skew off - rotating flattens the skew; the object's size changes."
 autowrap_mode = 3
 
 [node name="WorldSeparator" type="HSeparator" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900113047]
