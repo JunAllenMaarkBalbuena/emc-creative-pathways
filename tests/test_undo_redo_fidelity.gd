@@ -46,9 +46,15 @@ func _run() -> int:
 		return 1
 	if not await _case_edge(lab, layer):
 		return 1
+	if not await _case_bottom_edge(lab, layer):
+		return 1
 	if not await _case_zigzag(lab, layer):
 		return 1
+	if not await _case_size_change(lab, layer):
+		return 1
 	if not await _case_fill(lab, layer):
+		return 1
+	if not await _case_end_stroke_budget(lab, layer):
 		return 1
 
 	print("PASS: undo/redo restores pixels byte-exactly across all cases")
@@ -239,6 +245,30 @@ func _case_edge(lab: DigitalArtLab, layer: LayerData) -> bool:
 	return true
 
 
+func _case_bottom_edge(lab: DigitalArtLab, layer: LayerData) -> bool:
+	var before: PackedByteArray = layer.image.get_data()
+	# Stroke whose bounding box crosses the bottom canvas edge (y > 512).
+	var pts: Array[Vector2] = [
+		Vector2(250.0, 470.0), Vector2(270.0, 540.0), Vector2(220.0, 560.0),
+	]
+	_stroke(lab, pts)
+	var after: PackedByteArray = layer.image.get_data()
+	if after == before:
+		print("FAIL: bottom-edge stroke painted nothing")
+		return false
+	if not lab.history_manager.can_undo():
+		print("FAIL: can_undo false after the bottom-edge stroke")
+		return false
+	lab._on_undo()
+	var d := _first_diff(layer, before)
+	if d.x >= 0:
+		print("FAIL: bottom-edge stroke undo left %d px wrong, first at %s" %
+			[_count_diff(layer, before), d])
+		_dump_diff(layer, before, 20)
+		return false
+	return true
+
+
 func _case_zigzag(lab: DigitalArtLab, layer: LayerData) -> bool:
 	var before: PackedByteArray = layer.image.get_data()
 	var pts: Array[Vector2] = []
@@ -267,6 +297,35 @@ func _case_zigzag(lab: DigitalArtLab, layer: LayerData) -> bool:
 	return true
 
 
+func _case_size_change(lab: DigitalArtLab, layer: LayerData) -> bool:
+	var before: PackedByteArray = layer.image.get_data()
+	# Change brush size mid-stroke: spacing and dab radius both recompute per
+	# input event, so history rects and dabs stay consistent within each event
+	# while the stroke's region spans strips of very different sizes.
+	lab.brush_size = 16
+	lab._start_stroke(Vector2(80.0, 260.0))
+	lab._continue_stroke(Vector2(180.0, 260.0))
+	lab.brush_size = 40
+	lab._continue_stroke(Vector2(300.0, 260.0))
+	lab.brush_size = 20
+	lab._continue_stroke(Vector2(420.0, 200.0))
+	lab._end_stroke()
+	var after: PackedByteArray = layer.image.get_data()
+	if after == before:
+		print("FAIL: size-change stroke painted nothing")
+		return false
+	if not lab.history_manager.can_undo():
+		print("FAIL: can_undo false after the size-change stroke")
+		return false
+	lab._on_undo()
+	var d := _first_diff(layer, before)
+	if d.x >= 0:
+		print("FAIL: size-change stroke undo left %d px wrong, first at %s" %
+			[_count_diff(layer, before), d])
+		return false
+	return true
+
+
 func _case_fill(lab: DigitalArtLab, layer: LayerData) -> bool:
 	var before: PackedByteArray = layer.image.get_data()
 	lab._do_fill(Vector2(256.0, 256.0))
@@ -281,6 +340,47 @@ func _case_fill(lab: DigitalArtLab, layer: LayerData) -> bool:
 	var d := _first_diff(layer, before)
 	if d.x >= 0:
 		print("FAIL: fill undo left %d px wrong, first at %s" %
+			[_count_diff(layer, before), d])
+		return false
+	return true
+
+
+func _case_end_stroke_budget(lab: DigitalArtLab, layer: LayerData) -> bool:
+	var before: PackedByteArray = layer.image.get_data()
+	# Full-canvas serpentine sweep. End-stroke used to spend ~165 ms here in
+	# per-pixel GDScript assembly (plus per-pixel capture); the native-ops
+	# rewrite should keep it far under 50 ms even for a sweep covering the
+	# whole canvas. The undo after it also exercises the native restore path
+	# over almost the entire layer.
+	var pts: Array[Vector2] = []
+	var y := 10.0
+	var row := 0
+	while y < 505.0:
+		if row % 2 == 0:
+			pts.append(Vector2(10, y))
+			pts.append(Vector2(502, y))
+		else:
+			pts.append(Vector2(502, y))
+			pts.append(Vector2(10, y))
+		y += 12.0
+		row += 1
+	lab.history_manager.clear()
+	lab._start_stroke(pts[0])
+	for i in range(1, pts.size()):
+		lab._continue_stroke(pts[i])
+	var t0 := Time.get_ticks_msec()
+	lab._end_stroke()
+	var cost := Time.get_ticks_msec() - t0
+	if cost > 50:
+		print("FAIL: full-canvas end_stroke took %d ms (> 50 ms budget)" % cost)
+		return false
+	if not lab.history_manager.can_undo():
+		print("FAIL: can_undo false after the full-canvas stroke")
+		return false
+	lab._on_undo()
+	var d := _first_diff(layer, before)
+	if d.x >= 0:
+		print("FAIL: full-canvas stroke undo left %d px wrong, first at %s" %
 			[_count_diff(layer, before), d])
 		return false
 	return true

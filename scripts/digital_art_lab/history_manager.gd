@@ -88,9 +88,11 @@ func end_stroke(layer_manager: LayerManager):
 		return
 	_recording = false
 	if _record_layer < 0 or _record_layer >= layer_manager.layers.size():
+		_stroke_strips.clear()
 		return
 	var layer: LayerData = layer_manager.layers[_record_layer]
 	if layer == null or layer.image == null:
+		_stroke_strips.clear()
 		return
 
 	var r := _record_region
@@ -106,32 +108,31 @@ func end_stroke(layer_manager: LayerManager):
 	# stroke went over a canvas edge and was then undone.
 	r = r.intersection(Rect2i(0, 0, iw, ih))
 	if r.size.x <= 0 or r.size.y <= 0:
+		_stroke_strips.clear()
 		return
 
 	# Assemble the pre-stroke bytes for the final (clamped) region from the
-	# incremental strips. One O(region) pass per stroke instead of one per grow.
-	var trimmed := PackedByteArray()
-	trimmed.resize(r.size.x * r.size.y * 4)
-	trimmed.fill(0)
+	# incremental strips via native Image blits instead of a per-pixel GDScript
+	# loop (a full-canvas sweep used to cost ~165 ms of pure byte-copying).
+	# Each strip is turned into a tight RGBA8 image and blitted into the
+	# region-sized buffer; blit_rect() clips at the destination bounds, so the
+	# in-canvas part of every strip lands at exactly the byte offset the old
+	# loop computed.
+	var before_img := Image.create_empty(r.size.x, r.size.y, false,
+		Image.FORMAT_RGBA8)
 	for strip_rect: Rect2i in _stroke_strips.keys():
 		var inter := strip_rect.intersection(r)
 		if inter.size.x <= 0 or inter.size.y <= 0:
 			continue
-		var strip: PackedByteArray = _stroke_strips[strip_rect]
-		for y in range(inter.size.y):
-			for x in range(inter.size.x):
-				var src_x := inter.position.x - strip_rect.position.x + x
-				var src_y := inter.position.y - strip_rect.position.y + y
-				var src_idx := (src_y * strip_rect.size.x + src_x) * 4
-				var dst_x := inter.position.x - r.position.x + x
-				var dst_y := inter.position.y - r.position.y + y
-				var dst_idx := (dst_y * r.size.x + dst_x) * 4
-				for c in range(4):
-					trimmed[dst_idx + c] = strip[src_idx + c]
+		var strip_img := Image.create_from_data(
+			strip_rect.size.x, strip_rect.size.y, false, Image.FORMAT_RGBA8,
+			_stroke_strips[strip_rect])
+		before_img.blit_rect(strip_img, Rect2i(Vector2i.ZERO, strip_rect.size),
+			strip_rect.position - r.position)
 
 	var a := UndoAction.new(UndoAction.Type.STROKE, _record_layer)
 	a.region = r
-	a.before_pixels = trimmed
+	a.before_pixels = before_img.get_data()
 	a.after_pixels = _capture_region(layer.image, r)
 	_push(a)
 	_stroke_strips.clear()
@@ -470,41 +471,27 @@ func capture_region(img: Image, rect: Rect2i) -> PackedByteArray:
 
 
 func _capture_region(img: Image, rect: Rect2i) -> PackedByteArray:
-	var iw := img.get_width()
-	var ih := img.get_height()
-	var data: PackedByteArray = PackedByteArray()
-	data.resize(rect.size.x * rect.size.y * 4)
-	data.fill(0)
-	var inside := rect.intersection(Rect2i(0, 0, iw, ih))
-	if inside.size.x <= 0 or inside.size.y <= 0:
-		return data
-	# Bulk-read the in-bounds part as raw RGBA8 bytes, then copy row by row;
-	# off-canvas pixels stay transparent (zero-filled above).
-	var src := img.get_region(inside)
-	var src_bytes: PackedByteArray = src.get_data()
-	var src_pitch := inside.size.x * 4
-	var dst_pitch := rect.size.x * 4
-	var dst_offset := (inside.position.y - rect.position.y) * dst_pitch \
-		+ (inside.position.x - rect.position.x) * 4
-	for y in range(inside.size.y):
-		var s := y * src_pitch
-		var d := dst_offset + y * dst_pitch
-		for x in range(src_pitch):
-			data[d + x] = src_bytes[s + x]
-	return data
+	# Native path: bulk-read the in-bounds part with get_region() (C++), then
+	# blit it into a zero-filled buffer of the requested rect. Off-canvas
+	# pixels stay transparent (zero) and blit_rect() clips at the destination
+	# bounds, so no per-pixel GDScript loop is needed.
+	var buf := Image.create_empty(rect.size.x, rect.size.y, false,
+		Image.FORMAT_RGBA8)
+	var inside := rect.intersection(Rect2i(0, 0, img.get_width(), img.get_height()))
+	if inside.size.x > 0 and inside.size.y > 0:
+		var src := img.get_region(inside)
+		buf.blit_rect(src, Rect2i(Vector2i.ZERO, inside.size),
+			inside.position - rect.position)
+	return buf.get_data()
 
 
 func _restore_region(img: Image, rect: Rect2i, data: PackedByteArray):
 	if data.size() < rect.size.x * rect.size.y * 4:
 		return
-	var idx: int = 0
-	for y in range(rect.position.y, rect.position.y + rect.size.y):
-		for x in range(rect.position.x, rect.position.x + rect.size.x):
-			var c: Color = Color(
-				data[idx] / 255.0,
-				data[idx + 1] / 255.0,
-				data[idx + 2] / 255.0,
-				data[idx + 3] / 255.0
-			)
-			img.set_pixel(x, y, c)
-			idx += 4
+	# Native row copy: build an Image from the snapshot bytes and raw-copy it
+	# with blit_rect(). blit_rect() clips at the destination bounds, so any
+	# off-canvas part of `rect` is dropped exactly like the old per-pixel
+	# set_pixel loop did, and the byte layout is preserved verbatim.
+	var src := Image.create_from_data(rect.size.x, rect.size.y, false,
+		Image.FORMAT_RGBA8, data)
+	img.blit_rect(src, Rect2i(Vector2i.ZERO, rect.size), rect.position)
