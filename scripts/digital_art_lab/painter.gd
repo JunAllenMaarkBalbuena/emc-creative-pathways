@@ -53,6 +53,10 @@ func clear_cache():
 # ── Brush stroke ─────────────────────────────────────────────
 # Draws a paint dab at (cx, cy) on the layer.
 # color = RGBA, size = pixel diameter, hardness = 0..1, opacity = 0..1
+# Works on the dab's region as raw RGBA8 bytes (4 engine calls per dab
+# instead of one get_pixel/set_pixel pair per pixel). The blend math is
+# identical to the previous per-pixel version, and byte quantization
+# (round(v * 255)) matches Image.set_pixel.
 func paint_dab(layer: LayerData, cx: float, cy: float, color: Color,
 		size: int, hardness: float, opacity: float):
 	if layer == null or layer.image == null:
@@ -70,11 +74,23 @@ func paint_dab(layer: LayerData, cx: float, cy: float, color: Color,
 	var y0 := maxi(0, int(floor(cy - rad)))
 	var x1 := mini(iw - 1, int(ceil(cx + rad)))
 	var y1 := mini(ih - 1, int(ceil(cy + rad)))
+	var w := x1 - x0 + 1
+	var h := y1 - y0 + 1
+	if w <= 0 or h <= 0:
+		return
 
-	for py in range(y0, y1 + 1):
-		for px in range(x0, x1 + 1):
-			var tx := px - int(floor(cx - rad))
-			var ty := py - int(floor(cy - rad))
+	var region := img.get_region(Rect2i(x0, y0, w, h))
+	var bytes: PackedByteArray = region.get_data()
+	var tip_ox := int(floor(cx - rad))
+	var tip_oy := int(floor(cy - rad))
+	var cr := color.r
+	var cg := color.g
+	var cb := color.b
+
+	for py in h:
+		var ty := y0 + py - tip_oy
+		for px in w:
+			var tx := x0 + px - tip_ox
 			if tx < 0 or ty < 0 or tx >= size or ty >= size:
 				continue
 			var tip_alpha := tip[ty * size + tx]
@@ -83,12 +99,18 @@ func paint_dab(layer: LayerData, cx: float, cy: float, color: Color,
 			var final_a := blend_a * tip_alpha
 			if final_a <= 0.0:
 				continue
-			var dst: Color = img.get_pixel(px, py)
-			var src_r: float = color.r * final_a + dst.r * (1.0 - final_a)
-			var src_g := color.g * final_a + dst.g * (1.0 - final_a)
-			var src_b := color.b * final_a + dst.b * (1.0 - final_a)
-			var src_a := final_a + dst.a * (1.0 - final_a)
-			img.set_pixel(px, py, Color(src_r, src_g, src_b, src_a))
+			var idx := (py * w + px) * 4
+			var dr := bytes[idx] / 255.0
+			var dg := bytes[idx + 1] / 255.0
+			var db := bytes[idx + 2] / 255.0
+			var da := bytes[idx + 3] / 255.0
+			bytes[idx] = int(round((cr * final_a + dr * (1.0 - final_a)) * 255.0))
+			bytes[idx + 1] = int(round((cg * final_a + dg * (1.0 - final_a)) * 255.0))
+			bytes[idx + 2] = int(round((cb * final_a + db * (1.0 - final_a)) * 255.0))
+			bytes[idx + 3] = int(round((final_a + da * (1.0 - final_a)) * 255.0))
+
+	var out := Image.create_from_data(w, h, false, region.get_format(), bytes)
+	img.blit_rect(out, Rect2i(0, 0, w, h), Vector2i(x0, y0))
 
 
 # ── Eraser ───────────────────────────────────────────────────
@@ -109,11 +131,20 @@ func erase_dab(layer: LayerData, cx: float, cy: float,
 	var y0 := maxi(0, int(floor(cy - rad)))
 	var x1 := mini(iw - 1, int(ceil(cx + rad)))
 	var y1 := mini(ih - 1, int(ceil(cy + rad)))
+	var w := x1 - x0 + 1
+	var h := y1 - y0 + 1
+	if w <= 0 or h <= 0:
+		return
 
-	for py in range(y0, y1 + 1):
-		for px in range(x0, x1 + 1):
-			var tx := px - int(floor(cx - rad))
-			var ty := py - int(floor(cy - rad))
+	var region := img.get_region(Rect2i(x0, y0, w, h))
+	var bytes: PackedByteArray = region.get_data()
+	var tip_ox := int(floor(cx - rad))
+	var tip_oy := int(floor(cy - rad))
+
+	for py in h:
+		var ty := y0 + py - tip_oy
+		for px in w:
+			var tx := x0 + px - tip_ox
 			if tx < 0 or ty < 0 or tx >= size or ty >= size:
 				continue
 			var tip_alpha := tip[ty * size + tx]
@@ -122,9 +153,12 @@ func erase_dab(layer: LayerData, cx: float, cy: float,
 			var reduction := tip_alpha * erase_strength
 			if reduction <= 0.0:
 				continue
-			var dst: Color = img.get_pixel(px, py)
-			var new_a: float = dst.a * (1.0 - reduction)
-			img.set_pixel(px, py, Color(dst.r, dst.g, dst.b, new_a))
+			var idx := (py * w + px) * 4
+			var da := bytes[idx + 3] / 255.0
+			bytes[idx + 3] = int(round(da * (1.0 - reduction) * 255.0))
+
+	var out := Image.create_from_data(w, h, false, region.get_format(), bytes)
+	img.blit_rect(out, Rect2i(0, 0, w, h), Vector2i(x0, y0))
 
 
 # ── Flood fill ───────────────────────────────────────────────

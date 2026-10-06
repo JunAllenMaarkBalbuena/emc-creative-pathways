@@ -19,7 +19,11 @@ var _redo_stack: Array[UndoAction] = []
 var _recording := false
 var _record_layer := -1
 var _record_region: Rect2i
-var _pre_stroke_data: PackedByteArray
+# Pre-stroke snapshots captured incrementally while the stroke grows. Each
+# entry is one newly-exposed strip (rect -> RGBA8 bytes of the strip). Strips
+# from successive grows are disjoint because regions nest, and every strip is
+# captured *before* the new dab paints it, so they are true pre-stroke pixels.
+var _stroke_strips: Dictionary[Rect2i, PackedByteArray] = {}
 
 
 # ==============================================================
@@ -33,7 +37,8 @@ func begin_stroke(layer_index: int, pos: Vector2i, brush_radius: int, image: Ima
 		pos.x - brush_radius, pos.y - brush_radius,
 		brush_radius * 2, brush_radius * 2
 	)
-	_pre_stroke_data = _capture_region(image, _record_region)
+	_stroke_strips.clear()
+	_stroke_strips[_record_region] = _capture_region(image, _record_region)
 
 
 func extend_stroke(pos: Vector2i, brush_radius: int, image: Image):
@@ -47,47 +52,35 @@ func extend_stroke(pos: Vector2i, brush_radius: int, image: Image):
 	if new_region == _record_region:
 		return
 
-	var old_region := _record_region
-	var old_data := _pre_stroke_data
-
-	var new_data := PackedByteArray()
-	new_data.resize(new_region.size.x * new_region.size.y * 4)
-
-	var dx := old_region.position.x - new_region.position.x
-	var dy := old_region.position.y - new_region.position.y
-	for y in range(old_region.size.y):
-		for x in range(old_region.size.x):
-			var old_idx := (y * old_region.size.x + x) * 4
-			var new_idx := ((dy + y) * new_region.size.x + (dx + x)) * 4
-			for c in range(4):
-				new_data[new_idx + c] = old_data[old_idx + c]
-
+	# Capture each newly-exposed strip as its own pre-stroke snapshot instead
+	# of re-laying out the whole captured region (which was O(region) per
+	# grow - quadratic over a long stroke). Strips are disjoint across grows
+	# and are captured before the new dab paints them.
 	var nr := new_region
-	var or_ := old_region
+	var or_ := _record_region
 
 	if or_.position.y > nr.position.y:
 		var r := Rect2i(nr.position.x, nr.position.y, nr.size.x, or_.position.y - nr.position.y)
-		_paste_capture(new_data, nr, image, r)
+		_stroke_strips[r] = _capture_region(image, r)
 	if or_.position.y + or_.size.y < nr.position.y + nr.size.y:
 		var r := Rect2i(nr.position.x, or_.position.y + or_.size.y, nr.size.x,
 			nr.position.y + nr.size.y - (or_.position.y + or_.size.y))
-		_paste_capture(new_data, nr, image, r)
+		_stroke_strips[r] = _capture_region(image, r)
 	if or_.position.x > nr.position.x:
 		var top_y := maxi(or_.position.y, nr.position.y)
 		var bot_y := mini(or_.position.y + or_.size.y, nr.position.y + nr.size.y)
 		if bot_y > top_y:
 			var r := Rect2i(nr.position.x, top_y, or_.position.x - nr.position.x, bot_y - top_y)
-			_paste_capture(new_data, nr, image, r)
+			_stroke_strips[r] = _capture_region(image, r)
 	if or_.position.x + or_.size.x < nr.position.x + nr.size.x:
 		var top_y := maxi(or_.position.y, nr.position.y)
 		var bot_y := mini(or_.position.y + or_.size.y, nr.position.y + nr.size.y)
 		if bot_y > top_y:
 			var r := Rect2i(or_.position.x + or_.size.x, top_y,
 				nr.position.x + nr.size.x - (or_.position.x + or_.size.x), bot_y - top_y)
-			_paste_capture(new_data, nr, image, r)
+			_stroke_strips[r] = _capture_region(image, r)
 
 	_record_region = new_region
-	_pre_stroke_data = new_data
 
 
 func end_stroke(layer_manager: LayerManager):
@@ -110,25 +103,33 @@ func end_stroke(layer_manager: LayerManager):
 	if r.size.x <= 0 or r.size.y <= 0:
 		return
 
-	# Trim pre-stroke data to the clamped region
+	# Assemble the pre-stroke bytes for the final (clamped) region from the
+	# incremental strips. One O(region) pass per stroke instead of one per grow.
 	var trimmed := PackedByteArray()
 	trimmed.resize(r.size.x * r.size.y * 4)
-	for y in range(r.size.y):
-		for x in range(r.size.x):
-			var src_x := r.position.x - _record_region.position.x + x
-			var src_y := r.position.y - _record_region.position.y + y
-			var src_idx := (src_y * _record_region.size.x + src_x) * 4
-			var dst_idx := (y * r.size.x + x) * 4
-			for c in range(4):
-				trimmed[dst_idx + c] = _pre_stroke_data[src_idx + c] \
-					if src_idx + c < _pre_stroke_data.size() else 0
+	trimmed.fill(0)
+	for strip_rect: Rect2i in _stroke_strips.keys():
+		var inter := strip_rect.intersection(r)
+		if inter.size.x <= 0 or inter.size.y <= 0:
+			continue
+		var strip: PackedByteArray = _stroke_strips[strip_rect]
+		for y in range(inter.size.y):
+			for x in range(inter.size.x):
+				var src_x := inter.position.x - strip_rect.position.x + x
+				var src_y := inter.position.y - strip_rect.position.y + y
+				var src_idx := (src_y * strip_rect.size.x + src_x) * 4
+				var dst_x := inter.position.x - r.position.x + x
+				var dst_y := inter.position.y - r.position.y + y
+				var dst_idx := (dst_y * r.size.x + dst_x) * 4
+				for c in range(4):
+					trimmed[dst_idx + c] = strip[src_idx + c]
 
 	var a := UndoAction.new(UndoAction.Type.STROKE, _record_layer)
 	a.region = r
 	a.before_pixels = trimmed
 	a.after_pixels = _capture_region(layer.image, r)
 	_push(a)
-	_pre_stroke_data = PackedByteArray()
+	_stroke_strips.clear()
 
 
 # ==============================================================
@@ -232,7 +233,7 @@ func clear():
 	_undo_stack.clear()
 	_redo_stack.clear()
 	_recording = false
-	_pre_stroke_data = PackedByteArray()
+	_stroke_strips.clear()
 
 
 func can_undo() -> bool:
@@ -468,37 +469,24 @@ func _capture_region(img: Image, rect: Rect2i) -> PackedByteArray:
 	var ih := img.get_height()
 	var data: PackedByteArray = PackedByteArray()
 	data.resize(rect.size.x * rect.size.y * 4)
-	var idx: int = 0
-	for y in range(rect.position.y, rect.position.y + rect.size.y):
-		for x in range(rect.position.x, rect.position.x + rect.size.x):
-			var c: Color
-			if x >= 0 and x < iw and y >= 0 and y < ih:
-				c = img.get_pixel(x, y)
-			else:
-				c = Color(0, 0, 0, 0)
-			data[idx] = int(c.r8)
-			data[idx + 1] = int(c.g8)
-			data[idx + 2] = int(c.b8)
-			data[idx + 3] = int(c.a8)
-			idx += 4
+	data.fill(0)
+	var inside := rect.intersection(Rect2i(0, 0, iw, ih))
+	if inside.size.x <= 0 or inside.size.y <= 0:
+		return data
+	# Bulk-read the in-bounds part as raw RGBA8 bytes, then copy row by row;
+	# off-canvas pixels stay transparent (zero-filled above).
+	var src := img.get_region(inside)
+	var src_bytes: PackedByteArray = src.get_data()
+	var src_pitch := inside.size.x * 4
+	var dst_pitch := rect.size.x * 4
+	var dst_offset := (inside.position.y - rect.position.y) * dst_pitch \
+		+ (inside.position.x - rect.position.x) * 4
+	for y in range(inside.size.y):
+		var s := y * src_pitch
+		var d := dst_offset + y * dst_pitch
+		for x in range(src_pitch):
+			data[d + x] = src_bytes[s + x]
 	return data
-
-
-func _paste_capture(dst: PackedByteArray, dst_region: Rect2i, image: Image, cap_rect: Rect2i):
-	var iw := image.get_width()
-	var ih := image.get_height()
-	var y0 := maxi(cap_rect.position.y, 0)
-	var y1 := mini(cap_rect.position.y + cap_rect.size.y, ih)
-	var x0 := maxi(cap_rect.position.x, 0)
-	var x1 := mini(cap_rect.position.x + cap_rect.size.x, iw)
-	for y in range(y0, y1):
-		for x in range(x0, x1):
-			var c: Color = image.get_pixel(x, y)
-			var idx := ((y - dst_region.position.y) * dst_region.size.x + (x - dst_region.position.x)) * 4
-			dst[idx] = int(c.r8)
-			dst[idx + 1] = int(c.g8)
-			dst[idx + 2] = int(c.b8)
-			dst[idx + 3] = int(c.a8)
 
 
 func _restore_region(img: Image, rect: Rect2i, data: PackedByteArray):

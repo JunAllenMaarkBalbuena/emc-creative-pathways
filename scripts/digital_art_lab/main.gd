@@ -29,8 +29,9 @@ var brush_spacing := 0.3  # fraction of brush diameter between dabs
 # Stroke tracking
 var _stroking := false
 var _composite_dirty := false  # debounce: rebuild once per frame via _process
-var _last_stroke_pos := Vector2.ZERO
-var _stroke_sample_dist := 0.0
+var _last_stroke_pos := Vector2.ZERO  # position of the last input event (cursor)
+var _stroke_sample_dist := 0.0  # running polyline length covered by the stroke
+var _last_dab_dist := 0.0  # polyline length at which the last dab was placed
 
 # UI references (set in _ready via @onready)
 var canvas_view: CanvasView
@@ -392,6 +393,7 @@ func _start_stroke(canvas_pos: Vector2):
 		brush_size * 0.5 * z, 8.0 * z)
 	_last_stroke_pos = canvas_pos
 	_stroke_sample_dist = 0.0
+	_last_dab_dist = 0.0
 
 	var brush_radius := int(ceil(brush_size / 2.0))
 	var canvas_ij := Vector2i(int(canvas_pos.x), int(canvas_pos.y))
@@ -417,31 +419,44 @@ func _continue_stroke(canvas_pos: Vector2):
 		return
 
 	var dist := _last_stroke_pos.distance_to(canvas_pos)
-	var spacing_px := brush_size * brush_spacing
+	if dist <= 0.0:
+		return
+
+	# Walk the full segment: place a dab at every spacing interval along the
+	# stroke polyline, carrying leftover distance between events. Dab density
+	# stays constant no matter how far the cursor jumps between input events,
+	# so fast strokes no longer ink a single spacing step per event and trail
+	# the cursor.
+	var spacing_px := maxf(brush_size * brush_spacing, 1.0)
+	var seg_start_len := _stroke_sample_dist  # polyline length at segment start
 	_stroke_sample_dist += dist
+	var brush_radius := int(ceil(brush_size / 2.0))
 
-	# Sample along the line at spacing intervals
-	if _stroke_sample_dist >= spacing_px:
-		var t := spacing_px / dist if dist > 0 else 1.0
-		var sample_pos := _last_stroke_pos.lerp(canvas_pos, t)
+	var next_dab_len := _last_dab_dist + spacing_px
+	while next_dab_len <= _stroke_sample_dist + 1e-6:
+		var frac := (next_dab_len - seg_start_len) / dist
+		var dab_pos := _last_stroke_pos.lerp(canvas_pos, frac)
 
-		var brush_radius := int(ceil(brush_size / 2.0))
-		var sample_ij := Vector2i(int(sample_pos.x), int(sample_pos.y))
-		history_manager.extend_stroke(sample_ij, brush_radius, layer_data.image)
+		var dab_ij := Vector2i(int(dab_pos.x), int(dab_pos.y))
+		history_manager.extend_stroke(dab_ij, brush_radius, layer_data.image)
 
 		if current_tool == Tool.BRUSH:
-			painter.paint_dab(layer_data, sample_pos.x, sample_pos.y,
+			painter.paint_dab(layer_data, dab_pos.x, dab_pos.y,
 				color_manager.primary, brush_size, brush_hardness, brush_opacity)
 		else:
-			painter.erase_dab(layer_data, sample_pos.x, sample_pos.y,
+			painter.erase_dab(layer_data, dab_pos.x, dab_pos.y,
 				brush_size, brush_hardness, brush_opacity)
 
-		_stroke_sample_dist = 0.0
-		_last_stroke_pos = sample_pos
-		var dr := Rect2i(int(sample_pos.x) - brush_radius, int(sample_pos.y) - brush_radius,
+		var dr := Rect2i(int(dab_pos.x) - brush_radius, int(dab_pos.y) - brush_radius,
 			brush_radius * 2, brush_radius * 2)
 		layer_manager.mark_dirty_rect(dr)
-		_composite_dirty = true
+		_last_dab_dist = next_dab_len
+		next_dab_len += spacing_px
+
+	# Track the cursor, not the last dab, so the next event keeps measuring
+	# from where the input actually is.
+	_last_stroke_pos = canvas_pos
+	_composite_dirty = true
 
 
 func _end_stroke():
