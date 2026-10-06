@@ -5,6 +5,8 @@ signal puzzle_loaded(path: String)
 
 @export_file("*.tscn") var fallback_scene := "res://scenes/main_menu.tscn"
 
+const CanvasScript := preload("res://scripts/programming_lab/flowchart_editor_canvas.gd")
+
 var _nodes: Array[FlowchartEditorNode] = []
 var _connections: Array[Dictionary] = []
 var _file_path: String = ""
@@ -21,7 +23,7 @@ var _gizmo_hover := -1  # -1=none, 0=center, 1=x, 2=y
 var _hovered_connection := -1
 var show_gizmo := true
 
-@onready var canvas: Control = %Canvas
+@onready var canvas: CanvasScript = %Canvas
 @onready var new_btn: Button = %NewBtn
 @onready var load_btn: Button = %LoadBtn
 @onready var save_btn: Button = %SaveBtn
