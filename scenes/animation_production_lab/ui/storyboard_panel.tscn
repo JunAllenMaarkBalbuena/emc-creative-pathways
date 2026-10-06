@@ -1,0 +1,65 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/animation_production_lab/ui/storyboard_panel.gd" id="1_script"]
+
+[node name="StoryboardPanel" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.06, 0.09, 0.6)
+mouse_filter = 2
+
+[node name="Card" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -380.0
+offset_top = -200.0
+offset_right = 380.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Card"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Card/Content"]
+layout_mode = 2
+text = "STORYBOARD — ORDER THE SCENE"
+
+[node name="Hint" type="Label" parent="Card/Content"]
+layout_mode = 2
+text = "Use ▲ ▼ to arrange the beats from beginning to end, then confirm."
+
+[node name="Scroll" type="ScrollContainer" parent="Card/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BeatList" type="VBoxContainer" parent="Card/Content/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Status" type="Label" parent="Card/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="ConfirmButton" type="Button" parent="Card/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+text = "Confirm order"
+
+[connection signal="pressed" from="Card/Content/ConfirmButton" to="." method="_on_confirm_pressed"]

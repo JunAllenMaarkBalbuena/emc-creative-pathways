@@ -1,0 +1,74 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/animation_production_lab/ui/tutorial_overlay.gd" id="1_script"]
+
+[node name="TutorialOverlay" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0, 0.0, 0.0, 0.75)
+
+[node name="Card" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -420.0
+offset_top = -240.0
+offset_right = 420.0
+offset_bottom = 160.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Card"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Card/Content"]
+layout_mode = 2
+text = "TUTORIAL"
+
+[node name="TutorialText" type="Label" parent="Card/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+autowrap_mode = 2
+text = ""
+
+[node name="PageLabel" type="Label" parent="Card/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "1 / 12"
+
+[node name="PagerRow" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+alignment = 1
+
+[node name="PrevButton" type="Button" parent="Card/Content/PagerRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 48)
+text = "Back"
+
+[node name="NextButton" type="Button" parent="Card/Content/PagerRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 48)
+text = "Next"
+
+[node name="DoneButton" type="Button" parent="Card/Content/PagerRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 48)
+text = "Done"
+
+[connection signal="pressed" from="Card/Content/PagerRow/PrevButton" to="." method="_on_prev_pressed"]
+[connection signal="pressed" from="Card/Content/PagerRow/NextButton" to="." method="_on_next_pressed"]
+[connection signal="pressed" from="Card/Content/PagerRow/DoneButton" to="." method="_on_done_pressed"]

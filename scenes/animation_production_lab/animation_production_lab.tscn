@@ -1,8 +1,26 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/animation_production_lab/animation_production_lab.gd" id="1_lab"]
 [ext_resource type="Texture2D" path="res://assets/char_animation/idle/1c66b4d4-7798-4026-9ddd-b75a5d3ce19d-8.png" id="2_idle"]
 [ext_resource type="Texture2D" path="res://assets/Scene_BG/Menu_Bg_image.png" id="3_bg"]
+[ext_resource type="Script" path="res://scripts/animation_production_lab/world_controller.gd" id="4_world"]
+[ext_resource type="Script" path="res://scripts/animation_production_lab/camera_controller.gd" id="5_camera"]
+[ext_resource type="Script" path="res://scripts/animation_production_lab/lighting_controller.gd" id="6_lighting"]
+[ext_resource type="Script" path="res://scripts/animation_production_lab/frame_controller.gd" id="7_frames"]
+[ext_resource type="Script" path="res://scripts/animation_production_lab/keyframe_controller.gd" id="8_keyframes"]
+[ext_resource type="Script" path="res://scripts/animation_production_lab/timeline_controller.gd" id="9_timeline"]
+[ext_resource type="Script" path="res://scripts/animation_production_lab/assignment_manager.gd" id="10_assign"]
+[ext_resource type="Script" path="res://scripts/animation_production_lab/preview_controller.gd" id="11_preview"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/top_bar.tscn" id="12_topbar"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/assignment_panel.tscn" id="13_assignpanel"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/storyboard_panel.tscn" id="14_storyboard"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/asset_library_panel.tscn" id="15_assetlib"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/inspector_panel.tscn" id="16_inspector"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/timeline_panel.tscn" id="17_timeline"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/animation_controls.tscn" id="18_animctl"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/hint_panel.tscn" id="19_hint"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/submission_panel.tscn" id="20_submission"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/tutorial_overlay.tscn" id="21_tutorial"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_prop"]
 size = Vector3(0.8, 0.9, 0.6)
@@ -14,6 +32,35 @@ albedo_color = Color(0.35, 0.45, 0.6, 1)
 script = ExtResource("1_lab")
 
 [node name="Systems" type="Node" parent="."]
+
+[node name="WorldHub" type="Node" parent="Systems"]
+script = ExtResource("4_world")
+character_root = NodePath("../../UI/SceneViewport/World/CharacterRoot")
+background_root = NodePath("../../UI/SceneViewport/World/BackgroundRoot")
+prop_root = NodePath("../../UI/SceneViewport/World/PropRoot")
+
+[node name="CameraHub" type="Node" parent="Systems"]
+script = ExtResource("5_camera")
+camera_path = NodePath("../../UI/SceneViewport/World/CameraRig")
+
+[node name="LightingHub" type="Node" parent="Systems"]
+script = ExtResource("6_lighting")
+lighting_root = NodePath("../../UI/SceneViewport/World/LightingRoot")
+
+[node name="FrameHub" type="Node" parent="Systems"]
+script = ExtResource("7_frames")
+
+[node name="KeyframeHub" type="Node" parent="Systems"]
+script = ExtResource("8_keyframes")
+
+[node name="TimelineHub" type="Node" parent="Systems"]
+script = ExtResource("9_timeline")
+
+[node name="AssignmentHub" type="Node" parent="Systems"]
+script = ExtResource("10_assign")
+
+[node name="PreviewHub" type="Node" parent="Systems"]
+script = ExtResource("11_preview")
 
 [node name="UI" type="Control" parent="."]
 
@@ -60,6 +107,26 @@ light_energy = 1.0
 
 [node name="StarterFillLight" type="OmniLight3D" parent="UI/SceneViewport/World/LightingRoot"]
 visible = false
+
+[node name="TopBar" parent="UI" instance=ExtResource("12_topbar")]
+
+[node name="AssignmentPanel" parent="UI" instance=ExtResource("13_assignpanel")]
+
+[node name="StoryboardPanel" parent="UI" instance=ExtResource("14_storyboard")]
+
+[node name="AssetLibraryPanel" parent="UI" instance=ExtResource("15_assetlib")]
+
+[node name="InspectorPanel" parent="UI" instance=ExtResource("16_inspector")]
+
+[node name="TimelinePanel" parent="UI" instance=ExtResource("17_timeline")]
+
+[node name="AnimationControls" parent="UI" instance=ExtResource("18_animctl")]
+
+[node name="HintPanel" parent="UI" instance=ExtResource("19_hint")]
+
+[node name="SubmissionPanel" parent="UI" instance=ExtResource("20_submission")]
+
+[node name="TutorialOverlay" parent="UI" instance=ExtResource("21_tutorial")]
 
 [node name="Audio" type="Node" parent="."]
 

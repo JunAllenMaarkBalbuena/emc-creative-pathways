@@ -1,0 +1,67 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/animation_production_lab/ui/animation_controls.gd" id="1_script"]
+
+[node name="AnimationControls" type="Control"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -72.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("1_script")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = 16.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = -12.0
+
+[node name="PlayButton" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 48)
+text = "Play / Pause"
+
+[node name="RewindButton" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(72, 48)
+text = "Rewind"
+
+[node name="FpsLabel" type="Label" parent="Row"]
+layout_mode = 2
+text = "FPS"
+
+[node name="FpsSpin" type="SpinBox" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 1.0
+max_value = 60.0
+step = 1.0
+value = 12.0
+
+[node name="DurLabel" type="Label" parent="Row"]
+layout_mode = 2
+text = "Duration"
+
+[node name="DurSpin" type="SpinBox" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.5
+max_value = 30.0
+step = 0.1
+value = 5.0
+suffix = " s"
+
+[connection signal="pressed" from="Row/PlayButton" to="." method="_on_play_pressed"]
+[connection signal="pressed" from="Row/RewindButton" to="." method="_on_rewind_pressed"]
+[connection signal="value_changed" from="Row/FpsSpin" to="." method="_on_fps_changed"]
+[connection signal="value_changed" from="Row/DurSpin" to="." method="_on_duration_changed"]

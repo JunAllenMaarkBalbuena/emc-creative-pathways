@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/animation_production_lab/ui/top_bar.gd" id="1_script"]
+
+[node name="TopBar" type="PanelContainer"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 56.0
+grow_horizontal = 2
+script = ExtResource("1_script")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+offset_left = 16.0
+offset_top = 8.0
+offset_right = -16.0
+offset_bottom = 48.0
+
+[node name="ModeLabel" type="Label" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "MODE"
+
+[node name="StageLabel" type="Label" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="Spacer" type="Control" parent="Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ExitButton" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(72, 40)
+text = "Exit"
+
+[connection signal="pressed" from="Row/ExitButton" to="." method="_on_exit_pressed"]

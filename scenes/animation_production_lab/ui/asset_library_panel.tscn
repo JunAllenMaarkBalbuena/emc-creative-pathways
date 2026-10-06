@@ -1,0 +1,84 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/animation_production_lab/ui/asset_library_panel.gd" id="1_script"]
+
+[node name="AssetLibraryPanel" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.06, 0.09, 0.6)
+mouse_filter = 2
+
+[node name="Card" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -420.0
+offset_top = -220.0
+offset_right = 420.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Card"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Card/Content"]
+layout_mode = 2
+text = "ASSET LIBRARY"
+
+[node name="CategoryBar" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+
+[node name="AllButton" type="Button" parent="Card/Content/CategoryBar"]
+layout_mode = 2
+text = "All"
+
+[node name="CharacterButton" type="Button" parent="Card/Content/CategoryBar"]
+layout_mode = 2
+text = "Characters"
+
+[node name="BackgroundButton" type="Button" parent="Card/Content/CategoryBar"]
+layout_mode = 2
+text = "Backgrounds"
+
+[node name="PropButton" type="Button" parent="Card/Content/CategoryBar"]
+layout_mode = 2
+text = "Props"
+
+[node name="Scroll" type="ScrollContainer" parent="Card/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AssetList" type="VBoxContainer" parent="Card/Content/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Detail" type="Label" parent="Card/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="AddButton" type="Button" parent="Card/Content"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+text = "Add to scene"
+
+[connection signal="pressed" from="Card/Content/CategoryBar/AllButton" to="." method="_on_all_pressed"]
+[connection signal="pressed" from="Card/Content/CategoryBar/CharacterButton" to="." method="_on_character_pressed"]
+[connection signal="pressed" from="Card/Content/CategoryBar/BackgroundButton" to="." method="_on_background_pressed"]
+[connection signal="pressed" from="Card/Content/CategoryBar/PropButton" to="." method="_on_prop_pressed"]
+[connection signal="pressed" from="Card/Content/AddButton" to="." method="_on_add_pressed"]
