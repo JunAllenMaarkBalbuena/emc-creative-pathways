@@ -96,10 +96,15 @@ func end_stroke(layer_manager: LayerManager):
 	var r := _record_region
 	var iw: int = layer.image.get_width()
 	var ih: int = layer.image.get_height()
-	r.position.x = maxi(0, r.position.x)
-	r.position.y = maxi(0, r.position.y)
-	r.size.x = mini(r.size.x, iw - r.position.x)
-	r.size.y = mini(r.size.y, ih - r.position.y)
+	# Clamp to the canvas with a real intersection. The previous hand-rolled
+	# clamp (maxi the position, then mini the size against the canvas edge)
+	# failed when the region started off-canvas: shifting the position to 0
+	# was never deducted from the size, so r kept the off-canvas rows. Those
+	# rows had no strip coverage, stayed transparent in `trimmed`, and undo
+	# erased a full-width band of pre-stroke content (its thickness matched
+	# the off-canvas part of the stroke box) - "random strips erased" when a
+	# stroke went over a canvas edge and was then undone.
+	r = r.intersection(Rect2i(0, 0, iw, ih))
 	if r.size.x <= 0 or r.size.y <= 0:
 		return
 
