@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="AnimationAssignment" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/animation_production_lab/data/animation_assignment.gd" id="1_assig"]
+
+[resource]
+script = ExtResource("1_assig")
+assignment_id = "day_in_emc_lab"
+display_name = "A Day in the EMC Laboratory"
+story_beats = Array[Dictionary]([{
+&"id": "begin",
+&"order": 1,
+&"text": "Enter the EMC Laboratory and stop at the entrance."
+}, {
+&"id": "middle",
+&"order": 2,
+&"text": "Approach the workstation."
+}, {
+&"id": "end",
+&"order": 3,
+&"text": "Strike the final pose at the workstation."
+}])
+required_categories = PackedStringArray("character", "background", "prop")
+min_frames = 3
+candidate_frame_paths = Array[String](["res://assets/char_animation/run/7b805aea-b3c0-43fa-a4d2-84ef858de3d6-7.png", "res://assets/char_animation/run/7b805aea-b3c0-43fa-a4d2-84ef858de3d6-8.png", "res://assets/char_animation/run/7b805aea-b3c0-43fa-a4d2-84ef858de3d6-9.png"])
+correct_frame_path = "res://assets/char_animation/run/7b805aea-b3c0-43fa-a4d2-84ef858de3d6-8.png"
+required_keyframes = Array[Dictionary]([{
+&"property_path": "position",
+&"target_type": 0
+}, {
+&"property_path": "visible",
+&"target_type": 0
+}])
+target_fps = 12
+fps_tolerance = 2
+target_duration = 5.0
+final_pose_keyframe = true
+hints = Array[String](["The story has a beginning, a middle, and an end. Order the beats before moving on.", "Your character should appear in front of the background, with a prop nearby.", "Choose the frame that shows the approach for the missing slot.", "Animation plays best around 12 frames per second.", "Add a movement keyframe before the pose changes.", "Preview your animation before submitting."])
+review_checklist_hint = "Check every light is on: character visible, background visible, clear action, framed camera, sufficient lighting, and at least 3 frames."
