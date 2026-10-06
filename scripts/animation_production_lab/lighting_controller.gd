@@ -138,6 +138,21 @@ func key_light_exists() -> bool:
 	return false
 
 
+## Snapshot of every managed light, for SaveController lighting_data (Task 15).
+func all_lights() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for id in _lights:
+		var light := _lights[id] as Light3D
+		out.append({
+			"id": id,
+			"kind": LIGHT_DIRECTIONAL if light is DirectionalLight3D else LIGHT_OMNI,
+			"energy": light.light_energy,
+			"color": light.light_color,
+			"shadows": light.shadow_enabled,
+		})
+	return out
+
+
 func min_intensity() -> float:
 	var min_val := INF
 	for id in _lights:

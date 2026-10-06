@@ -4,8 +4,13 @@ extends Control
 
 @onready var hint_text: Label = %HintText
 
+## Count of hint views (non-empty hint sets shown) for save-data snapshots.
+var hints_used := 0
+
 func set_hints(hints: Array[String]) -> void:
 	hint_text.text = hints[0] if not hints.is_empty() else ""
+	if not hints.is_empty():
+		hints_used += 1
 
 func clear_hints() -> void:
 	hint_text.text = ""

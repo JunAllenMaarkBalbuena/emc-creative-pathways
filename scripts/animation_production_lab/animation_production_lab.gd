@@ -81,6 +81,9 @@ const ScorePanelScript := preload("res://scripts/animation_production_lab/ui/sco
 # Scoring is RefCounted, so it is created in _ready rather than a scene node.
 var scoring: ScoringController
 
+# Created in _ready when autosave_enabled; writes guided.tres on stage changes.
+var save_controller: SaveController
+
 # Read-only EMC asset adapter (RefCounted; booted with committed assets).
 var library := EMCAssetLibrary.new()
 
@@ -114,7 +117,10 @@ func _ready() -> void:
 	_wire_controller_refs()
 	_register_starter_lights()
 	_wire_panels()
+	if autosave_enabled:
+		save_controller = SaveController.new()
 	assignment_manager.stage_changed.connect(on_stage_changed)
+	assignment_manager.stage_changed.connect(_autosave_stage_changed)
 	assignment_manager.assignment_loaded.connect(_on_assignment_loaded)
 	world.objects_changed.connect(_on_objects_changed)
 	library.refresh()
@@ -401,6 +407,109 @@ func unlock_creative_studio() -> void:
 	mode = Mode.STUDIO
 	top_bar.set_mode_label("STUDIO")
 	score_panel.hide()
+
+
+## Task 15: autosave hook (spec §6) — fires on every stage change while a
+## SaveController exists and writes the guided.tres snapshot.
+func _autosave_stage_changed(_stage: int) -> void:
+	if save_controller == null:
+		return
+	save_controller.save_data(collect_save_data())
+
+
+## Snapshot of the current session for autosave / Creative Studio projects
+## (Task 16). Fields mirror AnimationLabSaveData (spec §3); every value is a
+## plain serializable Variant so the .tres round-trip is lossless.
+func collect_save_data() -> AnimationLabSaveData:
+	var data := AnimationLabSaveData.new()
+	data.guided_completed = guided_completed
+	var assign := assignment_manager.assignment
+	data.current_assignment_id = "" if assign == null else assign.assignment_id
+	data.scene_objects = _collect_scene_objects()
+	data.camera_data = _collect_camera_data()
+	data.lighting_data = _collect_lighting_data()
+	data.frames = _collect_frames()
+	data.keyframes = _collect_keyframes()
+	data.fps = timeline.fps
+	data.duration = timeline.duration
+	data.score_data = _collect_score_data()
+	data.hints_used = hint_panel.hints_used
+	data.creative_projects = []
+	return data
+
+
+func _collect_scene_objects() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for object_id in world.all_objects():
+		var data := world.get_object(object_id)
+		out.append({
+			"id": object_id,
+			"category": str(data.get("category", "")),
+			"asset_id": str(data.get("asset_id", "")),
+			"position": data.get("position", Vector3.ZERO),
+			"rotation_degrees": data.get("rotation_degrees", Vector3.ZERO),
+			"scale": data.get("scale", Vector3.ONE),
+			"visible": bool(data.get("visible", false)),
+		})
+	return out
+
+
+func _collect_camera_data() -> Dictionary:
+	var cam := camera.camera()
+	if cam == null:
+		return {}
+	return {
+		"position": cam.position,
+		"rotation_degrees": cam.rotation_degrees,
+		"fov": cam.fov,
+	}
+
+
+func _collect_lighting_data() -> Dictionary:
+	return {"lights": lighting.all_lights()}
+
+
+func _collect_frames() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for frame in frames.frames:
+		out.append({
+			"texture": "" if frame.texture == null else frame.texture.resource_path,
+			"duration": frame.duration,
+			"pose_name": frame.pose_name,
+			"notes": frame.notes,
+		})
+	return out
+
+
+func _collect_keyframes() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for kf in keyframes.keyframes:
+		out.append({
+			"time": kf.time,
+			"target_id": kf.target_id,
+			"target_type": kf.target_type,
+			"property_path": kf.property_path,
+			"value": kf.value,
+			"interpolation": kf.interpolation,
+		})
+	return out
+
+
+func _collect_score_data() -> Dictionary:
+	if last_score == null:
+		return {}
+	return {
+		"total": last_score.total_score,
+		"story": last_score.story_score,
+		"staging": last_score.staging_score,
+		"camera": last_score.camera_score,
+		"lighting": last_score.lighting_score,
+		"frame": last_score.frame_animation_score,
+		"keyframe": last_score.keyframe_score,
+		"timing": last_score.timing_score,
+		"technical": last_score.technical_score,
+		"creativity": last_score.creativity_score,
+	}
 
 
 func exit_lab() -> void:
