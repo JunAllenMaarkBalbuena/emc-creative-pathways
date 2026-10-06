@@ -1,4 +1,4 @@
-[gd_scene load_steps=25 format=3]
+[gd_scene load_steps=26 format=3]
 
 [ext_resource type="Script" path="res://scripts/animation_production_lab/animation_production_lab.gd" id="1_lab"]
 [ext_resource type="Texture2D" path="res://assets/char_animation/idle/1c66b4d4-7798-4026-9ddd-b75a5d3ce19d-8.png" id="2_idle"]
@@ -21,6 +21,7 @@
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/hint_panel.tscn" id="19_hint"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/submission_panel.tscn" id="20_submission"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/score_panel.tscn" id="22_scorepanel"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/studio_panel.tscn" id="23_studio"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/tutorial_overlay.tscn" id="21_tutorial"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_prop"]
@@ -128,6 +129,8 @@ visible = false
 [node name="SubmissionPanel" parent="UI" instance=ExtResource("20_submission")]
 
 [node name="ScorePanel" parent="UI" instance=ExtResource("22_scorepanel")]
+
+[node name="StudioPanel" parent="UI" instance=ExtResource("23_studio")]
 
 [node name="TutorialOverlay" parent="UI" instance=ExtResource("21_tutorial")]
 

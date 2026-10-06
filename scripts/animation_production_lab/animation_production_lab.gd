@@ -53,6 +53,7 @@ const HintPanelScript := preload("res://scripts/animation_production_lab/ui/hint
 const TutorialOverlayScript := preload("res://scripts/animation_production_lab/ui/tutorial_overlay.gd")
 const SubmissionPanelScript := preload("res://scripts/animation_production_lab/ui/submission_panel.gd")
 const ScorePanelScript := preload("res://scripts/animation_production_lab/ui/score_panel.gd")
+const StudioPanelScript := preload("res://scripts/animation_production_lab/ui/studio_panel.gd")
 
 @export_file("*.tscn") var fallback_scene := "res://scenes/main_menu.tscn"
 
@@ -84,6 +85,10 @@ var scoring: ScoringController
 # Created in _ready when autosave_enabled; writes guided.tres on stage changes.
 var save_controller: SaveController
 
+# Creative Studio project manager (Task 16). Always created so the studio has
+# a save layer; the autosave hook above only exists when autosave_enabled.
+var studio: CreativeStudioController
+
 # Read-only EMC asset adapter (RefCounted; booted with committed assets).
 var library := EMCAssetLibrary.new()
 
@@ -99,6 +104,7 @@ var library := EMCAssetLibrary.new()
 @onready var tutorial_overlay: TutorialOverlayScript = $UI/TutorialOverlay
 @onready var submission_panel: SubmissionPanelScript = $UI/SubmissionPanel
 @onready var score_panel: ScorePanelScript = $UI/ScorePanel
+@onready var studio_panel: StudioPanelScript = $UI/StudioPanel
 
 enum Mode {GUIDED = 0, STUDIO = 1}
 
@@ -119,14 +125,29 @@ func _ready() -> void:
 	_wire_panels()
 	if autosave_enabled:
 		save_controller = SaveController.new()
+	studio = CreativeStudioController.new()
+	studio.save = save_controller if save_controller != null else SaveController.new()
 	assignment_manager.stage_changed.connect(on_stage_changed)
 	assignment_manager.stage_changed.connect(_autosave_stage_changed)
 	assignment_manager.assignment_loaded.connect(_on_assignment_loaded)
 	world.objects_changed.connect(_on_objects_changed)
 	library.refresh()
+	_apply_saved_state()
 	assignment_manager.load_assignment(DEFAULT_ASSIGNMENT)
 	top_bar.set_mode_label("GUIDED")
+	top_bar.set_studio_unlocked(guided_completed)
 	on_stage_changed(assignment_manager.current_stage())
+
+
+## Boot-time unlock read (spec §15: the studio gate lives in the lab's own
+## save, not only in LevelProgression). _complete_guided_flow persists the
+## completed flag, so a later boot re-opens the studio.
+func _apply_saved_state() -> void:
+	if save_controller == null:
+		return
+	var saved := save_controller.load_data()
+	if saved.guided_completed:
+		guided_completed = true
 
 
 func _process(delta: float) -> void:
@@ -176,6 +197,7 @@ func _register_starter_lights() -> void:
 
 func _wire_panels() -> void:
 	top_bar.exit_requested.connect(exit_lab)
+	top_bar.studio_requested.connect(unlock_creative_studio)
 	assignment_panel.brief_acknowledged.connect(_on_brief_acknowledged)
 	storyboard_panel.order_submitted.connect(_on_order_submitted)
 	asset_library_panel.add_requested.connect(_on_asset_add_requested)
@@ -193,12 +215,19 @@ func _wire_panels() -> void:
 	tutorial_overlay.tutorial_closed.connect(_on_tutorial_closed)
 	submission_panel.submit_requested.connect(on_submit_pressed)
 	score_panel.continue_to_studio.connect(unlock_creative_studio)
+	studio_panel.new_requested.connect(_on_studio_new)
+	studio_panel.save_requested.connect(_on_studio_save)
+	studio_panel.load_requested.connect(_on_studio_load)
+	studio_panel.rename_requested.connect(_on_studio_rename)
+	studio_panel.duplicate_requested.connect(_on_studio_duplicate)
+	studio_panel.delete_requested.connect(_on_studio_delete)
 
 
 ## Stage -> panel visibility map. One panel (plus the persistent top bar) is
 ## visible per stage. score_panel is independent — shown only by submitting.
 func show_stage_ui(stage: int) -> void:
 	score_panel.hide()
+	studio_panel.hide()
 	assignment_panel.visible = stage == STAGE_BRIEF
 	storyboard_panel.visible = stage == STAGE_PLAN
 	asset_library_panel.visible = stage == STAGE_ASSETS
@@ -389,6 +418,9 @@ func _complete_guided_flow() -> void:
 	var level := load(LEVEL_PATH) as LevelDefinition
 	if level != null and not LevelProgression.is_level_completed(level.level_id):
 		LevelProgression.complete_level(level)
+	# Persist the flag so the studio gate (which boots from its own save,
+	# spec §15) re-opens on the next launch.
+	_autosave_stage_changed(-1)
 	guided_flow_completed.emit()
 
 
@@ -406,7 +438,155 @@ func unlock_creative_studio() -> void:
 		return
 	mode = Mode.STUDIO
 	top_bar.set_mode_label("STUDIO")
+	top_bar.set_studio_unlocked(false)
 	score_panel.hide()
+	_enter_studio_mode()
+
+
+## Task 16: the studio runs the same World/Timeline pipeline, assignment-free
+## (spec §5). Guided stage panels drop away; the object/timeline tools and
+## the studio panel stay so the player can build and save freely.
+func _enter_studio_mode() -> void:
+	assignment_panel.hide()
+	storyboard_panel.hide()
+	submission_panel.hide()
+	hint_panel.hide()
+	tutorial_overlay.hide()
+	asset_library_panel.show()
+	asset_library_panel.set_assets(library.list())
+	inspector_panel.show()
+	inspector_panel.set_object_list(_object_summaries())
+	timeline_panel.show()
+	timeline_panel.set_frame_count(frames.frames.size())
+	animation_controls.show()
+	animation_controls.set_fps(timeline.fps)
+	animation_controls.set_duration(timeline.duration)
+	_previewing = false
+	timeline.pause()
+	studio_panel.show()
+	_refresh_studio_projects()
+	studio_panel.set_status("Load a project or start a new one.")
+
+
+func _on_studio_new(name: String) -> void:
+	name = name.strip_edges()
+	if name.is_empty():
+		studio_panel.set_status("Enter a project name first.")
+		return
+	if studio.new_project(name):
+		studio_panel.set_status("Created “%s”." % name)
+		_refresh_studio_projects()
+	else:
+		studio_panel.set_status("Could not create “%s” (name exists or is invalid)." % name)
+
+
+func _on_studio_save(name: String) -> void:
+	name = name.strip_edges()
+	if name.is_empty():
+		name = studio_panel.selected()
+	if name.is_empty():
+		studio_panel.set_status("Enter a name or select a project to save.")
+		return
+	if studio.save_current(collect_save_data(), name):
+		studio_panel.set_status("Saved “%s”." % name)
+		_refresh_studio_projects()
+	else:
+		studio_panel.set_status("Could not save “%s”." % name)
+
+
+func _on_studio_load(name: String) -> void:
+	var data := studio.load_project(name)
+	if data == null:
+		studio_panel.set_status("Could not load “%s”." % name)
+		return
+	_apply_project_data(data)
+	studio_panel.set_status("Loaded “%s”." % name)
+
+
+func _on_studio_rename(name: String, new_name: String) -> void:
+	new_name = new_name.strip_edges()
+	if new_name.is_empty():
+		studio_panel.set_status("Type the new name in the project field.")
+		return
+	if studio.rename_project(name, new_name):
+		studio_panel.set_status("Renamed “%s” to “%s”." % [name, new_name])
+		_refresh_studio_projects()
+	else:
+		studio_panel.set_status("Could not rename (new name may already exist).")
+
+
+func _on_studio_duplicate(name: String) -> void:
+	if studio.duplicate_project(name):
+		studio_panel.set_status("Duplicated “%s”." % name)
+		_refresh_studio_projects()
+	else:
+		studio_panel.set_status("Could not duplicate “%s”." % name)
+
+
+func _on_studio_delete(name: String) -> void:
+	if studio.delete_project(name):
+		studio_panel.set_status("Deleted “%s”." % name)
+		_refresh_studio_projects()
+	else:
+		studio_panel.set_status("Could not delete “%s”." % name)
+
+
+func _refresh_studio_projects() -> void:
+	studio_panel.set_projects(studio.list_projects())
+
+
+## Restore a project snapshot into the live pipeline — the studio's "Load".
+## World objects are re-resolved through the asset library; frames, keyframes
+## and timeline settings are rebuilt from the serialized dictionaries.
+func _apply_project_data(data: AnimationLabSaveData) -> void:
+	for object_id in world.all_objects():
+		world.remove_object(object_id)
+	for obj in data.scene_objects:
+		var asset := library.get_asset(str(obj.get("asset_id", ""))) as EMCAssetData
+		if asset == null:
+			continue
+		var object_id := world.add_asset(asset, obj.get("position", Vector3.ZERO) as Vector3)
+		if object_id.is_empty():
+			continue
+		world.set_object_rotation(object_id, obj.get("rotation_degrees", Vector3.ZERO) as Vector3)
+		world.set_object_scale(object_id, obj.get("scale", Vector3.ONE) as Vector3)
+		world.set_object_visible(object_id, bool(obj.get("visible", true)))
+	var cam := camera.camera()
+	if cam != null:
+		camera.set_transform(
+			data.camera_data.get("position", Vector3(0, 0.8, 4)) as Vector3,
+			data.camera_data.get("rotation_degrees", Vector3.ZERO) as Vector3,
+		)
+		cam.fov = float(data.camera_data.get("fov", 60.0))
+	while frames.frames.size() > 1:
+		frames.remove_frame(frames.frames.size() - 1)
+	for i in range(maxi(1, data.frames.size())):
+		if i >= frames.frames.size():
+			frames.add_frame(null, 0.1)
+		var entry: Dictionary = {} if data.frames.is_empty() else data.frames[i]
+		frames.set_frame_texture(i, _texture_for(str(entry.get("texture", ""))))
+		frames.set_frame_duration(i, float(entry.get("duration", 0.1)))
+	keyframes.keyframes.clear()
+	for entry in data.keyframes:
+		keyframes.add_keyframe(
+			float(entry.get("time", 0.0)),
+			str(entry.get("target_id", "")),
+			int(entry.get("target_type", 0)),
+			str(entry.get("property_path", "")),
+			entry.get("value", null),
+			int(entry.get("interpolation", 0)),
+		)
+	timeline.set_fps(clampi(int(data.fps), fps_min, fps_max))
+	timeline.set_duration(clampf(float(data.duration), 0.1, max_duration))
+	timeline_panel.set_frame_count(frames.frames.size())
+	animation_controls.set_fps(timeline.fps)
+	animation_controls.set_duration(timeline.duration)
+
+
+func _texture_for(path: String) -> Texture2D:
+	if path.is_empty() or not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
 
 
 ## Task 15: autosave hook (spec §6) — fires on every stage change while a
@@ -434,8 +614,17 @@ func collect_save_data() -> AnimationLabSaveData:
 	data.duration = timeline.duration
 	data.score_data = _collect_score_data()
 	data.hints_used = hint_panel.hints_used
-	data.creative_projects = []
+	data.creative_projects = _collect_creative_projects()
 	return data
+
+
+func _collect_creative_projects() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if studio == null:
+		return out
+	for entry in studio.projects:
+		out.append({"name": str(entry.get("name", ""))})
+	return out
 
 
 func _collect_scene_objects() -> Array[Dictionary]:

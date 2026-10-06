@@ -10,6 +10,7 @@ extends Node
 
 const LAB := "res://scenes/animation_production_lab/animation_production_lab.tscn"
 const ASSIGN := "res://data/assignments/animation/day_in_emc_lab.tres"
+const SAVE_GUIDED := "user://animation_lab/guided.tres"
 
 var _failures: Array[String] = []
 
@@ -17,8 +18,10 @@ var _failures: Array[String] = []
 func _ready() -> void:
 	var tree := get_tree()
 	var backup := _backup_progress_file()
+	var guided_backup := _backup_guided_file()
 	_failures = await _run()
 	_restore_progress_file(backup)
+	_restore_guided_file(guided_backup)
 	if _failures.is_empty():
 		print("PASS: guided flow gates submission, scores, completes level, unlocks studio")
 		tree.quit(0)
@@ -104,6 +107,10 @@ func _run() -> Array[String]:
 	await tree.process_frame
 
 	# --- Run 2: nothing done — submit refuses, no score, no unlock ---------
+	# Boot as a fresh player: run 1 persisted its completed flag to
+	# guided.tres, and the studio gate boots from that file (spec §15). The
+	# end-of-test restore puts the developer's original file back.
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_GUIDED))
 	var lab2 := load(LAB).instantiate() as AnimationProductionLab
 	add_child(lab2)
 	await tree.process_frame
@@ -162,5 +169,23 @@ func _restore_progress_file(backup: String) -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 		return
 	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f != null:
+		f.store_string(backup)
+
+
+## Task 16: the completed guided flag is persisted to guided.tres on submit,
+## and the studio boot-reads it — so run 2 must not see run 1's completion.
+func _backup_guided_file() -> String:
+	if not FileAccess.file_exists(SAVE_GUIDED):
+		return ""
+	return FileAccess.get_file_as_string(SAVE_GUIDED)
+
+
+func _restore_guided_file(backup: String) -> void:
+	if backup.is_empty():
+		if FileAccess.file_exists(SAVE_GUIDED):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_GUIDED))
+		return
+	var f := FileAccess.open(SAVE_GUIDED, FileAccess.WRITE)
 	if f != null:
 		f.store_string(backup)
