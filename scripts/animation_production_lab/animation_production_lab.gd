@@ -13,7 +13,14 @@ extends CanvasLayer
 
 signal lab_closed
 
+## Emitted once the guided run is submitted and the level is completed.
+## Named guided_flow_completed (not guided_completed) because GDScript cannot
+## share a name between a signal and a bool var, and the flag keeps the
+## plan's name for boot-time resilience reads (Task 15).
+signal guided_flow_completed
+
 const DEFAULT_ASSIGNMENT := "res://data/assignments/animation/day_in_emc_lab.tres"
+const LEVEL_PATH := "res://data/levels/animation_production_lab.tres"
 
 const STAGE_NAMES := [
 	"BRIEF", "PLAN", "ASSETS", "STAGING", "CAMERA",
@@ -45,6 +52,7 @@ const AnimationControlsScript := preload("res://scripts/animation_production_lab
 const HintPanelScript := preload("res://scripts/animation_production_lab/ui/hint_panel.gd")
 const TutorialOverlayScript := preload("res://scripts/animation_production_lab/ui/tutorial_overlay.gd")
 const SubmissionPanelScript := preload("res://scripts/animation_production_lab/ui/submission_panel.gd")
+const ScorePanelScript := preload("res://scripts/animation_production_lab/ui/score_panel.gd")
 
 @export_file("*.tscn") var fallback_scene := "res://scenes/main_menu.tscn"
 
@@ -87,17 +95,24 @@ var library := EMCAssetLibrary.new()
 @onready var hint_panel: HintPanelScript = $UI/HintPanel
 @onready var tutorial_overlay: TutorialOverlayScript = $UI/TutorialOverlay
 @onready var submission_panel: SubmissionPanelScript = $UI/SubmissionPanel
+@onready var score_panel: ScorePanelScript = $UI/ScorePanel
 
-# Guided-flow state. "studio" unlocks in the Creative Studio mode (Task 16).
-var mode := "guided"
+enum Mode {GUIDED = 0, STUDIO = 1}
+
+## Guided-flow state. studio unlocks in the Creative Studio mode (Task 16)
+## and is read back from AnimationLabSaveData on boot (Task 15).
+var mode: int = Mode.GUIDED
 var guided_completed := false
+var last_score: AnimationScoreData
 var _previewing := false
+var _submission_refresh := 0.0
 
 
 func _ready() -> void:
 	scoring = ScoringController.new()
 	_apply_tuning()
 	_wire_controller_refs()
+	_register_starter_lights()
 	_wire_panels()
 	assignment_manager.stage_changed.connect(on_stage_changed)
 	assignment_manager.assignment_loaded.connect(_on_assignment_loaded)
@@ -111,6 +126,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _previewing:
 		preview.step(delta)
+	if submission_panel.visible:
+		_submission_refresh -= delta
+		if _submission_refresh <= 0.0:
+			_submission_refresh = 0.25
+			_refresh_submission()
 
 
 func _apply_tuning() -> void:
@@ -134,6 +154,20 @@ func _wire_controller_refs() -> void:
 	assignment_manager.timeline_sources = timeline
 
 
+## The scene's starter lights (StarterKeyLight/StarterFillLight) are authored
+## in the .tscn, so adopt them into the LightingController's measurable set
+## instead of duplicating them with add_light.
+func _register_starter_lights() -> void:
+	var dir := get_node_or_null(
+		"UI/SceneViewport/World/LightingRoot/StarterKeyLight") as DirectionalLight3D
+	var omni := get_node_or_null(
+		"UI/SceneViewport/World/LightingRoot/StarterFillLight") as OmniLight3D
+	if dir != null:
+		lighting.register_existing("starter_key", dir)
+	if omni != null:
+		lighting.register_existing("starter_fill", omni)
+
+
 func _wire_panels() -> void:
 	top_bar.exit_requested.connect(exit_lab)
 	assignment_panel.brief_acknowledged.connect(_on_brief_acknowledged)
@@ -151,11 +185,14 @@ func _wire_panels() -> void:
 	animation_controls.fps_changed.connect(_on_fps_changed)
 	animation_controls.duration_changed.connect(_on_duration_changed)
 	tutorial_overlay.tutorial_closed.connect(_on_tutorial_closed)
+	submission_panel.submit_requested.connect(on_submit_pressed)
+	score_panel.continue_to_studio.connect(unlock_creative_studio)
 
 
 ## Stage -> panel visibility map. One panel (plus the persistent top bar) is
-## visible per stage.
+## visible per stage. score_panel is independent — shown only by submitting.
 func show_stage_ui(stage: int) -> void:
+	score_panel.hide()
 	assignment_panel.visible = stage == STAGE_BRIEF
 	storyboard_panel.visible = stage == STAGE_PLAN
 	asset_library_panel.visible = stage == STAGE_ASSETS
@@ -317,6 +354,53 @@ func _on_duration_changed(duration: float) -> void:
 func _on_tutorial_closed() -> void:
 	assignment_manager.tutorial_done()
 	tutorial_overlay.hide()
+
+
+## Task 14: submission. Gated by can_advance() at SUBMIT; on success the
+## review checklist is refreshed, scored, shown, and the level completes.
+func on_submit_pressed() -> void:
+	if assignment_manager.current_stage() != STAGE_SUBMIT:
+		return
+	if not assignment_manager.can_advance():
+		submission_panel.set_status("Not every requirement is met yet.")
+		return
+	preview.evaluate_review()
+	if not enable_scoring:
+		_complete_guided_flow()
+		return
+	last_score = scoring.score(
+		assignment_manager.story_order_correct,
+		assignment_manager.assignment,
+		world, camera, lighting, frames, keyframes, timeline,
+		preview.review_checklist,
+	)
+	score_panel.show_score(last_score)
+	_complete_guided_flow()
+
+
+func _complete_guided_flow() -> void:
+	guided_completed = true
+	var level := load(LEVEL_PATH) as LevelDefinition
+	if level != null and not LevelProgression.is_level_completed(level.level_id):
+		LevelProgression.complete_level(level)
+	guided_flow_completed.emit()
+
+
+## Keep the SUBMIT checklist live without rebuilding rows every frame.
+func _refresh_submission() -> void:
+	submission_panel.set_requirements(assignment_manager.stage_requirements())
+
+
+## Creative Studio unlock gate (spec §5): only after the guided run is
+## submitted does the studio open; the flag survives a reboot (Task 15).
+func unlock_creative_studio() -> void:
+	if not guided_completed or not enable_creative_studio:
+		return
+	if mode == Mode.STUDIO:
+		return
+	mode = Mode.STUDIO
+	top_bar.set_mode_label("STUDIO")
+	score_panel.hide()
 
 
 func exit_lab() -> void:

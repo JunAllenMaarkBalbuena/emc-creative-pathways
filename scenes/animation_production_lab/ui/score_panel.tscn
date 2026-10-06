@@ -1,0 +1,76 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/animation_production_lab/ui/score_panel.gd" id="1_script"]
+
+[node name="ScorePanel" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+visible = false
+script = ExtResource("1_script")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.06, 0.09, 0.85)
+
+[node name="Card" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -460.0
+offset_top = -300.0
+offset_right = 460.0
+offset_bottom = 300.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Card"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Card/Content"]
+layout_mode = 2
+text = "ASSIGNMENT SCORE"
+
+[node name="TotalLabel" type="Label" parent="Card/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+font_size = 40
+text = ""
+
+[node name="DetailLabel" type="Label" parent="Card/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+font_size = 18
+autowrap_mode = 2
+text = ""
+
+[node name="FeedbackHeader" type="Label" parent="Card/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+text = "How to improve:"
+
+[node name="Scroll" type="ScrollContainer" parent="Card/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FeedbackList" type="VBoxContainer" parent="Card/Content/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ContinueButton" type="Button" parent="Card/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 56)
+text = "Continue to Creative Studio"
+
+[connection signal="pressed" from="Card/Content/ContinueButton" to="." method="_on_continue_pressed"]

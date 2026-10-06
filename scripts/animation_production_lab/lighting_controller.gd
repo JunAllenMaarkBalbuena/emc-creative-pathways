@@ -51,6 +51,29 @@ func add_light(type: int, position: Vector3) -> String:
 	return id
 
 
+## Adopt a light that already exists in the scene (the lab's starter key/fill
+## lights live under LightingRoot from the .tscn, not from add_light). Enforces
+## the same per-kind cap as add_light so the spec's 1+1 budget still holds.
+func register_existing(id: String, light: Light3D) -> bool:
+	if id == "" or light == null or _lights.has(id):
+		return false
+	if light is DirectionalLight3D:
+		if _dir_count >= 1:
+			return false
+	elif light is OmniLight3D:
+		if _omni_count >= 1:
+			return false
+	else:
+		return false
+	_lights[id] = light
+	if light is DirectionalLight3D:
+		_dir_count += 1
+	else:
+		_omni_count += 1
+	lights_changed.emit()
+	return true
+
+
 func remove_light(id: String) -> bool:
 	var light := _lights.get(id, null) as Light3D
 	if light == null:
