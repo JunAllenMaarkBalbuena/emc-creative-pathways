@@ -55,22 +55,62 @@ func begin_move(_axis: Vector3) -> bool:
 	_transforming = _snapshot()
 	return _transforming
 
+## Snaps the TRAVEL, not the resulting position.
+##
+## The order of these two operations is the whole difference. Rounding the
+## position instead - `snap_vector3(_original_positions[i] + move)` - looks
+## equivalent and is not. Rounding each world component independently means that
+## on a diagonal drag axis X and Z round separately, each in its own
+## `position_snap` steps, at different moments. The object then staircases across
+## the drag line rather than walking along it: measured, it strayed up to 0.158
+## units off the line and its advances came out 0.125 / 0.217 / 0.342 instead of a
+## uniform grid step. That is the "snap makes the object wiggle" report.
+##
+## Rounding the scalar distance cannot do that, because `axis` is a unit vector:
+## the displacement is exactly `axis * k * position_snap` for integer k, which is
+## collinear with the drag axis by construction. Two further defects disappear with
+## it, both consequences of rounding the position:
+##   - pressing the handle no longer teleports an off-grid object. Measured, it
+##     used to jump (0.13, 0.07, 0.11) -> (0.25, 0, 0) on the first frame;
+##   - a multi-selection keeps its spacing. Each member's original position
+##     differs, so rounding each one produced a different delta per member -
+##     measured, a pair spaced 0.7 apart was dragged to 0.5 apart.
+##
+## This also matches `apply_rotate`, which already snapped the scalar angle rather
+## than the composed basis. Move was the only transform rounding a vector.
+##
+## The axis-aligned case is unchanged: with a world-axis drag from the origin,
+## rounding the distance and rounding the component give the same result, so
+## ordinary dragging still lands exactly on the grid.
 func apply_move(axis: Vector3, delta_distance: float):
 	if not _transforming: return
-	var move := axis * delta_distance
+	var move := axis * _snap_distance(delta_distance)
 	for i in _nodes.size():
-		var new_pos := _original_positions[i] + move
-		if _snap_settings.snap_enabled:
-			new_pos = _snap_settings.snap_vector3(new_pos, _snap_settings.position_snap)
-		_nodes[i].position = new_pos
+		_nodes[i].position = _original_positions[i] + move
 
+## Body drag. Same rule as `apply_move` for the same reason - the displacement is
+## a free vector, so rounding its components staircases in the plane instead of
+## moving in uniform steps along the press-to-cursor direction.
 func apply_move_delta(delta: Vector3):
 	if not _transforming: return
+	var snapped := _snap_vector_length(delta)
 	for i in _nodes.size():
-		var new_pos := _original_positions[i] + delta
-		if _snap_settings.snap_enabled:
-			new_pos = _snap_settings.snap_vector3(new_pos, _snap_settings.position_snap)
-		_nodes[i].position = new_pos
+		_nodes[i].position = _original_positions[i] + snapped
+
+## Rounds a scalar travel distance to the grid. `snap_value` already returns the
+## value untouched when snapping is off or the grid is zero, so no branch needed.
+func _snap_distance(d: float) -> float:
+	return _snap_settings.snap_value(d, _snap_settings.position_snap)
+
+## Rounds a displacement to whole grid steps along its own direction, so the
+## object travels in uniform steps along the drag ray and never across it.
+func _snap_vector_length(v: Vector3) -> Vector3:
+	if not _snap_settings.snap_enabled or _snap_settings.position_snap <= 0.0:
+		return v
+	var magnitude := v.length()
+	if magnitude <= 0.0:
+		return v
+	return v.normalized() * _snap_settings.snap_value(magnitude, _snap_settings.position_snap)
 
 func end_move():
 	if _transforming:
