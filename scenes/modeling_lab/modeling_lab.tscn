@@ -507,7 +507,7 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 text = "Skew"
-tooltip_text = "Keep the object's skew through rotation edits. Off: a sheared object is cleaned - rotating flattens it and the size changes."
+tooltip_text = "Skew on: shears are kept - rotation edits preserve them. Off (default): the object stays clean - edits that would shear it (World scale or Global gizmo) are flattened in real time."
 
 [node name="ShearWarning" type="Label" parent="RightPanel/TabContainer/Inspector/Scroll/Rows" unique_id=9900112233]
 unique_name_in_owner = true

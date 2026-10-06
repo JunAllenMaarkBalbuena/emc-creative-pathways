@@ -257,22 +257,28 @@ func apply_scale(axis: Vector3, delta: float, uniform: bool = true,
 		var scale_basis := Basis.from_scale(applied)
 		var node := _nodes[i]
 		node.basis = scale_basis * orig if world_frame else orig * scale_basis
+		# 5s keep-clean: while the per-object Skew switch is OFF (its default) no
+		# scale edit may leave a sheared node. The Global frame pre-multiplies a
+		# diagonal, which on a rotated node is the gizmo's shear-creating path - so
+		# rebuild the result in real time as R * S with the same column lengths.
+		# The rebuild is exact on an already-clean basis (orthonormalized returns
+		# exactly R, the column lengths are exactly the scale), so this also does
+		# not fight the Local frame, which never shears. The switch lives in node
+		# meta (modeling_lab's `_skew_enabled`); while it is ON the shear survives,
+		# which is how a Global drag creates deliberately skewed shapes.
+		if not node.get_meta(&"skew_enabled", false):
+			var cols := Vector3(
+					node.basis[0].length(),
+					node.basis[1].length(),
+					node.basis[2].length())
+			if absf(node.basis.determinant()) > 0.0001:
+				node.basis = node.basis.orthonormalized() * Basis.from_scale(cols)
 		var rel := _original_positions[i] - _group_center
 		if not rel.is_zero_approx():
 			node.position = _group_center + rel * factor_v
 
 func end_scale():
 	if _transforming:
-		# The Global gizmo frame PRE-multiplies a diagonal (see apply_scale), which
-		# is one of the two ways this app creates shear. Mirror that on the per-node
-		# Skew switch so it reports reality - the object is now being worked on in a
-		# skew-enabled state. One-direction (only ever ON): a scale commit can
-		# create shear but never removes it - see
-		# docs/decisions/2026-10-06-skew-toggle.md. Set BEFORE the action is built
-		# so the snapshots carry the flag.
-		for i in _nodes.size():
-			if _is_sheared_basis(_nodes[i].basis):
-				_nodes[i].set_meta(&"skew_enabled", true)
 		var paths: Array[NodePath] = []
 		var befores: Array[Transform3D] = []
 		var afters: Array[Transform3D] = []
@@ -319,17 +325,3 @@ func center_selected():
 		_hierarchy_manager.get_container(), _spawner, _material_mgr, _hierarchy_manager)
 	_undo_redo.execute_command(action)
 	_selection_manager.reselect_from_ids(action.get_last_created_ids())
-
-
-## The same test the lab's `_is_sheared` runs (modelling_lab.gd), duplicated here
-## because this manager owns the gizmo scale commit and the lab does not see the
-## nodes mid-drag. Three columns not mutually orthogonal, tested on a NORMALISED
-## basis so the epsilon means the same thing at any object size (an absolute dot
-## product scales with the square of the axis lengths). 1e-5 is ~100x the float32
-## residue a basis picks up round-tripping through PrimitiveSaveData.basis_rows.
-func _is_sheared_basis(basis: Basis) -> bool:
-	const EPS := 1e-5
-	var x := basis[0].normalized()
-	var y := basis[1].normalized()
-	var z := basis[2].normalized()
-	return absf(x.dot(y)) > EPS or absf(x.dot(z)) > EPS or absf(y.dot(z)) > EPS

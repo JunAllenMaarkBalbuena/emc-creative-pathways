@@ -1145,11 +1145,14 @@ func _is_sheared(basis: Basis) -> bool:
 	return absf(x.dot(y)) > EPS or absf(x.dot(z)) > EPS or absf(y.dot(z)) > EPS
 
 
-## The per-object Skew switch. Default OFF: rotation edits flatten a sheared basis
-## (the 5q contract). ON: rotation edits preserve it. It lives in node meta so it
-## survives undo/redo graph rebuilds (the command snapshots carry it) and in
-## PrimitiveSaveData for save/load - see
-## docs/decisions/2026-10-06-skew-toggle.md.
+## The per-object Skew switch. Default OFF, and OFF is keep-clean: while it is
+## off no edit the user makes leaves a sheared object (world-scale and Global
+## gizmo edits are flattened as they happen). ON: shear may exist - rotation edits
+## preserve it (the 5r delta) and shear-producing scales keep it. It lives in node
+## meta so it survives undo/redo graph rebuilds (the command snapshots carry it)
+## and in PrimitiveSaveData for save/load - see
+## docs/decisions/2026-10-06-skew-toggle.md. The one sheared-OFF state is a legacy
+## save; its next rotation (or scale) edit flattens it, per 5q.
 func _skew_enabled(node: Node3D) -> bool:
 	return node.get_meta(&"skew_enabled", false)
 
@@ -1202,8 +1205,11 @@ func _update_inspector(node: Node3D):
 			+ "flatten (the object's size changes)." if sheared and skew_on else \
 			"Skew off - rotating flattens the skew; the object's size changes."
 	if %SkewToggle:
-		%SkewToggle.visible = sheared
-		%SkewToggle.set_pressed_no_signal(sheared and skew_on)
+		# 5s: the switch is visible for every selected object, clean or sheared,
+		# and pressed exactly when the per-object flag is on. The warning above
+		# stays shear-gated - a clean object has nothing to warn about.
+		%SkewToggle.visible = true
+		%SkewToggle.set_pressed_no_signal(skew_on)
 
 	var mat := material_manager.read_from(node as MeshInstance3D)
 	%ColorSwatch.color = mat.get("albedo", Color.WHITE)
@@ -1786,9 +1792,12 @@ func _on_inspector_scale_changed(val: float, axis: String):
 ## other row moves, the read/write pair is exactly invertible.
 ##
 ## Pre-multiplying an orthogonal basis by a diagonal keeps its columns orthogonal,
-## so this does not invent shear. Against a SHEARED basis it changes the skew
-## rather than removing it, which is the intended world-axis behaviour and is why
-## a world-axis scale is a legitimate way to shear an object in the first place.
+## so against a clean basis this row does not invent shear. Against a SHEARED basis
+## it changes the skew rather than removing it, which is why a world-axis scale is
+## a legitimate way to shear an object - but only while the Skew switch is ON.
+## While it is OFF (the default) the result is flattened to R * S immediately, so
+## a fresh object can never become sheared through this row without switching Skew
+## on first (5s keep-clean - see _skew_enabled).
 func _on_inspector_world_scale_changed(val: float, axis: String):
 	var sel := selection_manager.get_selected()
 	if not sel: return
@@ -1801,21 +1810,25 @@ func _on_inspector_world_scale_changed(val: float, axis: String):
 		"y": target.y = val
 		"z": target.z = val
 	after.basis = Basis.from_scale(_ratio_to_reach(target, current)) * basis
-	if _is_sheared(after.basis):
-		# 5r: this edit CREATED shear, so mirror it on the Skew switch. Set before
-		# the commit so the action snapshots carry it (a stale ON left behind by an
-		# undo is benign - see docs/decisions/2026-10-06-skew-toggle.md).
-		sel.set_meta(&"skew_enabled", true)
+	# 5s keep-clean: while the Skew switch is OFF no edit may leave a sheared
+	# object, so the result of this row is flattened to R * S right here - the
+	# "stretch, then clean" the default-off contract promises. The flatten is
+	# exact when the basis is already clean. The 5r auto-enable is gone: shear is
+	# created only while the switch is ON, and this row (with the gizmo's Global
+	# frame) is one of the two ways to create it then.
+	if not _skew_enabled(sel):
+		after.basis = _basis_from_rotation_and_scale(
+				_read_rotation_degrees(after.basis), _effective_axis_lengths(after.basis))
 	_commit_inspector_change(sel, after)
 
 
-## The Skew switch. Pressing it ON is intent only - it flattens nothing (the row
-## only appears on an already-sheared object); it just tells the rotation
-## handlers to preserve the skew from here on. Toggling it OFF is the explicit
-## "remove the skew" action this switch replaces "rotate the object" with: the
-## basis is rebuilt as R * S right here, shear goes to zero, and the volume lands
-## on the column-length product - the same intended one-time growth 5q discloses
-## (on a sheared basis that product always exceeds |det|).
+## The Skew switch. Pressing it ON is intent only - it flattens nothing and is
+## visible on clean objects too; it just says shear may now exist: the rotation
+## handlers preserve it from here on (5r delta) and scale edits keep it. Toggling
+## it OFF is the explicit "remove the skew" action this switch replaces "rotate
+## the object" with: the basis is rebuilt as R * S right here, shear goes to zero,
+## and the volume lands on the column-length product - the same intended one-time
+## growth 5q discloses (on a sheared basis that product always exceeds |det|).
 ##
 ## Undo of a toggle-off restores the sheared shape exactly. The flag is written
 ## AFTER the commit on purpose: the action's snapshots then carry the pre-toggle

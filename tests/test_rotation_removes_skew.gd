@@ -25,11 +25,15 @@ extends Node
 ## exact product is what locks the intended behaviour in - a future change that
 ## "helpfully" preserves volume would silently change this contract.
 ##
-## 5r (docs/decisions/2026-10-06-skew-toggle.md) re-scopes the contract: shear
-## creation now auto-enables the inspector's Skew switch, and while the switch is
-## ON a rotation edit PRESERVES the shear. "Rotating flattens" therefore applies
-## to sheared objects whose switch is OFF - legacy loads and explicit opt-outs -
-## which is what `_sheared()` returns. The switch's own behaviour is locked by
+## 5r and 5s (docs/decisions/2026-10-06-skew-toggle.md) re-scope the contract:
+## the inspector's Skew switch is always visible and the switch is what decides
+## how a rotation edit treats shear - while it is ON a rotation edit PRESERVES
+## the shear. "Rotating flattens" therefore applies to sheared objects whose
+## switch is OFF, which after 5s can only be legacy saves: the switch defaults
+## OFF and keep-clean means nothing the user does while it is off leaves a
+## sheared object, so OFF+sheared never arises from new edits. `_sheared()`
+## therefore builds the shear with the switch armed ON and then writes the OFF
+## flag a legacy load would carry. The switch's own behaviour is locked by
 ## tests/test_skew_toggle.gd.
 
 var _fail := 0
@@ -303,10 +307,17 @@ func _test_a_clean_object_is_unchanged() -> void:
 # ── helpers ───────────────────────────────────────────────────────
 
 ## Spawns a cube, rotates it through the panel, then stretches it along a WORLD
-## axis through the panel - which is the only way this game creates shear, and
-## exactly what the Global gizmo orientation does. Driving the real handlers
-## rather than assigning `obj.basis` by hand means the test exercises the paths a
-## user actually reaches.
+## axis through the panel - which is one of the two ways this game creates shear
+## (the other is the Global gizmo frame). Driving the real handlers rather than
+## assigning `obj.basis` by hand means the test exercises the paths a user
+## actually reaches.
+##
+## 5s keep-clean changed the preconditions of this setup: with the Skew switch
+## OFF (its default) the world-scale edit itself flattens the result, so shear
+## can no longer be produced while the switch is off. Arm the switch on first
+## (exactly what a user must now do), produce the shear, then write back the OFF
+## flag a legacy save would carry - 5q is the contract for sheared objects whose
+## switch is OFF.
 ##
 ## Returns null after incrementing `_fail`, so a dependent sub-test bails rather
 ## than crashing partway and being counted as a pass. Typed `-> Node3D` so the
@@ -323,6 +334,8 @@ func _sheared() -> Node3D:
 	await _settle()
 	_lab._on_inspector_rot_changed(50.0, "y")
 	await _settle()
+	_lab._on_skew_toggle_toggled(true)
+	await _settle()
 	_lab._on_inspector_world_scale_changed(2.0, "x")
 	await _settle()
 	var out := _sel()
@@ -330,14 +343,11 @@ func _sheared() -> Node3D:
 		return null
 	if not _lab._is_sheared(out.basis):
 		_fail += 1
-		print("FAIL: setup failed - rotate + world-scale did not shear the object,")
+		print("FAIL: setup failed - rotate + armed world-scale did not keep the shear,")
 		print("      so this sub-test is not exercising the feature")
 		return null
-	# 5r (docs/decisions/2026-10-06-skew-toggle.md): the world-scale that just
-	# sheared the object AUTO-ENABLES the Skew switch, and while the switch is on
-	# a rotation edit PRESERVES the shear. This suite locks the 5q contract, which
-	# after 5r applies to sheared objects whose switch is OFF (legacy saves,
-	# explicit opt-out). Step the object back to that state before returning it.
+	# Step the object back to the legacy state this suite locks: sheared with the
+	# Skew switch OFF, exactly what a save made before the flag existed loads as.
 	out.set_meta(&"skew_enabled", false)
 	return out
 

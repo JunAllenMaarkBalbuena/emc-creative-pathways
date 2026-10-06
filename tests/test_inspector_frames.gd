@@ -323,25 +323,23 @@ func _test_every_row_undo_restores_and_redo_reapplies() -> void:
 			return
 
 
-## A world-axis scale must REPORT what it actually applied, and the shear it
-## creates must be disclosed.
+## A world-axis scale must apply the stretch and react to the Skew switch (5s).
 ##
-## This sub-test previously asserted that a world-axis scale on a clean orthogonal
-## basis leaves it orthogonal. That was WRONG, and the test caught it: for
-## M = diag(f)*R with orthogonal R,
+## This sub-test previously asserted that the row must read back whatever number
+## the user typed AND that the shear it creates must be disclosed. 5s keep-clean
+## splits that contract in two by the Skew switch:
 ##
-##     M col_i . M col_j  =  sum_k f_k^2 R[k][i] R[k][j]
-##                        =  delta_ij + (f0^2 - 1) * R[0][i] R[0][j]
+##   - OFF (the default): the stretch is applied and the result is flattened to
+##     R * S in real time, so a rotated object comes out CLEAN - there is no shear
+##     to disclose, and the World row re-reads the cleaned frame rather than the
+##     typed number (on a rotated basis the typed world-axis length cannot survive
+##     a flatten; that is the price of keep-clean).
+##   - ON: the edit keeps its shear and the row's old guarantee holds - the shear
+##     is disclosed, and the World row reads back exactly what was typed.
 ##
-## which is non-zero unless that trailing term vanishes. Measured 0.56 max column
-## dot on a 30/50 degree object. World-axis scaling a rotated object DOES shear it
-## - that is the behaviour behind ShearWarning and behind the decision to default
-## the gizmo to Local, so the correct assertion is that the shear is produced and
-## disclosed, not that it is absent.
-##
-## The read/write consistency check is the valuable one: whatever number the user
-## types, the row it came from must read back, or the panel is reporting one
-## quantity and applying another.
+## The read/write consistency check that matters ("the panel is not reporting one
+## quantity and applying another") therefore lives in the ON state, asserted
+## against an independently computed row length.
 func _test_world_scale_edit_reports_what_it_applied() -> void:
 	if not await _ready_or_fail():
 		return
@@ -370,25 +368,60 @@ func _test_world_scale_edit_reports_what_it_applied() -> void:
 		_fail += 1
 		print("FAIL: the world scale edit destroyed the object")
 		return
-	var applied := _row_lengths(node.basis).x
-	if absf(applied - typed) > QUANT:
+	# Part 1 - switch OFF (default): keep-clean. The stretch happened, the result
+	# is clean, and nothing is disclosed because there is no shear to disclose.
+	if _shear_amount(node.basis) > 0.001:
 		_fail += 1
-		print("FAIL: typed %.4f into World Scale X and the row now measures %.4f. "
-			% [typed, applied] + "The field is not reporting the quantity it applies.")
+		print("FAIL: with the Skew switch OFF a world scale left shear %.4f - off "
+			% _shear_amount(node.basis) + "must flatten the result in real time")
+		return
+	if label.visible:
+		_fail += 1
+		print("FAIL: a kept-clean world scale shows the shear warning - the object "
+			+ "was flattened, so there is no shear to disclose")
+		return
+	# Part 2 - switch ON: the edit keeps the shear, discloses it, and the row
+	# reads back exactly what was typed (computed independently of the write path).
+	_lab._on_skew_toggle_toggled(true)
+	await get_tree().process_frame
+	node = _sel()
+	if node == null:
+		_fail += 1
+		print("FAIL: arming the Skew switch lost the selection")
+		return
+	var typed2 := _row_lengths(node.basis).x * 1.5
+	spin.value = typed2
+	node = _sel()
+	if node == null:
+		_fail += 1
+		print("FAIL: the armed world scale edit destroyed the object")
+		return
+	var applied := _row_lengths(node.basis).x
+	if absf(applied - typed2) > QUANT:
+		_fail += 1
+		print("FAIL: with the switch ON, typed %.4f into World Scale X and the row "
+			% typed2 + "now measures %.4f. The field is not reporting the quantity "
+			% applied + "it applies.")
 		return
 	if not label.visible:
 		_fail += 1
-		print("FAIL: world-axis scaling a rotated object sheared it (max column dot "
-			+ "%.4f) but no warning is shown" % _shear_amount(node.basis))
+		print("FAIL: with the switch ON a world scale sheared the object (max column "
+			+ "dot %.4f) but no warning is shown" % _shear_amount(node.basis))
 		return
 	_done += 1
-	print("      world scale reports what it applied (%.4f) and discloses its shear"
-		% applied)
+	print("      world scale: OFF flattens to clean (no warning), ON keeps the "
+		+ "shear and reads back what it applied (%.4f)" % applied)
 
 
 ## Shear must survive a trip through the NEW write path. This is the 5j-i
 ## regression re-checked through `Basis.from_scale(f) * basis`, which scales rows
 ## rather than columns and so changes the shear ANGLE without removing the skew.
+##
+## 5s keep-clean re-scopes it: while the Skew switch is OFF a world-scale edit is
+## flattened in real time, so a sheared object can only exist (and be edited) with
+## the switch ON. Arm it - exactly the state a user is in when they have a sheared
+## object - and the guarantee is unchanged: a world-scale edit and its undo must
+## both preserve the shear.
 func _test_world_scale_edit_preserves_shear_through_undo() -> void:
 	if not await _ready_or_fail():
 		return
@@ -411,6 +444,9 @@ func _test_world_scale_edit_preserves_shear_through_undo() -> void:
 		print("FAIL: could not build a sheared basis (shear %.4f), so this test "
 			% sheared + "would pass without exercising anything.")
 		return
+	# 5s: a sheared object is worked on with the Skew switch ON - arm it (the
+	# flag only allows the shear; it does not change this basis).
+	cube.set_meta(&"skew_enabled", true)
 	var spin := _spin("WScaleX")
 	if spin == null:
 		_fail += 1
@@ -425,8 +461,8 @@ func _test_world_scale_edit_preserves_shear_through_undo() -> void:
 		return
 	if _shear_amount(node.basis) < 0.1:
 		_fail += 1
-		print("FAIL: a world scale edit removed the shear entirely. It must change "
-			+ "the skew, not flatten the object to R*S.")
+		print("FAIL: with the Skew switch ON a world scale edit removed the shear. "
+			+ "It must change the skew, not flatten the object to R*S.")
 		return
 	_lab._on_undo()
 	await get_tree().process_frame

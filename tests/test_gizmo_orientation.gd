@@ -149,6 +149,10 @@ func _test_both_frame_controls_are_wired_and_agree() -> void:
 ## side cannot quietly start rounding the display to a decomposition.
 func _test_inspector_reports_effective_lengths() -> void:
 	await _reset_cube()
+	# 5s keep-clean: with the Skew switch OFF a Global scale flattens in real
+	# time, so shear only exists while the switch is ON - arm it exactly as the
+	# user now must.
+	_cube.set_meta(&"skew_enabled", true)
 	_lab.transform_manager.begin_scale(false)
 	_apply_scale(Vector3.RIGHT, 40.0, false, true)
 	_lab.transform_manager.end_scale()
@@ -179,6 +183,9 @@ func _test_inspector_reports_effective_lengths() -> void:
 ## panel turned one basis into a different one.
 func _test_inspector_edit_preserves_shear() -> void:
 	await _reset_cube()
+	# 5s: arm the Skew switch so the Global scale below leaves a sheared basis
+	# instead of being flattened in real time.
+	_cube.set_meta(&"skew_enabled", true)
 	_lab.transform_manager.begin_scale(false)
 	_apply_scale(Vector3.RIGHT, 40.0, false, true)
 	_lab.transform_manager.end_scale()
@@ -350,6 +357,9 @@ func _apply_scale(axis: Vector3, delta: float, uniform: bool, world_frame: bool)
 ## pure left-multiplication and carries shear.
 func _test_global_scale_is_world_axis() -> void:
 	await _reset_cube()
+	# 5s: with the switch ON the Global scale keeps its shear, so the resulting
+	# basis is still exactly S * orig and the world-axis identity below holds.
+	_cube.set_meta(&"skew_enabled", true)
 	var orig: Basis = _cube.basis
 	_lab.transform_manager.begin_scale(false)
 	if not _apply_scale(Vector3.RIGHT, 40.0, false, true):
@@ -404,6 +414,9 @@ func _test_local_scale_stays_local() -> void:
 ## back as the same matrix.
 func _test_shear_survives_undo() -> void:
 	await _reset_cube()
+	# 5s: arm the Skew switch so the Global scale below actually leaves a sheared
+	# basis (with the switch OFF it is flattened in real time).
+	_cube.set_meta(&"skew_enabled", true)
 	var orig: Basis = _cube.basis
 	var orig_pos: Vector3 = _cube.position
 
