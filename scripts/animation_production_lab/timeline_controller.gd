@@ -82,6 +82,14 @@ func step_time(delta: float) -> void:
 	time_changed.emit(current_time)
 
 
+## Manual scrub (Task 17 hotkeys): moves the clock whether or not playback is
+## running, clamped to [0, duration]. Like step_time it is a pure function of
+## the delta — no engine-frame dependence. Emits time_changed for the cursor.
+func scrub(delta: float) -> void:
+	current_time = clampf(current_time + delta, 0.0, duration)
+	time_changed.emit(current_time)
+
+
 ## Frame index showing at `time` on the frame channel (fps boundaries),
 ## clamped to the last frame.
 func frame_index_at(time: float) -> int:

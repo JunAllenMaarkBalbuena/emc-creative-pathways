@@ -21,6 +21,23 @@ signal guided_flow_completed
 
 const DEFAULT_ASSIGNMENT := "res://data/assignments/animation/day_in_emc_lab.tres"
 const LEVEL_PATH := "res://data/levels/animation_production_lab.tres"
+const MUSIC_PATH := "res://assets/sound/Level_4_Background_sound.mp3"
+
+# Best-effort SFX candidates (Task 17): played only when the file exists.
+# The jam ships no SFX under assets/sound, so these stay silent — never an
+# error path.
+const SFX_BUTTON: Array[String] = [
+	"res://assets/sound/button_click.mp3",
+	"res://assets/sound/click.mp3",
+]
+const SFX_SUCCESS: Array[String] = [
+	"res://assets/sound/success.mp3",
+	"res://assets/sound/complete.mp3",
+]
+const SFX_ERROR: Array[String] = [
+	"res://assets/sound/error.mp3",
+	"res://assets/sound/denied.mp3",
+]
 
 const STAGE_NAMES := [
 	"BRIEF", "PLAN", "ASSETS", "STAGING", "CAMERA",
@@ -105,6 +122,8 @@ var library := EMCAssetLibrary.new()
 @onready var submission_panel: SubmissionPanelScript = $UI/SubmissionPanel
 @onready var score_panel: ScorePanelScript = $UI/ScorePanel
 @onready var studio_panel: StudioPanelScript = $UI/StudioPanel
+@onready var music_player: AudioStreamPlayer = $Audio/MusicPlayer
+@onready var sfx_player: AudioStreamPlayer = $Audio/SFXPlayer
 
 enum Mode {GUIDED = 0, STUDIO = 1}
 
@@ -123,6 +142,7 @@ func _ready() -> void:
 	_wire_controller_refs()
 	_register_starter_lights()
 	_wire_panels()
+	_setup_audio()
 	if autosave_enabled:
 		save_controller = SaveController.new()
 	studio = CreativeStudioController.new()
@@ -372,6 +392,7 @@ func _on_play_toggled() -> void:
 		timeline.play()
 	else:
 		timeline.pause()
+	_play_sfx_optional(SFX_BUTTON)
 
 
 func _on_rewind_requested() -> void:
@@ -398,10 +419,12 @@ func on_submit_pressed() -> void:
 		return
 	if not assignment_manager.can_advance():
 		submission_panel.set_status("Not every requirement is met yet.")
+		_play_sfx_optional(SFX_ERROR)
 		return
 	preview.evaluate_review()
 	if not enable_scoring:
 		_complete_guided_flow()
+		_play_sfx_optional(SFX_SUCCESS)
 		return
 	last_score = scoring.score(
 		assignment_manager.story_order_correct,
@@ -411,6 +434,7 @@ func on_submit_pressed() -> void:
 	)
 	score_panel.show_score(last_score)
 	_complete_guided_flow()
+	_play_sfx_optional(SFX_SUCCESS)
 
 
 func _complete_guided_flow() -> void:
@@ -699,6 +723,52 @@ func _collect_score_data() -> Dictionary:
 		"technical": last_score.technical_score,
 		"creativity": last_score.creativity_score,
 	}
+
+
+## Task 17 hotkeys (spec §8): Space toggles preview playback, Right/Left step
+## one frame, Escape exits the lab. Space routes through _on_play_toggled so
+## it behaves exactly like the Play button. Focused GUI controls consume their
+## own keys first (a LineEdit swallows Space/arrows), so no focus guard is
+## needed here.
+func _unhandled_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return
+	match key.keycode:
+		KEY_SPACE:
+			_on_play_toggled()
+			get_viewport().set_input_as_handled()
+		KEY_RIGHT, KEY_LEFT:
+			var dir := 1.0 if key.keycode == KEY_RIGHT else -1.0
+			timeline.scrub(dir / float(timeline.fps))
+			get_viewport().set_input_as_handled()
+		KEY_ESCAPE:
+			exit_lab()
+			get_viewport().set_input_as_handled()
+
+
+## Task 17 audio (spec §8): the lab's own background track, looped by
+## connecting finished -> play() directly (no autoload dependency). No
+## hard-coded missing asset: listeners stay off when MUSIC_PATH is absent.
+func _setup_audio() -> void:
+	if ResourceLoader.exists(MUSIC_PATH):
+		music_player.stream = load(MUSIC_PATH)
+		music_player.finished.connect(_on_music_finished)
+		music_player.play()
+
+
+func _on_music_finished() -> void:
+	music_player.play()
+
+
+## Best-effort SFX: play the first candidate that exists on disk; otherwise
+## stay silent. Never an error path (spec §8).
+func _play_sfx_optional(candidates: Array[String]) -> void:
+	for path in candidates:
+		if ResourceLoader.exists(path):
+			sfx_player.stream = load(path)
+			sfx_player.play()
+			return
 
 
 func exit_lab() -> void:
