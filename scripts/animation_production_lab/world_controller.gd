@@ -11,6 +11,10 @@ extends Node
 
 signal objects_changed
 signal selection_changed(object_id: String)
+## Fired whenever the composition stack (layer order) changes — the Layers
+## docker and the save layer listen for it. Order is back-to-front: index 0
+## is drawn behind everything, the last index in front.
+signal layer_order_changed
 
 const CATEGORY_CHARACTER := "character"
 const CATEGORY_BACKGROUND := "background"
@@ -32,6 +36,10 @@ var _registry: Dictionary = {}   # id -> Dictionary
 var _nodes: Dictionary = {}      # id -> Node3D
 var _next_id := 1
 var _selected_id := ""
+## Composition stack: ids back-to-front (index 0 = behind). This is the
+## painter's order — render priority follows it, independent of spatial z
+## (B2, see RenderOrder). Insertion appends, so the newest object sits on top.
+var _layer_order: Array[String] = []
 
 
 func add_asset(asset: EMCAssetData, position: Vector3 = Vector3.ZERO) -> String:
@@ -60,8 +68,13 @@ func add_asset(asset: EMCAssetData, position: Vector3 = Vector3.ZERO) -> String:
 		"layer": 0,
 		"visible": true,
 		"spawn_position": position,
+		"display_name": asset.display_name,
+		"element_type": "3d" if asset.category == CATEGORY_PROP else "2d",
+		"locked": false,
 	}
 	_nodes[id] = node
+	_layer_order.append(id)
+	_apply_layer_priorities()
 	objects_changed.emit()
 	return id
 
@@ -72,11 +85,14 @@ func remove_object(object_id: String) -> bool:
 		return false
 	_registry.erase(object_id)
 	_nodes.erase(object_id)
+	_layer_order.erase(object_id)
 	node.get_parent().remove_child(node)
 	node.free()
 	if _selected_id == object_id:
 		_selected_id = ""
+	_apply_layer_priorities()
 	objects_changed.emit()
+	layer_order_changed.emit()
 	return true
 
 
@@ -96,8 +112,11 @@ func duplicate_object(object_id: String) -> String:
 	ndata["id"] = new_id
 	ndata["position"] = pos
 	ndata["spawn_position"] = pos
+	ndata["locked"] = false  # a clean copy is immediately reorderable
 	_registry[new_id] = ndata
 	_nodes[new_id] = dup
+	_layer_order.append(new_id)
+	_apply_layer_priorities()
 	objects_changed.emit()
 	return new_id
 
@@ -132,7 +151,9 @@ func replace_object_asset(object_id: String, asset: EMCAssetData) -> bool:
 	data["type"] = asset.asset_type
 	data["path"] = asset.path
 	data["layer"] = layer_val
+	data["element_type"] = "3d" if asset.category == CATEGORY_PROP else "2d"
 	_nodes[object_id] = replacement
+	_apply_layer_priorities()
 	objects_changed.emit()
 	return true
 
@@ -233,6 +254,149 @@ func all_objects() -> Array[String]:
 	for key in _registry.keys():
 		out.append(key)
 	return out
+
+
+## --- Composition layer stack -------------------------------------------------
+## Back-to-front ids (index 0 = behind). The layer stack is the painter's
+## order: every registered object renders through the transparent pass with a
+## priority derived from its index (RenderOrder.layer_priority), so ordering
+## is z- and camera-independent.
+
+## Copy of the stack, back-to-front, so callers cannot mutate the source.
+func layer_order() -> Array[String]:
+	return _layer_order.duplicate()
+
+
+## Index of `object_id` in the stack, or -1 if unknown.
+func layer_index(object_id: String) -> int:
+	return _layer_order.find(object_id)
+
+
+## Move `object_id` to `to_index` (clamped). Returns false when the id is
+## unknown, its layer is locked, or the move would be a no-op. Other layers
+## may be reordered around a locked one; only the moved layer's own lock
+## blocks the move.
+func reorder_layer(object_id: String, to_index: int) -> bool:
+	var index := _layer_order.find(object_id)
+	if index == -1:
+		return false
+	var data: Variant = _registry.get(object_id, null)
+	if data == null or data.get("locked", false):
+		return false
+	var target := clampi(to_index, 0, _layer_order.size() - 1)
+	if target == index:
+		return false
+	_layer_order.remove_at(index)
+	_layer_order.insert(target, object_id)
+	_commit_order()
+	return true
+
+
+## Move toward the front (+1 step).
+func move_layer_up(object_id: String) -> bool:
+	var index := _layer_order.find(object_id)
+	if index == -1:
+		return false
+	return reorder_layer(object_id, index + 1)
+
+
+## Move toward the back (-1 step).
+func move_layer_down(object_id: String) -> bool:
+	var index := _layer_order.find(object_id)
+	if index == -1:
+		return false
+	return reorder_layer(object_id, index - 1)
+
+
+## Jump to the very front (top of the stack).
+func layer_to_front(object_id: String) -> bool:
+	var index := _layer_order.find(object_id)
+	if index == -1:
+		return false
+	return reorder_layer(object_id, _layer_order.size() - 1)
+
+
+## Jump to the very back (bottom of the stack).
+func layer_to_back(object_id: String) -> bool:
+	var index := _layer_order.find(object_id)
+	if index == -1:
+		return false
+	return reorder_layer(object_id, 0)
+
+
+## Alias of move_layer_up (+1 step, explicitly named for the panel row).
+func layer_forward(object_id: String) -> bool:
+	return move_layer_up(object_id)
+
+
+## Alias of move_layer_down (-1 step, explicitly named for the panel row).
+func layer_backward(object_id: String) -> bool:
+	return move_layer_down(object_id)
+
+
+## Rename the layer's display label. Returns false for an unknown id; the
+## empty string is allowed (the panel falls back to the id). Note: the null
+## guard happens BEFORE the `as Dictionary` cast — casting a null Variant to
+## a built-in type throws an invalid-cast error in Godot 4.7.
+func rename_layer(object_id: String, name: String) -> bool:
+	var data: Variant = _registry.get(object_id, null)
+	if data == null:
+		return false
+	(data as Dictionary)["display_name"] = name
+	objects_changed.emit()
+	return true
+
+
+## Lock/unlock a layer. A locked layer refuses every reorder op (nothing
+## crashes; the op just returns false).
+func set_layer_locked(object_id: String, locked: bool) -> bool:
+	var data: Variant = _registry.get(object_id, null)
+	if data == null:
+		return false
+	(data as Dictionary)["locked"] = locked
+	objects_changed.emit()
+	return true
+
+
+## The Layers docker's data source: one summary per stack entry, in stack
+## order, carrying everything the panel's rows need to render.
+func layer_summaries() -> Array:
+	var out: Array = []
+	for object_id in _layer_order:
+		var data := _registry.get(object_id, {}) as Dictionary
+		var node := get_object_node(object_id)
+		var label := str(data.get("display_name", ""))
+		if label.is_empty():
+			label = object_id
+		out.append({
+			"id": object_id,
+			"display_name": label,
+			"element_type": str(data.get("element_type", "2d")),
+			"visible": node.visible if node != null else true,
+			"locked": bool(data.get("locked", false)),
+			"selected": _selected_id == object_id,
+		})
+	return out
+
+
+## Re-apply render priorities so they match the current stack exactly:
+## index i -> RenderOrder.layer_priority(i). Called after every add/remove/
+## duplicate/replace/order change. Skips ids whose node is missing (never
+## crashes).
+func _apply_layer_priorities() -> void:
+	for i in _layer_order.size():
+		var node := get_object_node(_layer_order[i])
+		if node != null:
+			RenderOrder.set_layer_priority(node, RenderOrder.layer_priority(i))
+
+
+## After an order change: priorities first, then notify the panels and the
+## save layer with both signals (order consumers need layer_order_changed;
+## everything else refreshes on objects_changed).
+func _commit_order() -> void:
+	_apply_layer_priorities()
+	objects_changed.emit()
+	layer_order_changed.emit()
 
 
 ## Challenge E live source: measure the registered scene (not the authored
