@@ -757,6 +757,13 @@ func _refresh_studio_projects() -> void:
 func _apply_project_data(data: AnimationLabSaveData) -> void:
 	for object_id in world.all_objects():
 		world.remove_object(object_id)
+	# Old saved ids -> regenerated ids, mapped by each scene_objects entry's
+	# traversal index (Task 7). Only successfully created objects land in the
+	# map, so later entries still align with their regenerated ids.
+	var id_map: Dictionary = {}
+	# Locks are applied AFTER the reorder pass: reorder_layer refuses a
+	# locked layer, so the saved order must land while locks are still off.
+	var lock_entries: Array[Dictionary] = []
 	for obj in data.scene_objects:
 		var asset := library.get_asset(str(obj.get("asset_id", ""))) as EMCAssetData
 		if asset == null:
@@ -764,11 +771,31 @@ func _apply_project_data(data: AnimationLabSaveData) -> void:
 		var object_id := world.add_asset(asset, obj.get("position", Vector3.ZERO) as Vector3)
 		if object_id.is_empty():
 			continue
+		id_map[str(obj.get("id", ""))] = object_id
 		world.set_object_rotation(object_id, obj.get("rotation_degrees", Vector3.ZERO) as Vector3)
 		world.set_object_scale(object_id, obj.get("scale", Vector3.ONE) as Vector3)
 		world.set_object_visible(object_id, bool(obj.get("visible", true)))
 		world.set_object_depth(object_id, float(obj.get("depth", 0.0)))
 		world.set_object_layer(object_id, int(obj.get("layer", 0)))
+		var saved_name := str(obj.get("display_name", ""))
+		if not saved_name.is_empty():
+			world.rename_layer(object_id, saved_name)
+		lock_entries.append({"id": object_id, "locked": bool(obj.get("locked", false))})
+	# Restore the saved stack order (Task 7): layer_order holds the saved
+	# scene-object ids back-to-front. Absent/empty (a save written before
+	# this round) means the add order above IS the insertion order and this
+	# pass is a no-op.
+	if data.layer_order.size() > 0:
+		for i in data.layer_order.size():
+			var new_id := str(id_map.get(str(data.layer_order[i]), ""))
+			if new_id != "":
+				world.reorder_layer(new_id, i)
+		world._apply_layer_priorities()
+	for lock_entry in lock_entries:
+		world.set_layer_locked(str(lock_entry.get("id", "")), bool(lock_entry.get("locked", false)))
+	# A load starts a fresh session: stale undo/redo must never resurrect the
+	# wiped objects (Review-Focus #3).
+	world.history.clear()
 	var cam := camera.camera()
 	if cam != null:
 		camera.set_transform(
@@ -824,6 +851,7 @@ func collect_save_data() -> AnimationLabSaveData:
 	var assign := assignment_manager.assignment
 	data.current_assignment_id = "" if assign == null else assign.assignment_id
 	data.scene_objects = _collect_scene_objects()
+	data.layer_order = world.layer_order()
 	data.camera_data = _collect_camera_data()
 	data.lighting_data = _collect_lighting_data()
 	data.frames = _collect_frames()
@@ -859,6 +887,9 @@ func _collect_scene_objects() -> Array[Dictionary]:
 			"visible": bool(data.get("visible", false)),
 			"depth": float(data.get("depth", 0.0)),
 			"layer": int(data.get("layer", 0)),
+			"display_name": str(data.get("display_name", "")),
+			"element_type": str(data.get("element_type", "2d")),
+			"locked": bool(data.get("locked", false)),
 		})
 	return out
 

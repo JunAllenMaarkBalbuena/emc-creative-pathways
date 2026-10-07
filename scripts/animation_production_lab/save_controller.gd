@@ -104,6 +104,12 @@ func _sanitize(data: AnimationLabSaveData) -> AnimationLabSaveData:
 	out.current_assignment_id = str(data.current_assignment_id)
 	if data.scene_objects is Array:
 		out.scene_objects.assign(data.scene_objects)
+	## Task 7: layer_order passthrough. String-filtered: a hand-edited save
+	## could hold anything; the reorder pass only accepts real ids anyway.
+	if data.layer_order is Array:
+		for raw in data.layer_order:
+			if raw is String:
+				out.layer_order.append(raw)
 	if data.camera_data is Dictionary:
 		out.camera_data = data.camera_data.duplicate()
 	if data.lighting_data is Dictionary:

@@ -10,6 +10,10 @@ extends Resource
 @export var guided_completed := false
 @export var current_assignment_id := ""
 @export var scene_objects: Array[Dictionary] = []
+## Composition stack, back-to-front, as the "id" values of the scene_objects
+## entries (Task 7). Absent/empty in saves written before the round: the
+## apply path falls back to insertion order.
+@export var layer_order: Array[String] = []
 @export var camera_data: Dictionary = {}
 @export var lighting_data: Dictionary = {}
 @export var frames: Array[Dictionary] = []
