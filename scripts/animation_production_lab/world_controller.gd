@@ -40,6 +40,10 @@ var _selected_id := ""
 ## painter's order — render priority follows it, independent of spatial z
 ## (B2, see RenderOrder). Insertion appends, so the newest object sits on top.
 var _layer_order: Array[String] = []
+## Two-stack undo/redo over every mutating op below (Task 4). Every mutation
+## pushes closures that capture ids + registry snapshots — never live nodes,
+## so a cleared/dropped history cannot leak scene objects.
+var history := EditorHistory.new()
 
 
 func add_asset(asset: EMCAssetData, position: Vector3 = Vector3.ZERO) -> String:
@@ -71,28 +75,38 @@ func add_asset(asset: EMCAssetData, position: Vector3 = Vector3.ZERO) -> String:
 		"display_name": asset.display_name,
 		"element_type": "3d" if asset.category == CATEGORY_PROP else "2d",
 		"locked": false,
+		## Geometry metadata (prop shape/color) — kept in the registry so a
+		## history-resurrected node (or a saved project, Task 7) can rebuild
+		## it identically. Deep copy: the asset Resource may be shared.
+		"metadata": (asset.metadata as Dictionary).duplicate(true),
 	}
 	_nodes[id] = node
 	_layer_order.append(id)
 	_apply_layer_priorities()
 	objects_changed.emit()
+	# Snapshot INTO locals at push time: the redo closure must restore from the
+	# state as-of this op, and _registry[id] won't exist once an undo runs.
+	var added_data: Dictionary = (_registry[id] as Dictionary).duplicate(true)
+	var added_index := _layer_order.size() - 1
+	history.push(
+		func() -> void: _do_remove(id),
+		func() -> void: _restore_object(id, added_data, added_index),
+		"Add")
 	return id
 
 
 func remove_object(object_id: String) -> bool:
 	var node := get_object_node(object_id)
-	if node == null:
+	var data: Variant = _registry.get(object_id, null)
+	if node == null or data == null:
 		return false
-	_registry.erase(object_id)
-	_nodes.erase(object_id)
-	_layer_order.erase(object_id)
-	node.get_parent().remove_child(node)
-	node.free()
-	if _selected_id == object_id:
-		_selected_id = ""
-	_apply_layer_priorities()
-	objects_changed.emit()
-	layer_order_changed.emit()
+	var data_copy: Dictionary = (data as Dictionary).duplicate(true)
+	var stack_index := _layer_order.find(object_id)
+	_do_remove(object_id)
+	history.push(
+		func() -> void: _restore_object(object_id, data_copy, stack_index),
+		func() -> void: _do_remove(object_id),
+		"Delete")
 	return true
 
 
@@ -118,6 +132,11 @@ func duplicate_object(object_id: String) -> String:
 	_layer_order.append(new_id)
 	_apply_layer_priorities()
 	objects_changed.emit()
+	var dup_index := _layer_order.size() - 1
+	history.push(
+		func() -> void: _do_remove(new_id),
+		func() -> void: _restore_object(new_id, ndata.duplicate(true), dup_index),
+		"Duplicate")
 	return new_id
 
 
@@ -128,6 +147,7 @@ func replace_object_asset(object_id: String, asset: EMCAssetData) -> bool:
 	var data: Variant = _registry.get(object_id, null)
 	if data == null:
 		return false
+	var old_data: Dictionary = (data as Dictionary).duplicate(true)
 	var parent := node.get_parent()
 	var index := node.get_index()
 	var base_position: Vector3 = data["position"]
@@ -152,9 +172,14 @@ func replace_object_asset(object_id: String, asset: EMCAssetData) -> bool:
 	data["path"] = asset.path
 	data["layer"] = layer_val
 	data["element_type"] = "3d" if asset.category == CATEGORY_PROP else "2d"
+	data["metadata"] = (asset.metadata as Dictionary).duplicate(true)
 	_nodes[object_id] = replacement
 	_apply_layer_priorities()
 	objects_changed.emit()
+	history.push(
+		func() -> void: _replace_with_data(object_id, old_data),
+		func() -> void: _replace_with_data(object_id, (data as Dictionary).duplicate(true)),
+		"Replace Asset")
 	return true
 
 
@@ -185,34 +210,65 @@ func clear_selection() -> void:
 	selection_changed.emit("")
 
 
+## Undo the newest composition/transform op. Returns false when the history
+## is empty (callers treat false as "nothing to undo", never an error).
+func undo() -> bool:
+	return history.undo()
+
+
+## Re-apply the last undone op. Returns false when nothing is redoable.
+func redo() -> bool:
+	return history.redo()
+
+
 func set_object_position(object_id: String, pos: Vector3) -> bool:
-	return _apply_transform(object_id, func(node: Node3D, data: Dictionary) -> void:
+	var old: Variant = _registry_value(object_id, "position")
+	var applied := _apply_transform(object_id, func(node: Node3D, data: Dictionary) -> void:
 		data["position"] = pos
 		node.position = _apply_depth(pos, data["depth"]))
+	if applied:
+		_push_transform(object_id, "position", old, pos, "Move")
+	return applied
 
 
 func set_object_rotation(object_id: String, rot_deg: Vector3) -> bool:
-	return _apply_transform(object_id, func(node: Node3D, data: Dictionary) -> void:
+	var old: Variant = _registry_value(object_id, "rotation_degrees")
+	var applied := _apply_transform(object_id, func(node: Node3D, data: Dictionary) -> void:
 		data["rotation_degrees"] = rot_deg
 		node.rotation_degrees = rot_deg)
+	if applied:
+		_push_transform(object_id, "rotation_degrees", old, rot_deg, "Rotate")
+	return applied
 
 
 func set_object_scale(object_id: String, s: Vector3) -> bool:
-	return _apply_transform(object_id, func(node: Node3D, data: Dictionary) -> void:
+	var old: Variant = _registry_value(object_id, "scale")
+	var applied := _apply_transform(object_id, func(node: Node3D, data: Dictionary) -> void:
 		data["scale"] = s
 		node.scale = s)
+	if applied:
+		_push_transform(object_id, "scale", old, s, "Scale")
+	return applied
 
 
 func set_object_visible(object_id: String, v: bool) -> bool:
-	return _apply_transform(object_id, func(node: Node3D, data: Dictionary) -> void:
+	var old: Variant = _registry_value(object_id, "visible")
+	var applied := _apply_transform(object_id, func(node: Node3D, data: Dictionary) -> void:
 		data["visible"] = v
 		node.visible = v)
+	if applied:
+		_push_transform(object_id, "visible", old, v, "Visibility")
+	return applied
 
 
 func set_object_depth(object_id: String, depth: float) -> bool:
-	return _apply_transform(object_id, func(node: Node3D, data: Dictionary) -> void:
+	var old: Variant = _registry_value(object_id, "depth")
+	var applied := _apply_transform(object_id, func(node: Node3D, data: Dictionary) -> void:
 		data["depth"] = depth
 		node.position = _apply_depth(data["position"], depth))
+	if applied:
+		_push_transform(object_id, "depth", old, depth, "Depth")
+	return applied
 
 
 func set_object_layer(object_id: String, layer: int) -> bool:
@@ -220,10 +276,12 @@ func set_object_layer(object_id: String, layer: int) -> bool:
 	var data: Variant = _registry.get(object_id, null)
 	if node == null or data == null:
 		return false
-	data = data as Dictionary
-	data["layer"] = layer
+	var d := data as Dictionary
+	var old: int = d["layer"]
+	d["layer"] = layer
 	node.get_parent().move_child(node, clampi(layer, 0, node.get_parent().get_child_count() - 1))
 	objects_changed.emit()
+	_push_transform(object_id, "layer", old, layer, "Layer")
 	return true
 
 
@@ -232,20 +290,28 @@ func reset_object(object_id: String) -> bool:
 	var data: Variant = _registry.get(object_id, null)
 	if node == null or data == null:
 		return false
-	data = data as Dictionary
-	var spawn: Vector3 = data["spawn_position"]
-	data["position"] = spawn
-	data["rotation_degrees"] = Vector3.ZERO
-	data["scale"] = Vector3.ONE
-	data["depth"] = 0.0
-	data["layer"] = 0
-	data["visible"] = true
+	var d := data as Dictionary
+	var old := _snapshot_fields(d)
+	var spawn: Vector3 = d["spawn_position"]
+	d["position"] = spawn
+	d["rotation_degrees"] = Vector3.ZERO
+	d["scale"] = Vector3.ONE
+	d["depth"] = 0.0
+	d["layer"] = 0
+	d["visible"] = true
 	node.position = spawn
 	node.rotation_degrees = Vector3.ZERO
 	node.scale = Vector3.ONE
 	node.visible = true
 	node.get_parent().move_child(node, 0)
 	objects_changed.emit()
+	history.push(
+		func() -> void: _apply_snapshot(object_id, old),
+		func() -> void: _apply_snapshot(object_id, {
+			"position": spawn, "rotation_degrees": Vector3.ZERO, "scale": Vector3.ONE,
+			"depth": 0.0, "layer": 0, "visible": true,
+		}),
+		"Reset")
 	return true
 
 
@@ -289,6 +355,10 @@ func reorder_layer(object_id: String, to_index: int) -> bool:
 	_layer_order.remove_at(index)
 	_layer_order.insert(target, object_id)
 	_commit_order()
+	history.push(
+		func() -> void: _do_reorder(object_id, index),
+		func() -> void: _do_reorder(object_id, target),
+		"Reorder")
 	return true
 
 
@@ -342,8 +412,11 @@ func rename_layer(object_id: String, name: String) -> bool:
 	var data: Variant = _registry.get(object_id, null)
 	if data == null:
 		return false
-	(data as Dictionary)["display_name"] = name
+	var d := data as Dictionary
+	var old: String = str(d.get("display_name", ""))
+	d["display_name"] = name
 	objects_changed.emit()
+	_push_transform(object_id, "display_name", old, name, "Rename")
 	return true
 
 
@@ -353,8 +426,11 @@ func set_layer_locked(object_id: String, locked: bool) -> bool:
 	var data: Variant = _registry.get(object_id, null)
 	if data == null:
 		return false
-	(data as Dictionary)["locked"] = locked
+	var d := data as Dictionary
+	var old: bool = bool(d.get("locked", false))
+	d["locked"] = locked
 	objects_changed.emit()
+	_push_transform(object_id, "locked", old, locked, "Lock")
 	return true
 
 
@@ -448,6 +524,159 @@ func _apply_transform(object_id: String, apply: Callable) -> bool:
 	return true
 
 
+## --- history internals -------------------------------------------------------
+## The undo/redo closures below only ever touch these private helpers (never
+## the public mutators), so replaying an op never re-pushes history.
+
+func _registry_value(object_id: String, key: String) -> Variant:
+	var data: Variant = _registry.get(object_id, null)
+	if data == null:
+		return null
+	return (data as Dictionary).get(key, null)
+
+
+func _push_transform(object_id: String, field: String, old: Variant, new_value: Variant, label: String) -> void:
+	history.push(
+		func() -> void: _set_quiet(object_id, field, old),
+		func() -> void: _set_quiet(object_id, field, new_value),
+		label)
+
+
+func _snapshot_fields(d: Dictionary) -> Dictionary:
+	return {
+		"position": d["position"],
+		"rotation_degrees": d["rotation_degrees"],
+		"scale": d["scale"],
+		"depth": d["depth"],
+		"layer": d["layer"],
+		"visible": d["visible"],
+	}
+
+
+## Quiet remove: no history capture. Used by remove_object (which captures
+## then pushes) and by undo/redo closures.
+func _do_remove(object_id: String) -> void:
+	var node := get_object_node(object_id)
+	if node == null:
+		return
+	_registry.erase(object_id)
+	_nodes.erase(object_id)
+	_layer_order.erase(object_id)
+	var parent := node.get_parent()
+	if parent != null:
+		parent.remove_child(node)
+	node.free()
+	if _selected_id == object_id:
+		_selected_id = ""
+	_apply_layer_priorities()
+	objects_changed.emit()
+	layer_order_changed.emit()
+
+
+## Resurrect an object history removed: rebuild its node from the saved
+## registry snapshot (prop shape/color live under the "metadata" key added
+## at add_asset) and reinsert it at `stack_index` in the layer stack.
+func _restore_object(object_id: String, data: Dictionary, stack_index: int) -> void:
+	var root := _root_for(str(data.get("category", "")))
+	if root == null:
+		return
+	var node := _rebuild_node(object_id, data)
+	root.add_child(node)
+	_registry[object_id] = data
+	_nodes[object_id] = node
+	if not _layer_order.has(object_id):
+		_layer_order.insert(clampi(stack_index, 0, _layer_order.size()), object_id)
+	_apply_layer_priorities()
+	objects_changed.emit()
+	layer_order_changed.emit()
+
+
+## Quiet reorder to an absolute index (undo/redo of the reorder ops). Bypasses
+## the locked check on purpose: history replay is authoritative.
+func _do_reorder(object_id: String, target: int) -> void:
+	var index := _layer_order.find(object_id)
+	if index == -1:
+		return
+	var t := clampi(target, 0, _layer_order.size() - 1)
+	if t == index:
+		return
+	_layer_order.remove_at(index)
+	_layer_order.insert(t, object_id)
+	_commit_order()
+
+
+## Swap the live node+registry for `data`'s asset without pushing (undo/redo
+## of replace_object_asset). Rebuilds from the snapshot so the node identity
+## changes exactly like the real op.
+func _replace_with_data(object_id: String, data: Dictionary) -> void:
+	var node := get_object_node(object_id)
+	var parent: Node = null
+	var index := 0
+	if node != null:
+		parent = node.get_parent()
+		index = node.get_index()
+		if parent != null:
+			parent.remove_child(node)
+		_nodes.erase(object_id)
+		node.free()
+	if parent == null:
+		return
+	var replacement := _rebuild_node(object_id, data)
+	parent.add_child(replacement)
+	parent.move_child(replacement, clampi(index, 0, parent.get_child_count() - 1))
+	_registry[object_id] = data
+	_nodes[object_id] = replacement
+	_apply_layer_priorities()
+	objects_changed.emit()
+
+
+## Restore one registry field + the node property it maps to. Never pushes.
+func _set_quiet(object_id: String, field: String, value: Variant) -> void:
+	var node := get_object_node(object_id)
+	var data: Variant = _registry.get(object_id, null)
+	if node == null or data == null:
+		return
+	var d := data as Dictionary
+	d[field] = value
+	match field:
+		"position":
+			node.position = _apply_depth(value, d["depth"])
+		"rotation_degrees":
+			node.rotation_degrees = value
+		"scale":
+			node.scale = value
+		"visible":
+			node.visible = value
+		"depth":
+			node.position = _apply_depth(d["position"], value)
+		"layer":
+			var parent := node.get_parent()
+			if parent != null:
+				parent.move_child(node, clampi(value, 0, parent.get_child_count() - 1))
+	objects_changed.emit()
+
+
+## Restore a whole field snapshot (reset_object undo/redo). Writes every
+## registry key first, then derives the node from it, so a depth+position
+## pair restores in a consistent order.
+func _apply_snapshot(object_id: String, snapshot: Dictionary) -> void:
+	var node := get_object_node(object_id)
+	var data: Variant = _registry.get(object_id, null)
+	if node == null or data == null:
+		return
+	var d := data as Dictionary
+	for k in snapshot:
+		d[k] = snapshot[k]
+	node.position = _apply_depth(d["position"], d["depth"])
+	node.rotation_degrees = d["rotation_degrees"]
+	node.scale = d["scale"]
+	node.visible = bool(d["visible"])
+	var parent := node.get_parent()
+	if parent != null:
+		parent.move_child(node, clampi(int(d["layer"]), 0, parent.get_child_count() - 1))
+	objects_changed.emit()
+
+
 func _apply_depth(pos: Vector3, depth: float) -> Vector3:
 	return Vector3(pos.x, pos.y, pos.z + depth)
 
@@ -467,22 +696,54 @@ func _build_node(asset: EMCAssetData, id: String) -> Node3D:
 	if asset.category == CATEGORY_PROP:
 		var mi := MeshInstance3D.new()
 		mi.name = id
-		mi.mesh = _prop_mesh(asset)
+		mi.mesh = _prop_mesh_data(asset.metadata)
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = asset.metadata.get("color", Color(0.6, 0.6, 0.6))
 		mi.material_override = mat
 		return mi
 	var sprite := Sprite3D.new()
 	sprite.name = id
-	sprite.texture = _load_texture(asset)
+	sprite.texture = _load_texture_path(asset.path)
 	sprite.pixel_size = SPRITE_PIXEL_SIZE if asset.category == CATEGORY_CHARACTER else BACKDROP_PIXEL_SIZE
 	if asset.category == CATEGORY_CHARACTER:
 		sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	return sprite
 
 
-func _prop_mesh(asset: EMCAssetData) -> Mesh:
-	var shape: String = asset.metadata.get("shape", "box")
+## Rebuild a node from a saved registry snapshot (undo/redo resurrection).
+## Mirrors _build_node so a removed object comes back identical: same
+## category-appropriate node type, same metadata-derived mesh/color, with
+## the registry's transform applied (position and depth stay separate — the
+## live node.position is the depth-shifted one).
+func _rebuild_node(id: String, data: Dictionary) -> Node3D:
+	var category := str(data.get("category", ""))
+	var metadata := data.get("metadata", {}) as Dictionary
+	var node: Node3D
+	if category == CATEGORY_PROP:
+		var mi := MeshInstance3D.new()
+		mi.name = id
+		mi.mesh = _prop_mesh_data(metadata)
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = metadata.get("color", Color(0.6, 0.6, 0.6))
+		mi.material_override = mat
+		node = mi
+	else:
+		var sprite := Sprite3D.new()
+		sprite.name = id
+		sprite.texture = _load_texture_path(str(data.get("path", "")))
+		sprite.pixel_size = SPRITE_PIXEL_SIZE if category == CATEGORY_CHARACTER else BACKDROP_PIXEL_SIZE
+		if category == CATEGORY_CHARACTER:
+			sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		node = sprite
+	node.position = _apply_depth(data.get("position", Vector3.ZERO), float(data.get("depth", 0.0)))
+	node.rotation_degrees = data.get("rotation_degrees", Vector3.ZERO)
+	node.scale = data.get("scale", Vector3.ONE)
+	node.visible = bool(data.get("visible", true))
+	return node
+
+
+func _prop_mesh_data(metadata: Dictionary) -> Mesh:
+	var shape: String = metadata.get("shape", "box")
 	if shape == "cylinder":
 		# Godot 4.7 renamed CylinderMesh.radius -> top_radius/bottom_radius.
 		var cylinder := CylinderMesh.new()
@@ -495,7 +756,7 @@ func _prop_mesh(asset: EMCAssetData) -> Mesh:
 	return box
 
 
-func _load_texture(asset: EMCAssetData) -> Texture2D:
-	if asset.path.is_empty() or not ResourceLoader.exists(asset.path):
+func _load_texture_path(path: String) -> Texture2D:
+	if path.is_empty() or not ResourceLoader.exists(path):
 		return null
-	return ResourceLoader.load(asset.path, "Texture2D") as Texture2D
+	return ResourceLoader.load(path, "Texture2D") as Texture2D

@@ -247,6 +247,9 @@ func _wire_panels() -> void:
 	top_bar.exit_requested.connect(exit_lab)
 	top_bar.studio_requested.connect(unlock_creative_studio)
 	top_bar.continue_requested.connect(_on_continue_pressed)
+	top_bar.undo_requested.connect(_on_topbar_undo)
+	top_bar.redo_requested.connect(_on_topbar_redo)
+	world.history.history_changed.connect(_on_history_changed)
 	assignment_panel.brief_acknowledged.connect(_on_brief_acknowledged)
 	storyboard_panel.order_submitted.connect(_on_order_submitted)
 	asset_library_panel.add_requested.connect(_on_asset_add_requested)
@@ -518,6 +521,21 @@ func _refresh_submission() -> void:
 	submission_panel.set_requirements(assignment_manager.stage_requirements())
 
 
+## Task 4 undo/redo affordances. Explicit named handlers so the button
+## signals and the history_changed refresh live in one place.
+func _on_topbar_undo() -> void:
+	world.undo()
+
+
+func _on_topbar_redo() -> void:
+	world.redo()
+
+
+func _on_history_changed() -> void:
+	top_bar.set_undo_enabled(world.history.can_undo())
+	top_bar.set_redo_enabled(world.history.can_redo())
+
+
 ## Creative Studio unlock gate (spec §5): only after the guided run is
 ## submitted does the studio open; the flag survives a reboot (Task 15).
 func unlock_creative_studio() -> void:
@@ -542,6 +560,7 @@ func _enter_studio_mode() -> void:
 	hint_panel.hide()
 	tutorial_overlay.hide()
 	top_bar.set_continue_visible(false)
+	top_bar.set_undo_redo_visible(true)
 	asset_library_panel.show()
 	asset_library_panel.set_assets(library.list())
 	inspector_panel.show()
@@ -796,10 +815,11 @@ func _collect_score_data() -> Dictionary:
 
 
 ## Task 17 hotkeys (spec §8): Space toggles preview playback, Right/Left step
-## one frame, Escape exits the lab. Space routes through _on_play_toggled so
-## it behaves exactly like the Play button. Focused GUI controls consume their
-## own keys first (a LineEdit swallows Space/arrows), so no focus guard is
-## needed here.
+## one frame, Escape exits the lab. Task 4 adds Ctrl+Z (undo), Ctrl+Y and
+## Ctrl+Shift+Z (redo). Space routes through _on_play_toggled so it behaves
+## exactly like the Play button. Focused GUI controls consume their own keys
+## first (a LineEdit swallows Space/arrows AND its own Ctrl+Z text undo), so
+## no focus guard is needed here.
 func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
@@ -811,6 +831,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_RIGHT, KEY_LEFT:
 			var dir := 1.0 if key.keycode == KEY_RIGHT else -1.0
 			timeline.scrub(dir / float(timeline.fps))
+			get_viewport().set_input_as_handled()
+		KEY_Z, KEY_Y:
+			if not key.ctrl_pressed:
+				return
+			var redo_key := key.keycode == KEY_Y or key.shift_pressed
+			if redo_key:
+				world.redo()
+			else:
+				world.undo()
 			get_viewport().set_input_as_handled()
 		KEY_ESCAPE:
 			exit_lab()
