@@ -1,6 +1,0 @@
-[gd_scene format=3 uid="uid://wbwifgipdg67"]
-
-[ext_resource type="Script" path="res://scripts/digital_art_lab/main.gd" id="1_h36nn"]
-
-[node name="TestRoot" type="CanvasLayer" unique_id=1946421871]
-script = ExtResource("1_h36nn")
