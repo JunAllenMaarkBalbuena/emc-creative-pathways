@@ -113,8 +113,6 @@ transform = Transform3D(1, 0, 0, 0, 0.64278764, 0.76604444, 0, -0.76604444, 0.64
 [node name="StarterFillLight" type="OmniLight3D" parent="UI/SceneViewport/World/LightingRoot" unique_id=598667439]
 visible = false
 
-[node name="TopBar" parent="UI" unique_id=686183195 instance=ExtResource("12_topbar")]
-
 [node name="AssignmentPanel" parent="UI" unique_id=1950587127 instance=ExtResource("13_assignpanel")]
 anchors_preset = 0
 
@@ -146,6 +144,8 @@ anchors_preset = 0
 
 [node name="TutorialOverlay" parent="UI" unique_id=1480970995 instance=ExtResource("21_tutorial")]
 anchors_preset = 0
+
+[node name="TopBar" parent="UI" unique_id=686183195 instance=ExtResource("12_topbar")]
 
 [node name="Audio" type="Node" parent="." unique_id=1727183673]
 
