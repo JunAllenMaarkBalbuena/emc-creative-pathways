@@ -31,19 +31,28 @@ static func layer_priority(layer_index: int) -> int:
 ## the instance; GeometryInstance3D / MeshInstance3D does NOT — meshes have to
 ## carry priority on their (transparent) material instead. So:
 ##   - sprites: instance property.
-##   - meshes: duplicate the current material_override (so a shared authored
-##     starter material is never mutated for every instance), force the
-##     transparent pass, and put the priority on it.
+##   - meshes: grab the authored material (material_override first, then the
+##     authored surface override — StarterWorkstation ships that way — then
+##     the mesh surface material), duplicate it (so a shared authored starter
+##     material is never mutated for every instance), force the transparent
+##     pass, and put the priority on the duplicate.
 static func set_layer_priority(node: Node3D, value: int) -> void:
 	if node is SpriteBase3D:
 		(node as SpriteBase3D).render_priority = value
 	elif node is MeshInstance3D:
 		var mesh := node as MeshInstance3D
-		var mat: StandardMaterial3D
-		if mesh.material_override == null:
+		var src: BaseMaterial3D = null
+		if mesh.material_override != null:
+			src = mesh.material_override
+		elif mesh.get_surface_override_material(0) != null:
+			src = mesh.get_surface_override_material(0)
+		elif mesh.mesh != null and mesh.mesh.surface_get_material(0) != null:
+			src = mesh.mesh.surface_get_material(0)
+		var mat: StandardMaterial3D = null
+		if src != null and src is StandardMaterial3D:
+			mat = (src as StandardMaterial3D).duplicate() as StandardMaterial3D
+		if mat == null:
 			mat = StandardMaterial3D.new()
-		else:
-			mat = mesh.material_override.duplicate() as StandardMaterial3D
 		apply_to_material(mat, value)
 		mesh.material_override = mat
 

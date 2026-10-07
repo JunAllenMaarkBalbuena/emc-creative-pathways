@@ -142,6 +142,7 @@ func _ready() -> void:
 	_apply_tuning()
 	_wire_controller_refs()
 	_register_starter_lights()
+	_register_starter_order()
 	_wire_panels()
 	_setup_audio()
 	if autosave_enabled:
@@ -214,6 +215,26 @@ func _register_starter_lights() -> void:
 		lighting.register_existing("starter_key", dir)
 	if omni != null:
 		lighting.register_existing("starter_fill", omni)
+
+
+## B2 layer ordering: the authored starter nodes (StarterBackdrop/
+## StarterCharacter/StarterWorkstation) are NOT registered in the composition
+## stack, so they must never out-rank a player layer. Pin them all to
+## STARTER_PRIORITY (= 0): sprites carry it on the instance, the workstation
+## material gets duplicated into the transparent pass at priority 0 (opaque
+## meshes sort by depth, which would break the painter's order). Player
+## layers start at layer_priority(0) = 16, strictly above them. Idempotent:
+## safe to re-run on every lab boot.
+func _register_starter_order() -> void:
+	var world_root := "UI/SceneViewportContainer/SceneViewport/World"
+	for path in [
+		world_root + "/BackgroundRoot/StarterBackdrop",
+		world_root + "/CharacterRoot/StarterCharacter",
+		world_root + "/PropRoot/StarterWorkstation",
+	]:
+		var node := get_node_or_null(path) as Node3D
+		if node != null:
+			RenderOrder.set_layer_priority(node, RenderOrder.STARTER_PRIORITY)
 
 
 func _wire_panels() -> void:
