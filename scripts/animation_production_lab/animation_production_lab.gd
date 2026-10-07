@@ -2,7 +2,8 @@ class_name AnimationProductionLab
 extends CanvasLayer
 
 ## Root of the 2.5D Animation Production Lab (4th EMC Simulator tool lab).
-## Holds the World (Node3D under UI/SceneViewport) and the Systems/UI
+## Holds the World (Node3D under UI/SceneViewportContainer/SceneViewport) and
+## the Systems/UI
 ## controllers wired up by later tasks. The lab is fully self-contained:
 ## it boots from committed starter assets and never loads another lab's
 ## scenes, scripts, or UI. Saves live under user://animation_lab/.
@@ -206,9 +207,9 @@ func _wire_controller_refs() -> void:
 ## instead of duplicating them with add_light.
 func _register_starter_lights() -> void:
 	var dir := get_node_or_null(
-		"UI/SceneViewport/World/LightingRoot/StarterKeyLight") as DirectionalLight3D
+		"UI/SceneViewportContainer/SceneViewport/World/LightingRoot/StarterKeyLight") as DirectionalLight3D
 	var omni := get_node_or_null(
-		"UI/SceneViewport/World/LightingRoot/StarterFillLight") as OmniLight3D
+		"UI/SceneViewportContainer/SceneViewport/World/LightingRoot/StarterFillLight") as OmniLight3D
 	if dir != null:
 		lighting.register_existing("starter_key", dir)
 	if omni != null:
@@ -255,6 +256,10 @@ func _wire_panels() -> void:
 func show_stage_ui(stage: int) -> void:
 	score_panel.hide()
 	studio_panel.hide()
+	# The tutorial overlay is a full-screen dark layer (backdrop 0.75 alpha):
+	# it owns the boot intro at BRIEF and must drop away for every working
+	# stage, or the stage world is dimmed to ~25% for the whole run.
+	tutorial_overlay.visible = stage == STAGE_BRIEF and not assignment_manager.tutorial_completed
 	assignment_panel.visible = stage == STAGE_BRIEF
 	storyboard_panel.visible = stage == STAGE_PLAN
 	asset_library_panel.visible = stage == STAGE_ASSETS

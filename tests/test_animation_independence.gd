@@ -25,12 +25,12 @@ func _run() -> int:
 	if not lab is CanvasLayer or (lab.script as Script).resource_path != "res://scripts/animation_production_lab/animation_production_lab.gd":
 		print("FAIL: lab root is not the AnimationProductionLab script on CanvasLayer")
 		return 1
-	if lab.get_node_or_null("UI/SceneViewport") == null:
-		print("FAIL: UI/SceneViewport missing")
+	if lab.get_node_or_null("UI/SceneViewportContainer/SceneViewport") == null:
+		print("FAIL: UI/SceneViewportContainer/SceneViewport missing")
 		return 1
-	var world := lab.get_node_or_null("UI/SceneViewport/World")
+	var world := lab.get_node_or_null("UI/SceneViewportContainer/SceneViewport/World")
 	if world == null or not world is Node3D:
-		print("FAIL: UI/SceneViewport/World missing or not Node3D")
+		print("FAIL: UI/SceneViewportContainer/SceneViewport/World missing or not Node3D")
 		return 1
 	if world.find_children("*", "Camera3D", true, false).is_empty():
 		print("FAIL: World has no Camera3D")

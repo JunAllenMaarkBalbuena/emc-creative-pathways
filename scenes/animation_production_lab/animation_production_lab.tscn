@@ -37,17 +37,17 @@ script = ExtResource("1_lab")
 
 [node name="WorldHub" type="Node" parent="Systems" unique_id=1420110200]
 script = ExtResource("4_world")
-character_root = NodePath("../../UI/SceneViewport/World/CharacterRoot")
-background_root = NodePath("../../UI/SceneViewport/World/BackgroundRoot")
-prop_root = NodePath("../../UI/SceneViewport/World/PropRoot")
+character_root = NodePath("../../UI/SceneViewportContainer/SceneViewport/World/CharacterRoot")
+background_root = NodePath("../../UI/SceneViewportContainer/SceneViewport/World/BackgroundRoot")
+prop_root = NodePath("../../UI/SceneViewportContainer/SceneViewport/World/PropRoot")
 
 [node name="CameraHub" type="Node" parent="Systems" unique_id=1182029803]
 script = ExtResource("5_camera")
-camera_path = NodePath("../../UI/SceneViewport/World/CameraRig")
+camera_path = NodePath("../../UI/SceneViewportContainer/SceneViewport/World/CameraRig")
 
 [node name="LightingHub" type="Node" parent="Systems" unique_id=1748417495]
 script = ExtResource("6_lighting")
-lighting_root = NodePath("../../UI/SceneViewport/World/LightingRoot")
+lighting_root = NodePath("../../UI/SceneViewportContainer/SceneViewport/World/LightingRoot")
 
 [node name="FrameHub" type="Node" parent="Systems" unique_id=450619046]
 script = ExtResource("7_frames")
@@ -72,45 +72,54 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="SceneViewport" type="SubViewport" parent="UI" unique_id=1273503593]
+[node name="SceneViewportContainer" type="SubViewportContainer" parent="UI" unique_id=1273503600]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stretch = true
+mouse_filter = 2
+
+[node name="SceneViewport" type="SubViewport" parent="UI/SceneViewportContainer" unique_id=1273503593]
 size = Vector2i(1280, 720)
 
-[node name="World" type="Node3D" parent="UI/SceneViewport" unique_id=1568041265]
+[node name="World" type="Node3D" parent="UI/SceneViewportContainer/SceneViewport" unique_id=1568041265]
 
-[node name="EnvironmentRoot" type="Node3D" parent="UI/SceneViewport/World" unique_id=1366729680]
+[node name="EnvironmentRoot" type="Node3D" parent="UI/SceneViewportContainer/SceneViewport/World" unique_id=1366729680]
 
-[node name="BackgroundRoot" type="Node3D" parent="UI/SceneViewport/World" unique_id=1028182848]
+[node name="BackgroundRoot" type="Node3D" parent="UI/SceneViewportContainer/SceneViewport/World" unique_id=1028182848]
 
-[node name="StarterBackdrop" type="Sprite3D" parent="UI/SceneViewport/World/BackgroundRoot" unique_id=165832434]
+[node name="StarterBackdrop" type="Sprite3D" parent="UI/SceneViewportContainer/SceneViewport/World/BackgroundRoot" unique_id=165832434]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -6)
 pixel_size = 0.02
 texture = ExtResource("3_bg")
 
-[node name="CharacterRoot" type="Node3D" parent="UI/SceneViewport/World" unique_id=1379752953]
+[node name="CharacterRoot" type="Node3D" parent="UI/SceneViewportContainer/SceneViewport/World" unique_id=1379752953]
 
-[node name="StarterCharacter" type="Sprite3D" parent="UI/SceneViewport/World/CharacterRoot" unique_id=1816213732]
+[node name="StarterCharacter" type="Sprite3D" parent="UI/SceneViewportContainer/SceneViewport/World/CharacterRoot" unique_id=1816213732]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 billboard = 1
 texture = ExtResource("2_idle")
 
-[node name="PropRoot" type="Node3D" parent="UI/SceneViewport/World" unique_id=39849557]
+[node name="PropRoot" type="Node3D" parent="UI/SceneViewportContainer/SceneViewport/World" unique_id=39849557]
 
-[node name="StarterWorkstation" type="MeshInstance3D" parent="UI/SceneViewport/World/PropRoot" unique_id=137700133]
+[node name="StarterWorkstation" type="MeshInstance3D" parent="UI/SceneViewportContainer/SceneViewport/World/PropRoot" unique_id=137700133]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0.45, 0)
 mesh = SubResource("BoxMesh_prop")
 surface_material_override/0 = SubResource("StandardMaterial3D_prop")
 
-[node name="CameraRig" type="Camera3D" parent="UI/SceneViewport/World" unique_id=513624338]
+[node name="CameraRig" type="Camera3D" parent="UI/SceneViewportContainer/SceneViewport/World" unique_id=513624338]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 4)
 current = true
 fov = 60.0
 
-[node name="LightingRoot" type="Node3D" parent="UI/SceneViewport/World" unique_id=1897079595]
+[node name="LightingRoot" type="Node3D" parent="UI/SceneViewportContainer/SceneViewport/World" unique_id=1897079595]
 
-[node name="StarterKeyLight" type="DirectionalLight3D" parent="UI/SceneViewport/World/LightingRoot" unique_id=855947046]
+[node name="StarterKeyLight" type="DirectionalLight3D" parent="UI/SceneViewportContainer/SceneViewport/World/LightingRoot" unique_id=855947046]
 transform = Transform3D(1, 0, 0, 0, 0.64278764, 0.76604444, 0, -0.76604444, 0.64278764, 0, 0, 0)
 
-[node name="StarterFillLight" type="OmniLight3D" parent="UI/SceneViewport/World/LightingRoot" unique_id=598667439]
+[node name="StarterFillLight" type="OmniLight3D" parent="UI/SceneViewportContainer/SceneViewport/World/LightingRoot" unique_id=598667439]
 visible = false
 
 [node name="AssignmentPanel" parent="UI" unique_id=1950587127 instance=ExtResource("13_assignpanel")]
