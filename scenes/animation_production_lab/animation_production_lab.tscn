@@ -1,16 +1,16 @@
-[gd_scene load_steps=26 format=3]
+[gd_scene format=3 uid="uid://d0a5pco6wuxau"]
 
-[ext_resource type="Script" path="res://scripts/animation_production_lab/animation_production_lab.gd" id="1_lab"]
-[ext_resource type="Texture2D" path="res://assets/char_animation/idle/1c66b4d4-7798-4026-9ddd-b75a5d3ce19d-8.png" id="2_idle"]
-[ext_resource type="Texture2D" path="res://assets/Scene_BG/Menu_Bg_image.png" id="3_bg"]
-[ext_resource type="Script" path="res://scripts/animation_production_lab/world_controller.gd" id="4_world"]
-[ext_resource type="Script" path="res://scripts/animation_production_lab/camera_controller.gd" id="5_camera"]
-[ext_resource type="Script" path="res://scripts/animation_production_lab/lighting_controller.gd" id="6_lighting"]
-[ext_resource type="Script" path="res://scripts/animation_production_lab/frame_controller.gd" id="7_frames"]
-[ext_resource type="Script" path="res://scripts/animation_production_lab/keyframe_controller.gd" id="8_keyframes"]
-[ext_resource type="Script" path="res://scripts/animation_production_lab/timeline_controller.gd" id="9_timeline"]
-[ext_resource type="Script" path="res://scripts/animation_production_lab/assignment_manager.gd" id="10_assign"]
-[ext_resource type="Script" path="res://scripts/animation_production_lab/preview_controller.gd" id="11_preview"]
+[ext_resource type="Script" uid="uid://c0gitxgon4yfw" path="res://scripts/animation_production_lab/animation_production_lab.gd" id="1_lab"]
+[ext_resource type="Texture2D" uid="uid://dtfcko28r8br4" path="res://assets/char_animation/idle/1c66b4d4-7798-4026-9ddd-b75a5d3ce19d-8.png" id="2_idle"]
+[ext_resource type="Texture2D" uid="uid://bji80e5xy1ns7" path="res://assets/Scene_BG/Menu_Bg_image.png" id="3_bg"]
+[ext_resource type="Script" uid="uid://bg5dvtx4tul1u" path="res://scripts/animation_production_lab/world_controller.gd" id="4_world"]
+[ext_resource type="Script" uid="uid://bxnxn68bswb6y" path="res://scripts/animation_production_lab/camera_controller.gd" id="5_camera"]
+[ext_resource type="Script" uid="uid://kuw06wlyl86w" path="res://scripts/animation_production_lab/lighting_controller.gd" id="6_lighting"]
+[ext_resource type="Script" uid="uid://c1of6spobu4ed" path="res://scripts/animation_production_lab/frame_controller.gd" id="7_frames"]
+[ext_resource type="Script" uid="uid://bmbnix8my7kk3" path="res://scripts/animation_production_lab/keyframe_controller.gd" id="8_keyframes"]
+[ext_resource type="Script" uid="uid://bq1iatfhhejvc" path="res://scripts/animation_production_lab/timeline_controller.gd" id="9_timeline"]
+[ext_resource type="Script" uid="uid://c1fy8noa5ecyx" path="res://scripts/animation_production_lab/assignment_manager.gd" id="10_assign"]
+[ext_resource type="Script" uid="uid://bf58a5wiqv0cr" path="res://scripts/animation_production_lab/preview_controller.gd" id="11_preview"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/top_bar.tscn" id="12_topbar"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/assignment_panel.tscn" id="13_assignpanel"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/storyboard_panel.tscn" id="14_storyboard"]
@@ -20,9 +20,9 @@
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/animation_controls.tscn" id="18_animctl"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/hint_panel.tscn" id="19_hint"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/submission_panel.tscn" id="20_submission"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/tutorial_overlay.tscn" id="21_tutorial"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/score_panel.tscn" id="22_scorepanel"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/studio_panel.tscn" id="23_studio"]
-[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/tutorial_overlay.tscn" id="21_tutorial"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_prop"]
 size = Vector3(0.8, 0.9, 0.6)
@@ -30,116 +30,129 @@ size = Vector3(0.8, 0.9, 0.6)
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_prop"]
 albedo_color = Color(0.35, 0.45, 0.6, 1)
 
-[node name="AnimationProductionLab" type="CanvasLayer"]
+[node name="AnimationProductionLab" type="CanvasLayer" unique_id=2093839991]
 script = ExtResource("1_lab")
 
-[node name="Systems" type="Node" parent="."]
+[node name="Systems" type="Node" parent="." unique_id=325602778]
 
-[node name="WorldHub" type="Node" parent="Systems"]
+[node name="WorldHub" type="Node" parent="Systems" unique_id=1420110200]
 script = ExtResource("4_world")
 character_root = NodePath("../../UI/SceneViewport/World/CharacterRoot")
 background_root = NodePath("../../UI/SceneViewport/World/BackgroundRoot")
 prop_root = NodePath("../../UI/SceneViewport/World/PropRoot")
 
-[node name="CameraHub" type="Node" parent="Systems"]
+[node name="CameraHub" type="Node" parent="Systems" unique_id=1182029803]
 script = ExtResource("5_camera")
 camera_path = NodePath("../../UI/SceneViewport/World/CameraRig")
 
-[node name="LightingHub" type="Node" parent="Systems"]
+[node name="LightingHub" type="Node" parent="Systems" unique_id=1748417495]
 script = ExtResource("6_lighting")
 lighting_root = NodePath("../../UI/SceneViewport/World/LightingRoot")
 
-[node name="FrameHub" type="Node" parent="Systems"]
+[node name="FrameHub" type="Node" parent="Systems" unique_id=450619046]
 script = ExtResource("7_frames")
 
-[node name="KeyframeHub" type="Node" parent="Systems"]
+[node name="KeyframeHub" type="Node" parent="Systems" unique_id=1704315424]
 script = ExtResource("8_keyframes")
 
-[node name="TimelineHub" type="Node" parent="Systems"]
+[node name="TimelineHub" type="Node" parent="Systems" unique_id=1252601611]
 script = ExtResource("9_timeline")
 
-[node name="AssignmentHub" type="Node" parent="Systems"]
+[node name="AssignmentHub" type="Node" parent="Systems" unique_id=206773611]
 script = ExtResource("10_assign")
 
-[node name="PreviewHub" type="Node" parent="Systems"]
+[node name="PreviewHub" type="Node" parent="Systems" unique_id=745723739]
 script = ExtResource("11_preview")
 
-[node name="UI" type="Control" parent="."]
+[node name="UI" type="Control" parent="." unique_id=1098389981]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="SceneViewport" type="SubViewport" parent="UI"]
+[node name="SceneViewport" type="SubViewport" parent="UI" unique_id=1273503593]
 size = Vector2i(1280, 720)
-render_target_update_mode = 2
 
-[node name="World" type="Node3D" parent="UI/SceneViewport"]
+[node name="World" type="Node3D" parent="UI/SceneViewport" unique_id=1568041265]
 
-[node name="EnvironmentRoot" type="Node3D" parent="UI/SceneViewport/World"]
+[node name="EnvironmentRoot" type="Node3D" parent="UI/SceneViewport/World" unique_id=1366729680]
 
-[node name="BackgroundRoot" type="Node3D" parent="UI/SceneViewport/World"]
+[node name="BackgroundRoot" type="Node3D" parent="UI/SceneViewport/World" unique_id=1028182848]
 
-[node name="StarterBackdrop" type="Sprite3D" parent="UI/SceneViewport/World/BackgroundRoot"]
-texture = ExtResource("3_bg")
+[node name="StarterBackdrop" type="Sprite3D" parent="UI/SceneViewport/World/BackgroundRoot" unique_id=165832434]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -6)
 pixel_size = 0.02
-position = Vector3(0, 1, -6)
+texture = ExtResource("3_bg")
 
-[node name="CharacterRoot" type="Node3D" parent="UI/SceneViewport/World"]
+[node name="CharacterRoot" type="Node3D" parent="UI/SceneViewport/World" unique_id=1379752953]
 
-[node name="StarterCharacter" type="Sprite3D" parent="UI/SceneViewport/World/CharacterRoot"]
-texture = ExtResource("2_idle")
-pixel_size = 0.01
-position = Vector3(0, 0.5, 0)
+[node name="StarterCharacter" type="Sprite3D" parent="UI/SceneViewport/World/CharacterRoot" unique_id=1816213732]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 billboard = 1
+texture = ExtResource("2_idle")
 
-[node name="PropRoot" type="Node3D" parent="UI/SceneViewport/World"]
+[node name="PropRoot" type="Node3D" parent="UI/SceneViewport/World" unique_id=39849557]
 
-[node name="StarterWorkstation" type="MeshInstance3D" parent="UI/SceneViewport/World/PropRoot"]
+[node name="StarterWorkstation" type="MeshInstance3D" parent="UI/SceneViewport/World/PropRoot" unique_id=137700133]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0.45, 0)
 mesh = SubResource("BoxMesh_prop")
 surface_material_override/0 = SubResource("StandardMaterial3D_prop")
-position = Vector3(1.2, 0.45, 0)
 
-[node name="CameraRig" type="Camera3D" parent="UI/SceneViewport/World"]
+[node name="CameraRig" type="Camera3D" parent="UI/SceneViewport/World" unique_id=513624338]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 4)
-fov = 60.0
 current = true
+fov = 60.0
 
-[node name="LightingRoot" type="Node3D" parent="UI/SceneViewport/World"]
+[node name="LightingRoot" type="Node3D" parent="UI/SceneViewport/World" unique_id=1897079595]
 
-[node name="StarterKeyLight" type="DirectionalLight3D" parent="UI/SceneViewport/World/LightingRoot"]
-rotation_degrees = Vector3(-50, 0, 0)
-light_energy = 1.0
+[node name="StarterKeyLight" type="DirectionalLight3D" parent="UI/SceneViewport/World/LightingRoot" unique_id=855947046]
+transform = Transform3D(1, 0, 0, 0, 0.64278764, 0.76604444, 0, -0.76604444, 0.64278764, 0, 0, 0)
 
-[node name="StarterFillLight" type="OmniLight3D" parent="UI/SceneViewport/World/LightingRoot"]
+[node name="StarterFillLight" type="OmniLight3D" parent="UI/SceneViewport/World/LightingRoot" unique_id=598667439]
 visible = false
 
-[node name="TopBar" parent="UI" instance=ExtResource("12_topbar")]
+[node name="TopBar" parent="UI" unique_id=686183195 instance=ExtResource("12_topbar")]
 
-[node name="AssignmentPanel" parent="UI" instance=ExtResource("13_assignpanel")]
+[node name="AssignmentPanel" parent="UI" unique_id=1950587127 instance=ExtResource("13_assignpanel")]
+anchors_preset = 0
 
-[node name="StoryboardPanel" parent="UI" instance=ExtResource("14_storyboard")]
+[node name="StoryboardPanel" parent="UI" unique_id=1800387920 instance=ExtResource("14_storyboard")]
+anchors_preset = 0
 
-[node name="AssetLibraryPanel" parent="UI" instance=ExtResource("15_assetlib")]
+[node name="AssetLibraryPanel" parent="UI" unique_id=1616512324 instance=ExtResource("15_assetlib")]
+anchors_preset = 0
 
-[node name="InspectorPanel" parent="UI" instance=ExtResource("16_inspector")]
+[node name="InspectorPanel" parent="UI" unique_id=1383318480 instance=ExtResource("16_inspector")]
+anchors_preset = 0
 
-[node name="TimelinePanel" parent="UI" instance=ExtResource("17_timeline")]
+[node name="TimelinePanel" parent="UI" unique_id=110442778 instance=ExtResource("17_timeline")]
+anchors_preset = 0
 
-[node name="AnimationControls" parent="UI" instance=ExtResource("18_animctl")]
+[node name="AnimationControls" parent="UI" unique_id=1617207318 instance=ExtResource("18_animctl")]
+anchors_preset = 0
 
-[node name="HintPanel" parent="UI" instance=ExtResource("19_hint")]
+[node name="HintPanel" parent="UI" unique_id=1387019610 instance=ExtResource("19_hint")]
 
-[node name="SubmissionPanel" parent="UI" instance=ExtResource("20_submission")]
+[node name="SubmissionPanel" parent="UI" unique_id=937952171 instance=ExtResource("20_submission")]
+anchors_preset = 0
 
-[node name="ScorePanel" parent="UI" instance=ExtResource("22_scorepanel")]
+[node name="ScorePanel" parent="UI" unique_id=1649265449 instance=ExtResource("22_scorepanel")]
+anchors_preset = 0
 
-[node name="StudioPanel" parent="UI" instance=ExtResource("23_studio")]
+[node name="StudioPanel" parent="UI" unique_id=166894853 instance=ExtResource("23_studio")]
+anchors_preset = 0
 
-[node name="TutorialOverlay" parent="UI" instance=ExtResource("21_tutorial")]
+[node name="TutorialOverlay" parent="UI" unique_id=1480970995 instance=ExtResource("21_tutorial")]
+anchors_preset = 0
 
-[node name="Audio" type="Node" parent="."]
+[node name="Audio" type="Node" parent="." unique_id=1727183673]
 
-[node name="MusicPlayer" type="AudioStreamPlayer" parent="Audio"]
+[node name="MusicPlayer" type="AudioStreamPlayer" parent="Audio" unique_id=1925860702]
 volume_db = -12.0
 
-[node name="AmbiencePlayer" type="AudioStreamPlayer" parent="Audio"]
+[node name="AmbiencePlayer" type="AudioStreamPlayer" parent="Audio" unique_id=1287794830]
 volume_db = -8.0
 
-[node name="SFXPlayer" type="AudioStreamPlayer" parent="Audio"]
+[node name="SFXPlayer" type="AudioStreamPlayer" parent="Audio" unique_id=1558685311]
