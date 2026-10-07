@@ -16,6 +16,11 @@ const CATEGORY_CHARACTER := "character"
 const CATEGORY_BACKGROUND := "background"
 const CATEGORY_PROP := "prop"
 
+## Challenge E: a prop counts as "near the action" inside this distance (in
+## world units) of the character. The starter layout puts the workstation
+## 1.2 units away, which satisfies it.
+const NEAR_PROP_DISTANCE := 2.0
+
 const SPRITE_PIXEL_SIZE := 0.01
 const BACKDROP_PIXEL_SIZE := 0.02
 
@@ -228,6 +233,45 @@ func all_objects() -> Array[String]:
 	for key in _registry.keys():
 		out.append(key)
 	return out
+
+
+## Challenge E live source: measure the registered scene (not the authored
+## starter nodes). "Character before background" means the character's z sits
+## closer to the camera than the background's (the camera looks down -z, so
+## z is "in front"). "Near prop" means the nearest registered prop is within
+## NEAR_PROP_DISTANCE of the character. Returns a plain Dictionary so the
+## caller can hand the two booleans to AssignmentManager.stage_scene_ok.
+func staging_state() -> Dictionary:
+	var ids := all_objects()
+	var char_pos := Vector3.ZERO
+	var has_char := false
+	var bg_z := 0.0
+	var has_bg := false
+	for object_id in ids:
+		var data := get_object(object_id)
+		var category := str(data.get("category", ""))
+		match category:
+			CATEGORY_CHARACTER:
+				if not has_char:
+					char_pos = data.get("position", Vector3.ZERO) as Vector3
+					has_char = true
+			CATEGORY_BACKGROUND:
+				if not has_bg:
+					bg_z = (data.get("position", Vector3.ZERO) as Vector3).z
+					has_bg = true
+	var prop_near := false
+	if has_char:
+		var nearest := INF
+		for object_id in ids:
+			var data := get_object(object_id)
+			if str(data.get("category", "")) == CATEGORY_PROP:
+				var prop_pos := data.get("position", Vector3.ZERO) as Vector3
+				nearest = minf(nearest, prop_pos.distance_to(char_pos))
+		prop_near = nearest <= NEAR_PROP_DISTANCE
+	return {
+		"character_before_background": has_char and has_bg and char_pos.z > bg_z,
+		"near_prop": prop_near,
+	}
 
 
 func _apply_transform(object_id: String, apply: Callable) -> bool:

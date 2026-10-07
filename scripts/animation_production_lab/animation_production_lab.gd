@@ -216,8 +216,15 @@ func _register_starter_lights() -> void:
 
 
 func _wire_panels() -> void:
+	# TopBar is the LAST child of UI in animation_production_lab.tscn on
+	# purpose: later siblings both draw and pick first, so the always-visible
+	# Exit/Continue/Studio controls must sit above the full-rect modal panels
+	# (AssignmentPanel, AssetLibraryPanel, TimelinePanel, SubmissionPanel,
+	# TutorialOverlay — all default STOP mouse_filter). A panel added after
+	# TopBar would swallow TopBar clicks again; keep it last.
 	top_bar.exit_requested.connect(exit_lab)
 	top_bar.studio_requested.connect(unlock_creative_studio)
+	top_bar.continue_requested.connect(_on_continue_pressed)
 	assignment_panel.brief_acknowledged.connect(_on_brief_acknowledged)
 	storyboard_panel.order_submitted.connect(_on_order_submitted)
 	asset_library_panel.add_requested.connect(_on_asset_add_requested)
@@ -263,6 +270,8 @@ func show_stage_ui(stage: int) -> void:
 func on_stage_changed(stage: int) -> void:
 	show_stage_ui(stage)
 	top_bar.set_stage_label(STAGE_NAMES[clampi(stage, 0, STAGE_NAMES.size() - 1)])
+	top_bar.set_continue_visible(_continue_visible_for_stage(stage))
+	top_bar.set_status_label("")
 	_refresh_visible_panel_data(stage)
 	if stage == STAGE_PREVIEW:
 		preview.evaluate_review()
@@ -271,6 +280,36 @@ func on_stage_changed(stage: int) -> void:
 		_previewing = false
 	if enable_hints:
 		hint_panel.set_hints(assignment_manager.hints_for_stage())
+
+
+## Continue shows while the guided flow still has gates to pass (ASSETS..
+## PREVIEW). BRIEF/PLAN panels own their proceed controls and SUBMIT owns its
+## Submit button; Studio mode hides it entirely via _enter_studio_mode.
+func _continue_visible_for_stage(stage: int) -> bool:
+	return stage >= STAGE_ASSETS and stage <= STAGE_PREVIEW
+
+
+## Shared Continue affordance: for stages that consume a measured snapshot of
+## the world (STAGING, mirroring the PLAN order_submitted pattern), re-measure
+## it live before asking the manager to advance. On a blocked advance the
+## StatusLabel names the first unmet requirement for the current stage.
+func _on_continue_pressed() -> void:
+	if assignment_manager.current_stage() == STAGE_STAGING:
+		var state := world.staging_state()
+		assignment_manager.stage_scene_ok(
+			bool(state.get("character_before_background", false)),
+			bool(state.get("near_prop", false)))
+	if assignment_manager.advance_stage():
+		top_bar.set_status_label("")
+	else:
+		top_bar.set_status_label(_first_unmet_requirement())
+
+
+func _first_unmet_requirement() -> String:
+	for req in assignment_manager.stage_requirements():
+		if not req.get("passed", false):
+			return str(req.get("label", ""))
+	return ""
 
 
 func _refresh_visible_panel_data(stage: int) -> void:
@@ -476,6 +515,7 @@ func _enter_studio_mode() -> void:
 	submission_panel.hide()
 	hint_panel.hide()
 	tutorial_overlay.hide()
+	top_bar.set_continue_visible(false)
 	asset_library_panel.show()
 	asset_library_panel.set_assets(library.list())
 	inspector_panel.show()
