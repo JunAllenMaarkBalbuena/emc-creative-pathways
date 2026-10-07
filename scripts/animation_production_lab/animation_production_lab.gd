@@ -251,6 +251,7 @@ func _wire_panels() -> void:
 	top_bar.continue_requested.connect(_on_continue_pressed)
 	top_bar.undo_requested.connect(_on_topbar_undo)
 	top_bar.redo_requested.connect(_on_topbar_redo)
+	top_bar.dock_toggle_requested.connect(_on_dock_toggle)
 	world.history.history_changed.connect(_on_history_changed)
 	assignment_panel.brief_acknowledged.connect(_on_brief_acknowledged)
 	storyboard_panel.order_submitted.connect(_on_order_submitted)
@@ -297,6 +298,9 @@ func _wire_panels() -> void:
 func show_stage_ui(stage: int) -> void:
 	score_panel.hide()
 	studio_panel.hide()
+	# Dock toggles are Studio-only: in guided the stage map alone drives
+	# panel visibility, and there is no undo/redo or resizing to unlock.
+	top_bar.set_dock_toggles_visible(false)
 	# The tutorial overlay is a full-screen dark layer (backdrop 0.75 alpha):
 	# it owns the boot intro at BRIEF and must drop away for every working
 	# stage, or the stage world is dimmed to ~25% for the whole run.
@@ -478,6 +482,24 @@ func _on_layers_reorder(object_id: String, op: String) -> void:
 		"backward": world.layer_backward(object_id)
 
 
+## Studio docker toggles (Task 6): the TopBar check-button rows map 1:1 to
+## panel visibility in Studio mode. The companion resize strip hides with
+## its docker so a floating divider never lingers after its panel.
+func _on_dock_toggle(name: String, on: bool) -> void:
+	match name:
+		"layers":
+			layers_panel.visible = on
+			(get_node("UI/LayersResizeStrip") as Control).visible = on
+		"inspector":
+			inspector_panel.visible = on
+		"assets":
+			asset_library_panel.visible = on
+		"timeline":
+			timeline_panel.visible = on
+			(get_node("UI/TimelineResizeStrip") as Control).visible = on
+	top_bar.set_dock_toggle(name, on)
+
+
 ## Selection is world-owned: LayersPanel rows and Inspector rows both funnel
 ## through world.select(), and this handler keeps every panel in step. The
 ## panels never emit back here (setter-only), so there is no loop.
@@ -641,6 +663,9 @@ func _enter_studio_mode() -> void:
 	tutorial_overlay.hide()
 	top_bar.set_continue_visible(false)
 	top_bar.set_undo_redo_visible(true)
+	top_bar.set_dock_toggles_visible(true)
+	(get_node("UI/LayersResizeStrip") as Control).show()
+	(get_node("UI/TimelineResizeStrip") as Control).show()
 	asset_library_panel.show()
 	asset_library_panel.set_assets(library.list())
 	layers_panel.show()

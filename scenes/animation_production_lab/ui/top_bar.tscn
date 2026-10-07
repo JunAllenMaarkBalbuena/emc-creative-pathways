@@ -49,6 +49,34 @@ custom_minimum_size = Vector2(72, 40)
 visible = false
 text = "Redo"
 
+[node name="LayersToggle" type="CheckButton" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(72, 40)
+visible = false
+text = "Layers"
+
+[node name="InspectorToggle" type="CheckButton" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(84, 40)
+visible = false
+text = "Inspector"
+
+[node name="AssetsToggle" type="CheckButton" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(72, 40)
+visible = false
+text = "Assets"
+
+[node name="TimelineToggle" type="CheckButton" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(84, 40)
+visible = false
+text = "Timeline"
+
 [node name="ContinueButton" type="Button" parent="Row"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -74,3 +102,7 @@ text = "Exit"
 [connection signal="pressed" from="Row/ExitButton" to="." method="_on_exit_pressed"]
 [connection signal="pressed" from="Row/UndoButton" to="." method="_on_undo_pressed"]
 [connection signal="pressed" from="Row/RedoButton" to="." method="_on_redo_pressed"]
+[connection signal="toggled" from="Row/LayersToggle" to="." method="_on_dock_toggled" binds=["layers"]]
+[connection signal="toggled" from="Row/InspectorToggle" to="." method="_on_dock_toggled" binds=["inspector"]]
+[connection signal="toggled" from="Row/AssetsToggle" to="." method="_on_dock_toggled" binds=["assets"]]
+[connection signal="toggled" from="Row/TimelineToggle" to="." method="_on_dock_toggled" binds=["timeline"]]

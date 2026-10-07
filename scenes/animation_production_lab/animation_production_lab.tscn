@@ -17,6 +17,7 @@
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/asset_library_panel.tscn" id="15_assetlib"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/inspector_panel.tscn" id="16_inspector"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/layers_panel.tscn" id="24_layers"]
+[ext_resource type="Script" path="res://scripts/animation_production_lab/ui/dock_resize_strip.gd" id="25_dockstrip"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/timeline_panel.tscn" id="17_timeline"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/animation_controls.tscn" id="18_animctl"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/hint_panel.tscn" id="19_hint"]
@@ -135,11 +136,36 @@ anchors_preset = 0
 [node name="LayersPanel" parent="UI" instance=ExtResource("24_layers")]
 anchors_preset = 0
 
+[node name="LayersResizeStrip" type="Control" parent="UI"]
+visible = false
+anchors_preset = 0
+anchor_bottom = 1.0
+offset_top = 56.0
+offset_left = 578.0
+offset_right = 584.0
+script = ExtResource("25_dockstrip")
+target = NodePath("../LayersPanel")
+axis = 0
+side = 1
+
 [node name="InspectorPanel" parent="UI" unique_id=1383318480 instance=ExtResource("16_inspector")]
 anchors_preset = 0
 
 [node name="TimelinePanel" parent="UI" unique_id=110442778 instance=ExtResource("17_timeline")]
 anchors_preset = 0
+
+[node name="TimelineResizeStrip" type="Control" parent="UI"]
+visible = false
+anchors_preset = 0
+anchor_right = 1.0
+offset_top = 392.0
+offset_left = 0.0
+offset_bottom = 398.0
+offset_right = 0.0
+script = ExtResource("25_dockstrip")
+target = NodePath("../TimelinePanel")
+axis = 1
+side = -1
 
 [node name="AnimationControls" parent="UI" unique_id=1617207318 instance=ExtResource("18_animctl")]
 anchors_preset = 0
