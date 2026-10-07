@@ -80,6 +80,14 @@ var _drag_uniform: bool = true
 var _drag_start_mouse: Vector2 = Vector2.ZERO
 var _drag_axis_screen: Vector2 = Vector2.RIGHT
 var _drag_axis_perp: Vector2 = Vector2.UP
+## World units the grabbed point moves per pixel of cursor travel along
+## `_drag_axis_screen`, frozen when the drag is armed (see
+## `_compute_drag_screen_basis`). It is read off the live projection rather than
+## guessed, so the grabbed point follows the cursor 1:1 at every camera distance
+## and fov. It replaced a hardcoded `dist * 0.02`, which dragged ~6x too fast at
+## the default view (60px of drag produced 377px of movement) and by a different
+## factor at every other zoom.
+var _drag_world_per_px: float = 0.0
 
 # Box-select / body-drag state
 var _box_dragging: bool = false
@@ -664,20 +672,42 @@ func _compute_drag_screen_basis(grab_pos: Vector2,
 	var tip := cam.unproject_position(gizmo.global_position + _world_drag_axis())
 	var delta := tip - origin
 
-	if delta.length() > AXIS_SCREEN_EPS:
-		_drag_axis_screen = delta.normalized()
+	# The projected length of the axis IS pixels-per-world-unit along it, so its
+	# reciprocal is the world travel a single pixel of cursor motion buys. At the
+	# grab depth that makes the drag 1:1: moving the cursor 60px moves the object's
+	# projection 60px. A perspective view scales this with distance, which is why
+	# a constant could never be right at more than one zoom.
+	var px_per_unit := delta.length()
+	if px_per_unit > AXIS_SCREEN_EPS:
+		_drag_axis_screen = delta / px_per_unit
+		_drag_world_per_px = 1.0 / px_per_unit
 	elif (grab_pos - origin).length() > AXIS_SCREEN_EPS:
 		# Degenerate: the axis is parallel to the view ray, so there is no
 		# projected axis to follow. Drag radially - the only motion left that
-		# maps to motion along the axis.
+		# maps to motion along the axis - at the view plane's own pixel scale.
 		_drag_axis_screen = (grab_pos - origin).normalized()
+		_drag_world_per_px = _view_world_per_px(gizmo.global_position)
 	else:
 		# Grabbed within a few pixels of the gizmo centre, so there is no usable
 		# radius either. Screen-up keeps the handle responsive rather than
 		# silently doing nothing, which is the failure being fixed.
 		_drag_axis_screen = Vector2.UP
+		_drag_world_per_px = _view_world_per_px(gizmo.global_position)
 
 	_drag_axis_perp = _compute_rotate_tangent(grab_pos, origin, hit_3d)
+
+## World length of one screen pixel on the camera-facing plane through `point`.
+## `_world_drag_axis()` has no projected direction when it points at the camera
+## (see `_compute_drag_screen_basis`), so the radial fallback needs a scale of
+## its own; this reads it from the camera's own right vector, which is always in
+## that plane.
+func _view_world_per_px(point: Vector3) -> float:
+	var cam := camera_controller.camera
+	var right := cam.global_transform.basis.x.normalized()
+	var origin := cam.unproject_position(point)
+	var across := cam.unproject_position(point + right)
+	var px := (across - origin).length()
+	return 1.0 / maxf(px, 0.0001)
 
 ## The screen-space direction the rotate ring travels under the cursor, at the
 ## point the cursor grabbed.
@@ -899,7 +929,14 @@ func _on_viewport_gui_input(event: InputEvent):
 			var dist: float = moved.dot(_drag_axis_screen)
 			match _current_tool:
 				Tool.MOVE:
-					transform_manager.apply_move(_drag_axis_world, dist * 0.02)
+					# `dist` is the cursor's travel in pixels along
+					# `_drag_axis_screen`; `_drag_world_per_px` is the live
+					# pixels-to-world scale at the grab depth, so the grabbed
+					# point tracks the cursor 1:1 (see
+					# `_compute_drag_screen_basis`). It is NOT a constant: a
+					# hardcoded 0.02 made the drag fly at the default zoom and
+					# crawl when zoomed out.
+					transform_manager.apply_move(_drag_axis_world, dist * _drag_world_per_px)
 				Tool.ROTATE:
 					var tangential: float = moved.dot(_drag_axis_perp)
 					# 0.001 rad/px needed ~5,600px of drag for a full turn, so a
