@@ -1,0 +1,156 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/animation_production_lab/ui/layers_panel.gd" id="1_script"]
+
+[node name="LayersPanel" type="Control"]
+anchors_preset = 0
+anchor_right = 0.45
+offset_top = 56.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.06, 0.09, 0.6)
+mouse_filter = 2
+
+[node name="Card" type="PanelContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Card"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Card/Content"]
+layout_mode = 2
+text = "LAYERS"
+
+[node name="Scroll" type="ScrollContainer" parent="Card/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LayerList" type="VBoxContainer" parent="Card/Content/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ReorderRow" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+
+[node name="MoveUpButton" type="Button" parent="Card/Content/ReorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(36, 36)
+tooltip_text = "Move up"
+text = "↑"
+
+[node name="MoveDownButton" type="Button" parent="Card/Content/ReorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(36, 36)
+tooltip_text = "Move down"
+text = "↓"
+
+[node name="ForwardButton" type="Button" parent="Card/Content/ReorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(36, 36)
+tooltip_text = "Forward (one step)"
+text = "⤒"
+
+[node name="BackwardButton" type="Button" parent="Card/Content/ReorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(36, 36)
+tooltip_text = "Backward (one step)"
+text = "⤓"
+
+[node name="ToFrontButton" type="Button" parent="Card/Content/ReorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(36, 36)
+tooltip_text = "To front"
+text = "⇧"
+
+[node name="ToBackButton" type="Button" parent="Card/Content/ReorderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(36, 36)
+tooltip_text = "To back"
+text = "⇩"
+
+[node name="RenameRow" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+
+[node name="RenameField" type="LineEdit" parent="Card/Content/RenameRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "new name"
+
+[node name="CrudRow" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+
+[node name="AddButton" type="Button" parent="Card/Content/CrudRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Add"
+
+[node name="DuplicateButton" type="Button" parent="Card/Content/CrudRow"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Duplicate"
+
+[node name="RenameButton" type="Button" parent="Card/Content/CrudRow"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Rename"
+
+[node name="DeleteButton" type="Button" parent="Card/Content/CrudRow"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Delete"
+
+[node name="ToggleRow" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+
+[node name="VisibleToggle" type="CheckButton" parent="Card/Content/ToggleRow"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Visible"
+
+[node name="LockToggle" type="CheckButton" parent="Card/Content/ToggleRow"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Locked"
+
+[connection signal="pressed" from="Card/Content/ReorderRow/MoveUpButton" to="." method="_on_move_up_pressed"]
+[connection signal="pressed" from="Card/Content/ReorderRow/MoveDownButton" to="." method="_on_move_down_pressed"]
+[connection signal="pressed" from="Card/Content/ReorderRow/ForwardButton" to="." method="_on_forward_pressed"]
+[connection signal="pressed" from="Card/Content/ReorderRow/BackwardButton" to="." method="_on_backward_pressed"]
+[connection signal="pressed" from="Card/Content/ReorderRow/ToFrontButton" to="." method="_on_to_front_pressed"]
+[connection signal="pressed" from="Card/Content/ReorderRow/ToBackButton" to="." method="_on_to_back_pressed"]
+[connection signal="text_submitted" from="Card/Content/RenameRow/RenameField" to="." method="_on_rename_pressed"]
+[connection signal="pressed" from="Card/Content/CrudRow/AddButton" to="." method="_on_add_pressed"]
+[connection signal="pressed" from="Card/Content/CrudRow/DuplicateButton" to="." method="_on_duplicate_pressed"]
+[connection signal="pressed" from="Card/Content/CrudRow/RenameButton" to="." method="_on_rename_pressed"]
+[connection signal="pressed" from="Card/Content/CrudRow/DeleteButton" to="." method="_on_delete_pressed"]
+[connection signal="toggled" from="Card/Content/ToggleRow/VisibleToggle" to="." method="_on_visible_toggled"]
+[connection signal="toggled" from="Card/Content/ToggleRow/LockToggle" to="." method="_on_lock_toggled"]

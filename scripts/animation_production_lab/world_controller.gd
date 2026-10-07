@@ -436,8 +436,8 @@ func set_layer_locked(object_id: String, locked: bool) -> bool:
 
 ## The Layers docker's data source: one summary per stack entry, in stack
 ## order, carrying everything the panel's rows need to render.
-func layer_summaries() -> Array:
-	var out: Array = []
+func layer_summaries() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
 	for object_id in _layer_order:
 		var data := _registry.get(object_id, {}) as Dictionary
 		var node := get_object_node(object_id)

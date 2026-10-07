@@ -65,6 +65,7 @@ const AssignmentPanelScript := preload("res://scripts/animation_production_lab/u
 const StoryboardPanelScript := preload("res://scripts/animation_production_lab/ui/storyboard_panel.gd")
 const AssetLibraryPanelScript := preload("res://scripts/animation_production_lab/ui/asset_library_panel.gd")
 const InspectorPanelScript := preload("res://scripts/animation_production_lab/ui/inspector_panel.gd")
+const LayersPanelScript := preload("res://scripts/animation_production_lab/ui/layers_panel.gd")
 const TimelinePanelScript := preload("res://scripts/animation_production_lab/ui/timeline_panel.gd")
 const AnimationControlsScript := preload("res://scripts/animation_production_lab/ui/animation_controls.gd")
 const HintPanelScript := preload("res://scripts/animation_production_lab/ui/hint_panel.gd")
@@ -116,6 +117,7 @@ var library := EMCAssetLibrary.new()
 @onready var storyboard_panel: StoryboardPanelScript = $UI/StoryboardPanel
 @onready var asset_library_panel: AssetLibraryPanelScript = $UI/AssetLibraryPanel
 @onready var inspector_panel: InspectorPanelScript = $UI/InspectorPanel
+@onready var layers_panel: LayersPanelScript = $UI/LayersPanel
 @onready var timeline_panel: TimelinePanelScript = $UI/TimelinePanel
 @onready var animation_controls: AnimationControlsScript = $UI/AnimationControls
 @onready var hint_panel: HintPanelScript = $UI/HintPanel
@@ -257,6 +259,21 @@ func _wire_panels() -> void:
 	inspector_panel.transform_edited.connect(_on_inspector_transform_edited)
 	inspector_panel.visibility_toggled.connect(_on_inspector_visibility_toggled)
 	inspector_panel.delete_requested.connect(_on_inspector_delete)
+	layers_panel.layer_selected.connect(_on_layers_selected)
+	layers_panel.add_requested.connect(_on_layers_add)
+	layers_panel.delete_requested.connect(_on_layers_delete)
+	layers_panel.duplicate_requested.connect(_on_layers_duplicate)
+	layers_panel.rename_requested.connect(_on_layers_rename)
+	layers_panel.visibility_toggled.connect(_on_layers_visibility_toggled)
+	layers_panel.lock_toggled.connect(_on_layers_lock_toggled)
+	layers_panel.move_up_requested.connect(_on_layers_reorder.bind("move_up"))
+	layers_panel.move_down_requested.connect(_on_layers_reorder.bind("move_down"))
+	layers_panel.to_front_requested.connect(_on_layers_reorder.bind("to_front"))
+	layers_panel.to_back_requested.connect(_on_layers_reorder.bind("to_back"))
+	layers_panel.forward_requested.connect(_on_layers_reorder.bind("forward"))
+	layers_panel.backward_requested.connect(_on_layers_reorder.bind("backward"))
+	world.selection_changed.connect(_on_world_selection_changed)
+	world.layer_order_changed.connect(_refresh_layers_panel)
 	timeline_panel.frame_added.connect(_on_frame_added)
 	timeline_panel.frame_removed.connect(_on_frame_removed)
 	timeline_panel.frame_texture_requested.connect(_on_frame_texture_requested)
@@ -287,6 +304,7 @@ func show_stage_ui(stage: int) -> void:
 	assignment_panel.visible = stage == STAGE_BRIEF
 	storyboard_panel.visible = stage == STAGE_PLAN
 	asset_library_panel.visible = stage == STAGE_ASSETS
+	layers_panel.visible = stage >= STAGE_STAGING and stage <= STAGE_LIGHTING
 	inspector_panel.visible = stage >= STAGE_STAGING and stage <= STAGE_LIGHTING
 	timeline_panel.visible = stage >= STAGE_FRAMES and stage <= STAGE_TIMING
 	animation_controls.visible = stage >= STAGE_FRAMES and stage <= STAGE_PREVIEW
@@ -346,6 +364,7 @@ func _refresh_visible_panel_data(stage: int) -> void:
 		asset_library_panel.set_assets(library.list())
 	elif stage >= STAGE_STAGING and stage <= STAGE_LIGHTING:
 		inspector_panel.set_object_list(_object_summaries())
+		layers_panel.set_layers(world.layer_summaries())
 	elif stage >= STAGE_FRAMES and stage <= STAGE_TIMING:
 		timeline_panel.set_frame_count(frames.frames.size())
 		animation_controls.set_fps(timeline.fps)
@@ -394,6 +413,7 @@ func _spawn_position_for(category: String) -> Vector3:
 
 
 func _on_inspector_object_selected(object_id: String) -> void:
+	world.select(object_id)
 	inspector_panel.select_object(object_id)
 	inspector_panel.set_object_data(world.get_object(object_id))
 
@@ -417,9 +437,69 @@ func _on_inspector_delete(object_id: String) -> void:
 	inspector_panel.set_object_list(_object_summaries())
 
 
+func _on_layers_selected(object_id: String) -> void:
+	world.select(object_id)
+
+
+func _on_layers_add() -> void:
+	var lib_asset := asset_library_panel.selected_asset()
+	if lib_asset == null:
+		return
+	_on_asset_add_requested(lib_asset)
+
+
+func _on_layers_delete(object_id: String) -> void:
+	world.remove_object(object_id)
+
+
+func _on_layers_duplicate(object_id: String) -> void:
+	world.duplicate_object(object_id)
+
+
+func _on_layers_rename(object_id: String, name: String) -> void:
+	world.rename_layer(object_id, name)
+
+
+func _on_layers_visibility_toggled(object_id: String, visible: bool) -> void:
+	world.set_object_visible(object_id, visible)
+
+
+func _on_layers_lock_toggled(object_id: String, locked: bool) -> void:
+	world.set_layer_locked(object_id, locked)
+
+
+func _on_layers_reorder(object_id: String, op: String) -> void:
+	match op:
+		"move_up": world.move_layer_up(object_id)
+		"move_down": world.move_layer_down(object_id)
+		"to_front": world.layer_to_front(object_id)
+		"to_back": world.layer_to_back(object_id)
+		"forward": world.layer_forward(object_id)
+		"backward": world.layer_backward(object_id)
+
+
+## Selection is world-owned: LayersPanel rows and Inspector rows both funnel
+## through world.select(), and this handler keeps every panel in step. The
+## panels never emit back here (setter-only), so there is no loop.
+func _on_world_selection_changed(object_id: String) -> void:
+	layers_panel.set_selected(object_id)
+	inspector_panel.select_object(object_id)
+	if object_id != "":
+		inspector_panel.set_object_data(world.get_object(object_id))
+
+
 func _on_objects_changed() -> void:
 	if inspector_panel.visible:
 		inspector_panel.set_object_list(_object_summaries())
+	_refresh_layers_panel()
+
+
+## The Layers docker's only data source: refresh it from the world whenever
+## objects or the composition stack change. Visibility-guarded so hidden
+## stages (and the studio's own gating) never pay for an invisible rebuild.
+func _refresh_layers_panel() -> void:
+	if layers_panel.visible:
+		layers_panel.set_layers(world.layer_summaries())
 
 
 func _object_summaries() -> Array[Dictionary]:
@@ -563,6 +643,8 @@ func _enter_studio_mode() -> void:
 	top_bar.set_undo_redo_visible(true)
 	asset_library_panel.show()
 	asset_library_panel.set_assets(library.list())
+	layers_panel.show()
+	layers_panel.set_layers(world.layer_summaries())
 	inspector_panel.show()
 	inspector_panel.set_object_list(_object_summaries())
 	timeline_panel.show()

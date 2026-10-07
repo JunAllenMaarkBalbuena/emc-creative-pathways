@@ -16,6 +16,7 @@
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/storyboard_panel.tscn" id="14_storyboard"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/asset_library_panel.tscn" id="15_assetlib"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/inspector_panel.tscn" id="16_inspector"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/layers_panel.tscn" id="24_layers"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/timeline_panel.tscn" id="17_timeline"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/animation_controls.tscn" id="18_animctl"]
 [ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/hint_panel.tscn" id="19_hint"]
@@ -129,6 +130,9 @@ anchors_preset = 0
 anchors_preset = 0
 
 [node name="AssetLibraryPanel" parent="UI" unique_id=1616512324 instance=ExtResource("15_assetlib")]
+anchors_preset = 0
+
+[node name="LayersPanel" parent="UI" instance=ExtResource("24_layers")]
 anchors_preset = 0
 
 [node name="InspectorPanel" parent="UI" unique_id=1383318480 instance=ExtResource("16_inspector")]
