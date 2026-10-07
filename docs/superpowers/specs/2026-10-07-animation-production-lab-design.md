@@ -338,3 +338,79 @@ failures; known-flaky sweep unchanged).
 - 3D prop: generated primitives (`BoxMesh`/`CylinderMesh` workstation + screen
   per lab-theme), `StandardMaterial3D` per convention.
 - BGM: `assets/sound/Level_4_Background_sound.mp3`.
+
+## 13. Appendix — studio round design/fork record (added 2026-10-07)
+
+### 13.1 Composition ordering: fork resolved to B2 (transparent-pass priority)
+
+The revised 2.5D composition (§35) listed "composition depth plane" as a
+candidate for ordering. It was never viable: Godot 3D sorts opaque objects by
+z-depth and transparents by `(render_priority, z)`, so spatial z cannot decide
+layer order between two objects on the same plane (background + character share
+a plane; the player's own `depth` slider is spatial, not compositional). The
+design phase therefore forked:
+
+- **A — composition depth plane**: push selected layers onto their own z-band.
+  Rejected: z already carries the player's spatial depth; hijacking it for
+  ordering breaks the spatial slider and fights the camera at every angle.
+- **B2 — transparent-pass render priority**: every layer renders through the
+  transparent pass with `render_priority = STARTER_PRIORITY + (layer_index + 1)
+  × 16` (monotonic in the stack; `RenderOrder`, `render_order.gd`). `node.position`
+  stays pure. Chosen and implemented.
+
+B2 probe evidence (windowed pixel probe, Task 1, recorded in the round ledger):
+with equal z, the sprite holding the higher `render_priority` draws on top —
+the pixel signature flips when the two priorities swap. Two implementation
+facts surfaced by the probe: `SpriteBase3D` carries `render_priority` on the
+instance, but `MeshInstance3D` does **not** — meshes must carry priority on a
+transparent material instead (`material_override` → surface override →
+authored surface material, duplicated so a shared authored starter material is
+never mutated, forced `TRANSPARENCY_ALPHA`, priority on the duplicate).
+`STARTER_PRIORITY` pins the fixed starter-scene nodes below every player layer
+and player duplicates can never collide with them. Accepted trade-off: every
+layer mesh gets a duplicated material (refcounted; churn per priorities pass,
+no leak) and alpha blending of fully-opaque colors is visually identical.
+Revisit B2 if transparent-pass overdraw is measured costly at scale.
+
+### 13.2 Layers docker behavior (Task 5, `layers_panel.gd`)
+
+- The docker is a **driver, not a mirror**: every interaction (select, reorder
+  via row buttons/keyboard, add/duplicate/rename/delete, eye/lock) emits a
+  typed signal the lab root routes into `WorldController`. It re-renders only
+  from `world.layer_summaries()` pushes.
+- Rows read `display_name — element_type` (`2D`/`3D`), toggle on select.
+- Keyboard (`[`/`]` step order, `H` hide, `L` lock) uses the root's
+  `_unhandled_input` pattern with echo/focus guards; a focused `LineEdit`
+  swallows its keys first so typing still works.
+- Rebuilds `free()` old rows (not `queue_free()`) deliberately: `set_layers`
+  runs during `objects_changed` emission and the structural tests count rows in
+  the same frame.
+
+### 13.3 Docked layout + guided vs studio visibility (Task 6)
+
+- Four dockers share the shell: Layers (anchored 0..0.45), Inspector
+  (0.55..1.0), Asset Library, Timeline (top 0.55). Two 6px `DockResizeStrip`
+  dividers resize the free edges (Layers right edge; timeline top edge) via
+  pixel offsets clamped to `>= 120px` and inside the window; offsets — not
+  anchor fractions — so the authored anchor layout and a docker's neighbours
+  are untouched, and the strip re-glues itself to the moved edge. Drag-dock is
+  deferred.
+- Guided mode: the stage map is the **sole** docker driver; the TopBar has no
+  undo/redo and no dock toggles. Studio mode: TopBar shows 4 CheckButtons
+  (Layers/Inspector/Assets/Timeline → `dock_toggle_requested(name, visible)`);
+  toggling a docker off hides it and its companion strip.
+
+### 13.4 Undo/redo (Task 4) and save shape (Task 7)
+
+- `EditorHistory` (RefCounted): two-stack linear history of undo/redo closure
+  pairs; any fresh push drops the redo stack; `clear()` runs at the end of
+  `_apply_project_data` so a project load never lets stale undo resurrect the
+  rebuilt world (Review-Focus #3).
+- Save shape: `layer_order: Array[String]` (the scene-object ids back-to-front
+  from `world.layer_order()`) plus `display_name`/`element_type`/`locked` on
+  each `scene_objects` entry. On load, old ids map to regenerated ids by the
+  entry's traversal index; the reorder pass runs **before** locks are applied
+  (`reorder_layer` refuses locked layers); `_apply_layer_priorities()` re-syncs
+  after. Back-compat without a version bump (Review-Focus #4): a save written
+  before this round has no `layer_order` (defaults empty → add order IS the
+  insertion order) and no new entry keys (asset names kept, layers unlocked).
