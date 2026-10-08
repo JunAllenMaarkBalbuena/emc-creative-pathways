@@ -88,5 +88,18 @@ func _run() -> Array[String]:
 	if not _matches(assign_rect, vp):
 		failures.append("AssignmentPanel should fill the viewport, got %s vs %s" % [assign_rect, vp])
 
+	# Dock regression (2026-10-09): LayersPanel's root was authored with
+	# anchor_top=anchor_bottom=0 and only offset_top=56 -> computed height
+	# -56 collapsed the docker to 0px and the grow+min-size Card slid above
+	# the top edge / over the scene viewport on STAGING..LIGHTING. Like its
+	# dock siblings (InspectorPanel, AssetLibraryPanel) it must span from
+	# below the 56px TopBar to the window bottom, at any canvas height.
+	var layers_rect: Rect2 = (lab.get_node("UI/LayersPanel") as Control).get_global_rect()
+	if layers_rect.position.y < 56.0 - EPSILON:
+		failures.append("LayersPanel should start below the TopBar, got %s" % layers_rect)
+	if layers_rect.size.y < vp.size.y - 56.0 - EPSILON:
+		failures.append("LayersPanel should span to the window bottom (height %s vs canvas %s)" % [
+			layers_rect.size.y, vp.size.y - 56.0])
+
 	lab.queue_free()
 	return failures
