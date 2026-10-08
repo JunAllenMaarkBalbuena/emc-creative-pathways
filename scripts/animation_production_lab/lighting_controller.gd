@@ -153,6 +153,16 @@ func all_lights() -> Array[Dictionary]:
 	return out
 
 
+## Ids of every managed light, in registration order (Dictionary insertion
+## order) — the read-only source the timeline lane model derives its light
+## lanes from.
+func light_ids() -> Array[String]:
+	var out: Array[String] = []
+	for id in _lights:
+		out.append(id)
+	return out
+
+
 func min_intensity() -> float:
 	var min_val := INF
 	for id in _lights:
