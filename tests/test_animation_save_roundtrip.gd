@@ -19,6 +19,16 @@ extends Node
 ##
 ## The lab boots reading user://animation_lab/guided.tres (spec §15); the
 ## harness backs it up and restores it, mirroring test_animation_guided_flow.
+##
+## Task 1-fix (review Important-1): Part 4 round-trips the keyframe list.
+## Seeded through the real add_keyframe (scrambled, so incremental per-insert
+## sorting is what produces the pre-save order) and reloaded through the real
+## _apply_project_data -> set_all path. The loaded list must be the same
+## multiset with identical fields, sorted by time, order-identical for
+## distinct-time keys, and must still contain the "cam" TARGET_CAMERA key.
+## The 2.5s hero equal-time pair (same target, different properties) must
+## survive as two keys, but their mutual order is engine-dependent (unstable
+## sort_custom) and is deliberately NOT asserted.
 
 const LAB := "res://scenes/animation_production_lab/animation_production_lab.tscn"
 const SAVE_GUIDED := "user://animation_lab/guided.tres"
@@ -32,7 +42,7 @@ func _ready() -> void:
 	_failures = await _run()
 	_restore_guided_file(guided_backup)
 	if _failures.is_empty():
-		print("PASS: depth/layer/order/names/locks survive the collect -> apply round trip")
+		print("PASS: depth/layer/order/names/locks + keyframe equivalence survive the collect -> apply round trip")
 		tree.quit(0)
 	else:
 		for f in _failures:
@@ -159,6 +169,63 @@ func _run() -> Array[String]:
 		if bool(lab.world.get_object(oid).get("locked", false)):
 			failures.append("back-compat: legacy layers must load unlocked")
 
+	# --- Part 4: keyframe loader equivalence (Task 1 review fix) -------------
+	# The ledger contract for the set_all loader: (1) same multiset with
+	# identical fields, (2) sorted by _before, (3) element-identical order for
+	# distinct-time saves, (4) equal-time pairs survive as a multiset with no
+	# positional-order claim (unstable sort_custom). Fixture: distinct-time
+	# sequence across object/light/camera targets, an equal-time pair at 2.5s on
+	# DIFFERENT properties of the same target (no playback ambiguity), and a
+	# TARGET_CAMERA key whose target_id is "cam" (not "camera").
+	lab._apply_project_data(AnimationLabSaveData.new())  # wipe world + keys
+	await get_tree().process_frame
+	if not lab.keyframes.keyframes.is_empty():
+		failures.append("part 4 setup: wipe should clear keyframes")
+	lab.keyframes.add_keyframe(2.0, "hero", KeyframeController.TARGET_OBJECT, "position", Vector3(4, 5, 6))
+	lab.keyframes.add_keyframe(4.25, "tree", KeyframeController.TARGET_OBJECT, "scale", Vector3(1.5, 1.5, 1.5))
+	lab.keyframes.add_keyframe(0.5, "hero", KeyframeController.TARGET_OBJECT, "position", Vector3(1, 2, 3))
+	lab.keyframes.add_keyframe(1.0, "cam", KeyframeController.TARGET_CAMERA, "fov", 60.0)
+	lab.keyframes.add_keyframe(2.5, "hero", KeyframeController.TARGET_OBJECT, "scale", Vector3(2, 2, 2))
+	lab.keyframes.add_keyframe(3.5, "key", KeyframeController.TARGET_LIGHT, "energy", 2.0)
+	lab.keyframes.add_keyframe(2.5, "hero", KeyframeController.TARGET_OBJECT, "rotation", Vector3(0, 90, 0))
+	var pre: Array[AnimationKeyframeData] = lab.keyframes.keyframes.duplicate()
+	if pre.size() != 7:
+		failures.append("part 4 setup: expected 7 seeded keys, got %d" % pre.size())
+	var snap3 := lab.collect_save_data()
+	lab._apply_project_data(AnimationLabSaveData.new())  # wipe again
+	await get_tree().process_frame
+	lab._apply_project_data(snap3)
+	var loaded: Array[AnimationKeyframeData] = lab.keyframes.keyframes.duplicate()
+	if loaded.size() != pre.size():
+		failures.append("keyframes: loaded count should equal pre-save count (loaded %d vs pre %d)" % [loaded.size(), pre.size()])
+	if _key_counts(pre) != _key_counts(loaded):
+		failures.append("keyframes: loaded list should equal the pre-save multiset (identical fields)")
+	for i in range(1, loaded.size()):
+		if loaded[i - 1].time > loaded[i].time:
+			failures.append("keyframes: loaded list must be sorted by time (non-decreasing)")
+			break
+	if _key_order(pre, 2.5) != _key_order(loaded, 2.5):
+		failures.append("keyframes: distinct-time keys should keep their exact pre-save order")
+	var cam_found := false
+	for kf in loaded:
+		if kf.target_type == KeyframeController.TARGET_CAMERA and kf.target_id == "cam":
+			cam_found = true
+			if kf.property_path != "fov" or kf.value != 60.0:
+				failures.append("keyframes: cam/fov camera key fields should survive the round trip")
+			break
+	if not cam_found:
+		failures.append("keyframes: loaded list should contain the cam TARGET_CAMERA key")
+	var pair_pre := 0
+	var pair_loaded := 0
+	for kf in pre:
+		if kf.time == 2.5 and kf.target_id == "hero":
+			pair_pre += 1
+	for kf in loaded:
+		if kf.time == 2.5 and kf.target_id == "hero":
+			pair_loaded += 1
+	if pair_pre != 2 or pair_loaded != 2:
+		failures.append("keyframes: the 2.5s hero equal-time pair should survive as two keys (pre %d, loaded %d)" % [pair_pre, pair_loaded])
+
 	lab.queue_free()
 	await get_tree().process_frame
 	return failures
@@ -177,6 +244,37 @@ func _entry(id: String, a: EMCAssetData) -> Dictionary:
 		"depth": 0.0,
 		"layer": 0,
 	}
+
+
+## Field-level signature of one key. All six collect/load fields, formatted so
+## a pre-save and a re-loaded key produce byte-identical signatures.
+func _key_sig(kf: AnimationKeyframeData) -> String:
+	return "%s|%s|%d|%s|%s|%d" % [
+		kf.time, kf.target_id, kf.target_type, kf.property_path, str(kf.value), kf.interpolation,
+	]
+
+
+## Multiset: signature -> count. Dictionary == is deep content equality, so
+## comparing pre vs loaded counts asserts rule 1 (same multiset, identical
+## fields) without depending on tie order.
+func _key_counts(keys: Array[AnimationKeyframeData]) -> Dictionary:
+	var counts := {}
+	for kf in keys:
+		var sig := _key_sig(kf)
+		counts[sig] = int(counts.get(sig, 0)) + 1
+	return counts
+
+
+## Distinct-time order signature: every key except the equal-time pair at
+## `excluded_time`, in array order. Comparing pre vs loaded sequences asserts
+## rule 3 (exact order for distinct-time saves) while never touching the
+## engine-dependent tie order of equal-time keys.
+func _key_order(keys: Array[AnimationKeyframeData], excluded_time: float) -> Array[String]:
+	var sigs: Array[String] = []
+	for kf in keys:
+		if kf.time != excluded_time:
+			sigs.append(_key_sig(kf))
+	return sigs
 
 
 func _backup_guided_file() -> String:
