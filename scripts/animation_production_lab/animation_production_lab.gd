@@ -811,16 +811,17 @@ func _apply_project_data(data: AnimationLabSaveData) -> void:
 		var entry: Dictionary = {} if data.frames.is_empty() else data.frames[i]
 		frames.set_frame_texture(i, _texture_for(str(entry.get("texture", ""))))
 		frames.set_frame_duration(i, float(entry.get("duration", 0.1)))
-	keyframes.keyframes.clear()
+	var loaded_keys: Array[AnimationKeyframeData] = []
 	for entry in data.keyframes:
-		keyframes.add_keyframe(
-			float(entry.get("time", 0.0)),
-			str(entry.get("target_id", "")),
-			int(entry.get("target_type", 0)),
-			str(entry.get("property_path", "")),
-			entry.get("value", null),
-			int(entry.get("interpolation", 0)),
-		)
+		var kf := AnimationKeyframeData.new()
+		kf.time = float(entry.get("time", 0.0))
+		kf.target_id = str(entry.get("target_id", ""))
+		kf.target_type = int(entry.get("target_type", 0))
+		kf.property_path = str(entry.get("property_path", ""))
+		kf.value = entry.get("value", null)
+		kf.interpolation = int(entry.get("interpolation", 0))
+		loaded_keys.append(kf)
+	keyframes.set_all(loaded_keys)
 	timeline.set_fps(clampi(int(data.fps), fps_min, fps_max))
 	timeline.set_duration(clampf(float(data.duration), 0.1, max_duration))
 	timeline_panel.set_frame_count(frames.frames.size())
