@@ -73,6 +73,9 @@ const TutorialOverlayScript := preload("res://scripts/animation_production_lab/u
 const SubmissionPanelScript := preload("res://scripts/animation_production_lab/ui/submission_panel.gd")
 const ScorePanelScript := preload("res://scripts/animation_production_lab/ui/score_panel.gd")
 const StudioPanelScript := preload("res://scripts/animation_production_lab/ui/studio_panel.gd")
+# Same rationale as above: the timeline editor + lane model are class_name-less.
+const TimelineEditorScript := preload("res://scripts/animation_production_lab/ui/timeline_editor.gd")
+const TimelineLaneModel := preload("res://scripts/animation_production_lab/ui/timeline_lane_model.gd")
 
 @export_file("*.tscn") var fallback_scene := "res://scenes/main_menu.tscn"
 
@@ -137,6 +140,9 @@ var guided_completed := false
 var last_score: AnimationScoreData
 var _previewing := false
 var _submission_refresh := 0.0
+## Editor snap state, kept root-side for future per-project persistence
+## (spec §6: stored, nothing else consumes it this round).
+var _timeline_snap := true
 
 
 func _ready() -> void:
@@ -278,6 +284,25 @@ func _wire_panels() -> void:
 	timeline_panel.frame_added.connect(_on_frame_added)
 	timeline_panel.frame_removed.connect(_on_frame_removed)
 	timeline_panel.frame_texture_requested.connect(_on_frame_texture_requested)
+	# Timeline editor (spec §6): the panel forwards the editor's 8 signals,
+	# the 5 data-change signals rebuild the editor (idempotent refresh), and
+	# the two injections + bind wire the editor's sources.
+	timeline_panel.lane_pressed.connect(_on_timeline_lane_pressed)
+	timeline_panel.playhead_requested.connect(_on_timeline_playhead)
+	timeline_panel.key_add_requested.connect(_on_timeline_key_add)
+	timeline_panel.key_move_requested.connect(_on_timeline_key_move)
+	timeline_panel.keys_remove_requested.connect(_on_timeline_keys_remove)
+	timeline_panel.span_slide_requested.connect(_on_timeline_span_slide)
+	timeline_panel.span_duplicate_requested.connect(_on_timeline_span_duplicate)
+	timeline_panel.snap_toggled.connect(_on_timeline_snap_toggled)
+	keyframes.keyframes_changed.connect(_refresh_timeline_editor)
+	frames.frames_changed.connect(_refresh_timeline_editor)
+	lighting.lights_changed.connect(_refresh_timeline_editor)
+	world.objects_changed.connect(_refresh_timeline_editor)
+	world.layer_order_changed.connect(_refresh_timeline_editor)
+	keyframes.history = world.history
+	keyframes.timeline = timeline
+	timeline_panel.bind(world, keyframes, frames, timeline, lighting)
 	animation_controls.play_toggled.connect(_on_play_toggled)
 	animation_controls.rewind_requested.connect(_on_rewind_requested)
 	animation_controls.fps_changed.connect(_on_fps_changed)
@@ -554,6 +579,90 @@ func _on_frame_texture_requested(index: int) -> void:
 	var lib_asset := asset_library_panel.selected_asset()
 	if lib_asset != null:
 		frames.set_frame_texture(index, library.load_texture(lib_asset))
+
+
+# ------------------------------------------------- timeline editor (spec §6)
+
+## One handler per panel-forwarded editor signal, wired in _wire_panels.
+## Lane routing is by kind: only object and light lanes own a selection
+## target; KIND_FRAMES and KIND_CAMERA are no-ops here.
+func _on_timeline_lane_pressed(lane_id: String, lane_kind: int) -> void:
+	match lane_kind:
+		TimelineLaneModel.KIND_OBJECT: world.select(lane_id)
+		TimelineLaneModel.KIND_LIGHT: lighting.select(lane_id)
+
+
+func _on_timeline_playhead(t: float) -> void:
+	timeline.scrub(t - timeline.current_time)
+
+
+## Add a key on the pressed lane: target by kind (the camera lane is always
+## "camera"), value from the evaluated track when one exists, else the live
+## position of the target. The frames lane has no keys (frames are their own
+## channel), so a KIND_FRAMES press returns without touching the list.
+func _on_timeline_key_add(lane_id: String, lane_kind: int, t: float) -> void:
+	if lane_kind == TimelineLaneModel.KIND_FRAMES:
+		return
+	var target_id := lane_id
+	var target_type := KeyframeController.TARGET_OBJECT
+	match lane_kind:
+		TimelineLaneModel.KIND_CAMERA:
+			target_id = "camera"
+			target_type = KeyframeController.TARGET_CAMERA
+		TimelineLaneModel.KIND_LIGHT:
+			target_type = KeyframeController.TARGET_LIGHT
+	var value: Variant = keyframes.evaluate(target_id, "position", t)
+	if value == null:
+		value = _live_position(lane_id, lane_kind)
+	keyframes.add_keyframe(t, target_id, target_type, "position", value)
+
+
+## Live "position" fallback per lane kind (spec §6) for a lane whose track
+## does not exist yet. Every lookup degrades to Vector3.ZERO instead of
+## crashing on a missing node/object.
+func _live_position(lane_id: String, lane_kind: int) -> Vector3:
+	match lane_kind:
+		TimelineLaneModel.KIND_CAMERA:
+			var cam := camera.camera()
+			return cam.position if cam != null else Vector3.ZERO
+		TimelineLaneModel.KIND_LIGHT:
+			var light := lighting._lights.get(lane_id, null) as Node3D
+			return light.position if light != null else Vector3.ZERO
+	return world.get_object(lane_id).get("position", Vector3.ZERO)
+
+
+func _on_timeline_key_move(index: int, _from: float, to: float) -> void:
+	keyframes.move_key(index, to)
+
+
+func _on_timeline_keys_remove(indices: Array[int]) -> void:
+	keyframes.remove_keys(indices)
+
+
+func _on_timeline_span_slide(indices: Array[int], delta: float) -> void:
+	keyframes.slide_keys(indices, delta)
+
+
+func _on_timeline_span_duplicate(indices: Array[int], offset: float) -> void:
+	keyframes.duplicate_keys(indices, offset)
+
+
+## Root keeps the bool for future per-project persistence (spec §6); the
+## editor's set_snap re-emits only on change, so this cannot loop.
+func _on_timeline_snap_toggled(on: bool) -> void:
+	_timeline_snap = on
+	var ed := timeline_panel.editor as TimelineEditorScript
+	if ed != null:
+		ed.set_snap(_timeline_snap)
+
+
+## Rebuild target for the §6 refresh subscriptions. refresh() is idempotent:
+## same lanes in -> same lanes out, selection kept unless the lane-id set
+## changed. No visibility guard (spec §6: cheap at lab scale).
+func _refresh_timeline_editor() -> void:
+	var ed := timeline_panel.editor as TimelineEditorScript
+	if ed != null:
+		ed.refresh()
 
 
 func _on_play_toggled() -> void:
