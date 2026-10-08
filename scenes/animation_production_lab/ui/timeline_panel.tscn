@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/animation_production_lab/ui/timeline_panel.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/animation_production_lab/ui/timeline_editor.tscn" id="2_editor"]
 
 [node name="TimelinePanel" type="Control"]
 anchors_preset = 0
@@ -42,6 +43,38 @@ text = "TIMELINE — FRAMES"
 [node name="Hint" type="Label" parent="Card/Content"]
 layout_mode = 2
 text = "Each row is one frame. Pick an asset in the library, add a frame, then assign it."
+
+[node name="Toolbar" type="HBoxContainer" parent="Card/Content"]
+layout_mode = 2
+
+[node name="SnapToggle" type="CheckButton" parent="Card/Content/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Snap"
+tooltip_text = "Snap edits to frame boundaries"
+
+[node name="ZoomOut" type="Button" parent="Card/Content/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "-"
+tooltip_text = "Zoom out"
+
+[node name="ZoomIn" type="Button" parent="Card/Content/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+"
+tooltip_text = "Zoom in"
+
+[node name="DeleteSelection" type="Button" parent="Card/Content/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Delete"
+tooltip_text = "Delete selected keys"
+
+[node name="TimelineEditor" parent="Card/Content" instance=ExtResource("2_editor")]
+unique_name_in_owner = true
+layout_mode = 2
 
 [node name="Scroll" type="ScrollContainer" parent="Card/Content"]
 layout_mode = 2

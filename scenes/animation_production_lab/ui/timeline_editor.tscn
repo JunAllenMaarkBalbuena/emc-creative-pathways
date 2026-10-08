@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/animation_production_lab/ui/timeline_editor.gd" id="1_script"]
+
+[node name="TimelineEditor" type="Control"]
+custom_minimum_size = Vector2(0, 160)
+clip_contents = true
+script = ExtResource("1_script")
