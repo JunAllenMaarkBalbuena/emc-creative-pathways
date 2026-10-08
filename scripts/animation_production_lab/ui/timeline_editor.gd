@@ -20,13 +20,16 @@ extends Control
 ## range_keys at use); drag inside a selection -> span_slide_requested; Ctrl-
 ## drag inside a selection -> span_duplicate_requested. Delete/Backspace and
 ## delete_selection() -> keys_remove_requested (silent when empty or the span
-## resolves to no keys). Wheel / two-finger pinch -> zoom anchored at the
-## pointer; zoom_in/out() anchor at the playhead; `pps` in [24, 240], x1.5
-## steps; the draw offset keeps `t = 0` at or left of the left edge.
+## resolves to no keys). Every press path grabs keyboard focus
+## (FOCUS_CLICK), which is what lets Godot deliver Delete/Backspace to this
+## control in a live window. Wheel zoom anchors at the pointer, pinch at the
+## two-finger centroid, zoom_in/out() at the playhead; `pps` in [24, 240],
+## x1.5 steps; the draw offset keeps `t = 0` at or left of the left edge.
 ##
 ## Touch pinch: two tracked InputEventScreenTouch indices; a 16px distance
-## change per drag event is one zoom step; the second finger cancels the
-## pending single-touch tap.
+## change per drag event is one x1.5 zoom step RELATIVE to the current zoom
+## (no baseline reset - any prior zoom state continues from where it is);
+## the second finger cancels the pending single-touch tap.
 
 signal lane_pressed(lane_id: String, lane_kind: int)
 signal playhead_requested(time: float)
@@ -78,6 +81,7 @@ var _pps := DEFAULT_PPS
 var _offset := 0.0
 var _playhead := 0.0
 var _refresh_count := 0
+var _draw_count := 0  # test hook: proves the natural redraw path ran (headless)
 
 var _lanes: Array[Dictionary] = []
 var _lane_ids: Array[String] = []
@@ -222,6 +226,10 @@ func get_refresh_count() -> int:
 	return _refresh_count
 
 
+func get_draw_count() -> int:
+	return _draw_count
+
+
 func get_playhead_time() -> float:
 	return _playhead
 
@@ -266,6 +274,7 @@ func _apply_zoom(anchor_x: float, anchor_time: float, factor: float) -> void:
 # ---------------------------------------------------------------- draw -----
 
 func _draw() -> void:
+	_draw_count += 1
 	var w := size.x
 	var h := size.y
 	if w <= 0.0 or h <= 0.0:
@@ -450,13 +459,9 @@ func _handle_screen_touch(event: InputEventScreenTouch) -> void:
 					_pinch_indices.append(int(other))
 					break
 			_pinch_indices.append(index)
-			# A pinch walks discrete x1.5 zoom levels rooted at the default
-			# zoom, so the gesture is deterministic from any prior zoom state
-			# (spec trace: 100->120->150->170->140 => 96->144->216->240->160).
-			_pps = DEFAULT_PPS
-			_offset = minf(0.0, _offset)
-			_layout_ruler()
-			queue_redraw()
+			# pinch is RELATIVE to the current zoom: no baseline reset - the
+			# next qualifying distance change steps x1.5 from the live pps,
+			# anchored at the two-finger centroid
 			_pinch_dist = _pinch_distance()
 		return
 	_touch_pos.erase(index)
@@ -474,12 +479,15 @@ func _handle_screen_drag(event: InputEventScreenDrag) -> void:
 	_touch_pos[index] = event.position
 	if _pinch_indices.has(index):
 		var d := _pinch_distance()
-		if _pinch_dist > 0.0:
+		if _pinch_dist > 0.0 and d > 0.0:
+			# anchor at the pinch centroid: the world time between the two
+			# fingers is what must survive every zoom step (brief:19)
+			var cx := _pinch_centroid_x()
 			if d > _pinch_dist + PINCH_PX:
-				_zoom_at_pointer(event.position.x, ZOOM_STEP)
+				_zoom_at_pointer(cx, ZOOM_STEP)
 				_pinch_dist = d
 			elif d < _pinch_dist - PINCH_PX:
-				_zoom_at_pointer(event.position.x, 1.0 / ZOOM_STEP)
+				_zoom_at_pointer(cx, 1.0 / ZOOM_STEP)
 				_pinch_dist = d
 		return
 	if _pending_touch == index:
@@ -490,6 +498,15 @@ func _pinch_distance() -> float:
 	if _pinch_indices.size() != 2:
 		return 0.0
 	return (_touch_pos[_pinch_indices[0]] as Vector2).distance_to(_touch_pos[_pinch_indices[1]] as Vector2)
+
+
+## Midpoint of the two pinching fingers. Only called while the pinch is active
+## (both indices still tracked), which is exactly the size==2 precondition of
+## _pinch_distance().
+func _pinch_centroid_x() -> float:
+	var a := _touch_pos[_pinch_indices[0]] as Vector2
+	var b := _touch_pos[_pinch_indices[1]] as Vector2
+	return (a.x + b.x) * 0.5
 
 
 func _time_at(x: float) -> float:
@@ -504,6 +521,10 @@ func _cancel_pending_press() -> void:
 
 
 func _begin_press(pos: Vector2, ctrl: bool) -> void:
+	# every press path (mouse, touch, marquee start) must grant keyboard focus,
+	# else Godot never delivers Delete/Backspace to this control in a live
+	# window (FOCUS_CLICK is set on the node in the scene)
+	grab_focus()
 	_press_active = true
 	_press_pos = pos
 	_ctrl_down = ctrl

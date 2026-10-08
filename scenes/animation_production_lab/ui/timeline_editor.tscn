@@ -5,4 +5,5 @@
 [node name="TimelineEditor" type="Control"]
 custom_minimum_size = Vector2(0, 160)
 clip_contents = true
+focus_mode = 1
 script = ExtResource("1_script")

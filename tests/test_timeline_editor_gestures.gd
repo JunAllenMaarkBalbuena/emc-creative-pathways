@@ -167,9 +167,16 @@ func _run() -> Array[String]:
 	if not _has(keys_remove_requested, [2, 4]):
 		failures.append("toolbar Delete should emit keys_remove_requested([2, 4]); got %s" % [keys_remove_requested])
 
-	# Delete KEY with a selection -> keys_remove_requested
+	# Delete KEY with a selection -> keys_remove_requested. The press that
+	# starts the re-marquee grants focus (focus_mode FOCUS_CLICK in the scene
+	# + grab_focus() in _begin_press) - without it a live window never
+	# delivers Delete/Backspace to the editor (review finding Important #3).
 	_reset_received()
-	_drag(Vector2(0, _row_y(3)), Vector2(192, _row_y(3)))   # re-marquee camera
+	_press(Vector2(0, _row_y(3)))
+	if not editor.has_focus():
+		failures.append("a press must grant the editor keyboard focus")
+	_motion(Vector2(192, _row_y(3)))
+	_release(Vector2(192, _row_y(3)))          # re-marquee camera 0.0..2.0
 	_key(KEY_DELETE)
 	if not _has(keys_remove_requested, [2, 4]):
 		failures.append("Delete key should emit keys_remove_requested([2, 4]); got %s" % [keys_remove_requested])
@@ -216,27 +223,46 @@ func _run() -> Array[String]:
 	if not _approx(editor.get_pps(), 24.0):
 		failures.append("repeated wheel-down should clamp pps at 24, got %s" % editor.get_pps())
 
-	# pinch zoom (two-finger): distance growth zooms in, shrink zooms out
-	var t_start := [Vector2(100, _row_y(1)), Vector2(200, _row_y(1))]
+	# pinch zoom (two-finger): always RELATIVE to the current zoom - the
+	# wheel-downs left pps at 24 and there is no baseline reset (review
+	# finding Important #1). Each >=16px distance change steps x1.5 from the
+	# LIVE pps (brief:63), anchored at the two-finger centroid (brief:19):
+	# expectations are captured before the pinch and stepped by the ratio,
+	# never from absolute constants, and _pinch_drag also asserts that the
+	# world time under the centroid survives every step.
+	var f0 := Vector2(100, _row_y(1))
+	var f1 := Vector2(200, _row_y(1))
+	var expected := editor.get_pps()           # capture before the pinch begins
 	_reset_received()
-	_touch(0, t_start[0], true)
-	_touch(1, t_start[1], true)            # second finger -> pinch cancels the tap
-	_drag_touch(0, Vector2(80, _row_y(1)))   # distance 100 -> 120
-	if not _approx(editor.get_pps(), 144.0):
-		failures.append("pinch grow should zoom in to pps 144, got %s" % editor.get_pps())
-	_drag_touch(1, Vector2(230, _row_y(1)))  # 120 -> 150
-	if not _approx(editor.get_pps(), 216.0):
-		failures.append("second pinch grow should zoom in to 216, got %s" % editor.get_pps())
-	_drag_touch(0, Vector2(60, _row_y(1)))   # 150 -> 170 -> clamps at 240
+	_touch(0, f0, true)
+	_touch(1, f1, true)                # second finger -> pinch cancels the tap
+	f0 = Vector2(80, _row_y(1))         # distance 100 -> 120: one step in
+	expected = clampf(expected * 1.5, 24.0, 240.0)
+	_pinch_drag(0, f0, f1, expected)
+	f1 = Vector2(230, _row_y(1))        # 120 -> 150
+	expected = clampf(expected * 1.5, 24.0, 240.0)
+	_pinch_drag(1, f1, f0, expected)
+	f0 = Vector2(60, _row_y(1))         # 150 -> 170
+	expected = clampf(expected * 1.5, 24.0, 240.0)
+	_pinch_drag(0, f0, f1, expected)
+	f1 = Vector2(250, _row_y(1))        # 170 -> 190
+	expected = clampf(expected * 1.5, 24.0, 240.0)
+	_pinch_drag(1, f1, f0, expected)
+	f1 = Vector2(270, _row_y(1))        # 190 -> 210
+	expected = clampf(expected * 1.5, 24.0, 240.0)
+	_pinch_drag(1, f1, f0, expected)
+	f1 = Vector2(290, _row_y(1))        # 210 -> 230: x1.5 = 273.375 -> clamp 240
+	expected = clampf(expected * 1.5, 24.0, 240.0)
+	_pinch_drag(1, f1, f0, expected)
 	if not _approx(editor.get_pps(), 240.0):
 		failures.append("pinch grow must clamp at 240, got %s" % editor.get_pps())
-	_drag_touch(1, Vector2(200, _row_y(1)))  # 170 -> 140 -> out
-	if not _approx(editor.get_pps(), 160.0):
-		failures.append("pinch shrink should zoom out to 160, got %s" % editor.get_pps())
+	f1 = Vector2(150, _row_y(1))        # 230 -> 90: shrink steps back out
+	expected = clampf(expected / 1.5, 24.0, 240.0)
+	_pinch_drag(1, f1, f0, expected)
 	if not lane_pressed.is_empty():
 		failures.append("pinch must cancel the single-touch tap")
-	_touch(0, Vector2(60, _row_y(1)), false)
-	_touch(1, Vector2(200, _row_y(1)), false)
+	_touch(0, f0, false)
+	_touch(1, f1, false)
 
 	# touch tap lands on the ruler -> playhead_requested; the pinch left the
 	# view zoomed, so target the screen x of exactly t=1.0s via the zoom hooks
@@ -286,9 +312,18 @@ func _run() -> Array[String]:
 	for child in _controls(panel):
 		if not _inside(child.get_global_rect(), vp):
 			failures.append("%s escapes the viewport: %s vs %s" % [child.name, child.get_global_rect(), vp])
-	# _draw never throws for an editor shorter than the lane stack
+	# _draw never throws for an editor shorter than the lane stack: drive it
+	# the natural way (queue_redraw -> NOTIFICATION_DRAW) and prove the draw
+	# pass actually ran via the draw-count hook. A throw inside _draw surfaces
+	# as SCRIPT ERROR, which the gate fails on, so this keeps the coverage of
+	# the direct call without polluting the output (review finding #2).
 	editor.size = Vector2(800, 100)
-	editor.call("_draw")
+	var draw_before := editor.get_draw_count()
+	editor.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if editor.get_draw_count() <= draw_before:
+		failures.append("queue_redraw must run _draw headless (count %s -> %s)" % [draw_before, editor.get_draw_count()])
 	if not editor.get_global_rect().size.x > 0:
 		failures.append("editor rect must stay valid after the short _draw")
 
@@ -367,6 +402,21 @@ func _drag_touch(index: int, pos: Vector2) -> void:
 	e.index = index
 	e.position = pos
 	editor.call("_gui_input", e)
+
+
+## One pinch step: the `index` finger moves to `to` while the other stays at
+## `other`. Asserts the pps chain (expected captured from the live pps before
+## the pinch, stepped by the x1.5 ratio) and that the world time under the
+## two-finger centroid is preserved across the zoom step (brief:19).
+func _pinch_drag(index: int, to: Vector2, other: Vector2, expected_pps: float) -> void:
+	var c := (to + other) * 0.5
+	var t_before := (c.x - editor.get_draw_offset()) / editor.get_pps()
+	_drag_touch(index, to)
+	if not _approx(editor.get_pps(), expected_pps):
+		failures.append("pinch step should reach pps %s, got %s" % [expected_pps, editor.get_pps()])
+	var t_after := (c.x - editor.get_draw_offset()) / editor.get_pps()
+	if absf(t_after - t_before) > 0.0001:
+		failures.append("pinch must keep the time under the centroid at %s, got %s" % [t_before, t_after])
 
 
 # ---------------------------------------------------------------- received ---
