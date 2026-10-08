@@ -18,9 +18,11 @@ extends Control
 ## once at press via key_index_at, snap state captured at drag activation);
 ## drag empty lane -> marquee span (selection drawn as a tinted band, keys from
 ## range_keys at use); drag inside a selection -> span_slide_requested; Ctrl-
-## drag inside a selection -> span_duplicate_requested. Delete/Backspace and
-## delete_selection() -> keys_remove_requested (silent when empty or the span
-## resolves to no keys). Every press path grabs keyboard focus
+## drag inside a selection -> span_duplicate_requested (snapped like the key
+## path when snap is on). Delete/Backspace and delete_selection() ->
+## keys_remove_requested (silent when empty or the span resolves to no keys);
+## Ctrl+D and duplicate_selection() -> span_duplicate_requested at the span
+## length. Every press path grabs keyboard focus
 ## (FOCUS_CLICK), which is what lets Godot deliver Delete/Backspace to this
 ## control in a live window. Wheel zoom anchors at the pointer, pinch at the
 ## two-finger centroid, zoom_in/out() at the playhead; `pps` in [24, 240],
@@ -251,6 +253,18 @@ func delete_selection() -> void:
 	keys_remove_requested.emit(indices)
 
 
+## Emit span_duplicate_requested for the current selection, copying it one span
+## length to the right (offset = span["end"] - span["start"]) so the copy lands
+## immediately after the original. Silent when the selection is empty or
+## resolves to no keys (same rule as delete_selection()). A degenerate span
+## (length <= 0) falls back to one frame so the copy is always distinct.
+func duplicate_selection() -> void:
+	var indices := _selection_indices()
+	if indices.is_empty():
+		return
+	span_duplicate_requested.emit(indices, _selection_span_length())
+
+
 # ---------------------------------------------------------------- zoom -----
 
 func _zoom_anchored_at_playhead(factor: float) -> void:
@@ -439,8 +453,12 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 
 
 func _handle_key(event: InputEventKey) -> void:
-	if event.pressed and (event.keycode == KEY_DELETE or event.keycode == KEY_BACKSPACE):
+	if not event.pressed:
+		return
+	if event.keycode == KEY_DELETE or event.keycode == KEY_BACKSPACE:
 		delete_selection()
+	elif event.keycode == KEY_D and event.ctrl_pressed:
+		duplicate_selection()
 
 
 func _handle_screen_touch(event: InputEventScreenTouch) -> void:
@@ -590,6 +608,19 @@ func _to_time(x: float) -> float:
 	return t
 
 
+## Selection-relative snap: when snap was on at drag activation (_drag_snap),
+## snap the span's LEFT EDGE (span["start"]) to a frame boundary and express the
+## result as a delta, preserving the selection's internal spacing. snap_time
+## clamps to [0, duration], so over-edge drops clamp. Snap-off (or no span)
+## returns the raw delta untouched - byte-identical to the pre-fix path.
+func _snapped_span_delta(raw: float) -> float:
+	var span: Dictionary = _selection.get(_press_lane_id, {})
+	if _drag_snap and not span.is_empty():
+		var start := float(span["start"])
+		return snap_time(start + raw) - start
+	return raw
+
+
 func _end_press(pos: Vector2) -> void:
 	if not _press_active:
 		return
@@ -610,13 +641,12 @@ func _end_press(pos: Vector2) -> void:
 			_selection[_press_lane_id] = {"start": a, "end": b}
 			queue_redraw()
 		"span_slide":
-			var dx := (_drag_last.x - _press_pos.x) / _pps
-			span_slide_requested.emit(_span_indices, dx)
+			var raw_dx := (_drag_last.x - _press_pos.x) / _pps
+			span_slide_requested.emit(_span_indices, _snapped_span_delta(raw_dx))
 		"span_dup":
-			var drop := _time_at(_drag_last.x)
 			var span: Dictionary = _selection.get(_press_lane_id, {})
-			var offset := drop - float(span.get("start", drop))
-			span_duplicate_requested.emit(_span_indices, offset)
+			var raw_off := _time_at(_drag_last.x) - float(span.get("start", _time_at(_drag_last.x)))
+			span_duplicate_requested.emit(_span_indices, _snapped_span_delta(raw_off))
 		"scrub":
 			playhead_requested.emit(snap_time(_time_at(pos.x)))
 	_reset_gesture()
@@ -670,3 +700,21 @@ func _selection_indices_for(lane_id: String) -> Array[int]:
 		return flat
 	flat.assign(_model.range_keys(lane_id, float(span["start"]), float(span["end"])))
 	return flat
+
+
+## Span length of the current selection (the marquee writes a single lane), or
+## one frame when the span is degenerate, so duplicate_selection() always offers
+## a non-zero offset.
+func _selection_span_length() -> float:
+	for lane_id in _selection:
+		var span: Dictionary = _selection[lane_id]
+		if span.is_empty():
+			continue
+		var length := float(span["end"]) - float(span["start"])
+		if length > 0.0:
+			return length
+		break
+	var fps := 12.0
+	if _model != null and _model.timeline != null:
+		fps = float(_model.timeline.fps)
+	return 1.0 / fps

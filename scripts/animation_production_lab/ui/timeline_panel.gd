@@ -33,6 +33,7 @@ var _selected := -1
 @onready var zoom_in_button: Button = %ZoomIn
 @onready var zoom_out_button: Button = %ZoomOut
 @onready var delete_button: Button = %DeleteSelection
+@onready var duplicate_button: Button = %Duplicate
 
 func _ready() -> void:
 	editor = %TimelineEditor
@@ -51,6 +52,7 @@ func _ready() -> void:
 	zoom_in_button.pressed.connect(_on_zoom_in)
 	zoom_out_button.pressed.connect(_on_zoom_out)
 	delete_button.pressed.connect(_on_delete_selection)
+	duplicate_button.pressed.connect(_on_duplicate_selection)
 
 ## Forwards the sources to the editor (short-hand for the editor's set_sources).
 func bind(world, keyframes, frames, timeline, lighting) -> void:
@@ -77,6 +79,11 @@ func _on_delete_selection() -> void:
 	var ed := editor as TimelineEditorScript
 	if ed != null:
 		ed.delete_selection()
+
+func _on_duplicate_selection() -> void:
+	var ed := editor as TimelineEditorScript
+	if ed != null:
+		ed.duplicate_selection()
 
 func set_frame_count(count: int) -> void:
 	_count = count

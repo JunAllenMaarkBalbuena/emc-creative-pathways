@@ -88,7 +88,9 @@ func _run() -> Array[String]:
 	var zoom_in_btn := panel.get_node_or_null("%ZoomIn") as Button
 	var zoom_out_btn := panel.get_node_or_null("%ZoomOut") as Button
 	var delete_btn := panel.get_node_or_null("%DeleteSelection") as Button
-	if snap_toggle == null or zoom_in_btn == null or zoom_out_btn == null or delete_btn == null:
+	var duplicate_btn := panel.get_node_or_null("%Duplicate") as Button
+	if snap_toggle == null or zoom_in_btn == null or zoom_out_btn == null \
+			or delete_btn == null or duplicate_btn == null:
 		failures.append("toolbar nodes are missing from TimelinePanel")
 
 	_connect_received()
@@ -180,6 +182,62 @@ func _run() -> Array[String]:
 	_key(KEY_DELETE)
 	if not _has(keys_remove_requested, [2, 4]):
 		failures.append("Delete key should emit keys_remove_requested([2, 4]); got %s" % [keys_remove_requested])
+
+	# --- Group C2: span snap (Important #1) + touch-reachable Duplicate -----
+	# Group B left snap OFF (the Review-Focus #4 mid-drag toggle); re-enable it
+	# for the default-ON snap cases.
+	editor.set_snap(true)
+	# Snap-ON off-grid slide: the selection's LEFT EDGE (camera span start 0.0)
+	# must land on a frame boundary (spec §5/§8), preserving internal spacing.
+	_reset_received()
+	var pps := editor.get_pps()
+	var off_x := GUTTER + 0.9 * pps
+	var raw_dx := (off_x - GUTTER) / pps
+	var snapped_dx := editor.snap_time(0.0 + raw_dx) - 0.0
+	if _approx(snapped_dx, raw_dx):
+		failures.append("test setup: expected an off-grid slide (raw %s snapped %s)" % [raw_dx, snapped_dx])
+	_drag(Vector2(GUTTER, _row_y(3)), Vector2(off_x, _row_y(3)))
+	var slide_snap := _last_of(span_slide_requested)
+	if slide_snap.size() != 2 or slide_snap[0] != [2, 4] or not _approx(slide_snap[1], snapped_dx):
+		failures.append("snap-on span slide must land the left edge on the grid (%s), got %s" % [snapped_dx, slide_snap])
+
+	# Snap-ON off-grid Ctrl+drag duplicate (closes the untested gesture path).
+	_reset_received()
+	var raw_off := (off_x - editor.get_draw_offset()) / pps
+	var snapped_off := editor.snap_time(0.0 + raw_off) - 0.0
+	_press_ctrl(Vector2(GUTTER, _row_y(3)))
+	_motion(Vector2(off_x, _row_y(3)))
+	_release(Vector2(off_x, _row_y(3)))
+	var dup_snap := _last_of(span_duplicate_requested)
+	if dup_snap.size() != 2 or dup_snap[0] != [2, 4] or not _approx(dup_snap[1], snapped_off):
+		failures.append("snap-on ctrl-drag duplicate must carry [2, 4] and the snapped offset %s, got %s" % [snapped_off, dup_snap])
+
+	# Snap-OFF regression guard: the raw pointer delta must survive untouched.
+	_reset_received()
+	editor.set_snap(false)
+	_drag(Vector2(GUTTER, _row_y(3)), Vector2(off_x, _row_y(3)))
+	var slide_raw := _last_of(span_slide_requested)
+	if slide_raw.size() != 2 or slide_raw[0] != [2, 4] or not _approx(slide_raw[1], raw_dx):
+		failures.append("snap-off span slide must carry the raw delta %s, got %s" % [raw_dx, slide_raw])
+	editor.set_snap(true)
+
+	# Toolbar Duplicate (touch-reachable): copies one span length to the right.
+	_reset_received()
+	var duplicate_btn2 := panel.get_node_or_null("%Duplicate") as Button
+	if duplicate_btn2 == null:
+		failures.append("toolbar Duplicate button is missing from TimelinePanel")
+	else:
+		duplicate_btn2.emit_signal("pressed")
+	var dup_toolbar := _last_of(span_duplicate_requested)
+	if dup_toolbar.size() != 2 or dup_toolbar[0] != [2, 4] or not _approx(dup_toolbar[1], 2.0):
+		failures.append("toolbar Duplicate should emit span_duplicate_requested([2, 4], 2.0); got %s" % [dup_toolbar])
+
+	# Ctrl+D accelerator.
+	_reset_received()
+	_key_ctrl(KEY_D)
+	var dup_key := _last_of(span_duplicate_requested)
+	if dup_key.size() != 2 or dup_key[0] != [2, 4] or not _approx(dup_key[1], 2.0):
+		failures.append("Ctrl+D should emit span_duplicate_requested([2, 4], 2.0); got %s" % [dup_key])
 
 	# --- Group D: 8px tap-vs-drag threshold --------------------------------
 	_reset_received()
@@ -340,6 +398,15 @@ func _press(pos: Vector2) -> void:
 	editor.call("_gui_input", e)
 
 
+func _press_ctrl(pos: Vector2) -> void:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = true
+	e.position = pos
+	e.ctrl_pressed = true
+	editor.call("_gui_input", e)
+
+
 func _release(pos: Vector2) -> void:
 	var e := InputEventMouseButton.new()
 	e.button_index = MOUSE_BUTTON_LEFT
@@ -386,6 +453,14 @@ func _key(keycode: Key) -> void:
 	var e := InputEventKey.new()
 	e.keycode = keycode
 	e.pressed = true
+	editor.call("_gui_input", e)
+
+
+func _key_ctrl(keycode: Key) -> void:
+	var e := InputEventKey.new()
+	e.keycode = keycode
+	e.pressed = true
+	e.ctrl_pressed = true
 	editor.call("_gui_input", e)
 
 

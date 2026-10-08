@@ -72,6 +72,12 @@ layout_mode = 2
 text = "Delete"
 tooltip_text = "Delete selected keys"
 
+[node name="Duplicate" type="Button" parent="Card/Content/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Duplicate"
+tooltip_text = "Duplicate selected keys"
+
 [node name="TimelineEditor" parent="Card/Content" instance=ExtResource("2_editor")]
 unique_name_in_owner = true
 layout_mode = 2
