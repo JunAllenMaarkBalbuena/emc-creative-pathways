@@ -59,6 +59,17 @@ func set_layers(summaries: Array[Dictionary]) -> void:
 func set_selected(object_id: String) -> void:
 	_selected_id = object_id
 	_refresh_state()
+	_prefill_rename_field()
+
+
+## Rename field UX (round fix): offer the selected layer's current name for
+## editing instead of forcing a retype into an empty box. Reads the freshest
+## summary so world-driven selection changes re-fill it too. Only runs on
+## selection change — plain rebuilds (_refresh_state) never touch the field,
+## so a user mid-typing keeps their text while rows re-render around them.
+func _prefill_rename_field() -> void:
+	var s := _summary_for(_selected_id)
+	rename_field.text = str(s.get("display_name", _selected_id))
 
 
 ## Keyboard shortcuts while the docker is visible: [/] step the order, H/L

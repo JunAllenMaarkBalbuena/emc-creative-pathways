@@ -87,6 +87,15 @@ func _run() -> Array[String]:
 	if (_rows(lab)[0] as Button).button_pressed:
 		failures.append("world.select should un-highlight row 0")
 
+	# --- rename field pre-fills the current name on selection ----------------
+	# Select bg (the current selection): the field should offer the name to
+	# edit, not force typing into an empty box.
+	if (lab.layers_panel.get_node("%RenameField") as LineEdit).text != "bg":
+		failures.append("selection should pre-fill the rename field with the current name")
+	_rows(lab)[0].emit_signal("pressed")  # select char (display_name "hero")
+	if (lab.layers_panel.get_node("%RenameField") as LineEdit).text != "hero":
+		failures.append("changing selection should refresh the rename field")
+
 	# --- reorder row drives the stack ---------------------------------------
 	_rows(lab)[0].emit_signal("pressed")  # select char (back of stack)
 	_press(lab, "MoveUpButton")

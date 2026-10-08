@@ -55,3 +55,13 @@ by data checks.
 - `AnimationLayerData` as a typed `Resource` (spec §33) — deferred until
   timeline tracks need typed layers; the registry-Dictionary API is shaped to
   migrate.
+
+## Cross-note (2026-10-09)
+
+B2 mechanics unchanged, but the guided-flow *visibility* of the unregistered
+starter nodes was revised by
+`docs/decisions/2026-10-09-animation-starter-scene-mask.md`: the authored
+starters are hidden during guided ASSETS..SUBMIT (the scene then equals the
+registered composition), kept at BRIEF/PLAN and in Studio mode. Priority
+pinning (STARTER_PRIORITY) and "starters never appear in world.layer_order()"
+still hold.

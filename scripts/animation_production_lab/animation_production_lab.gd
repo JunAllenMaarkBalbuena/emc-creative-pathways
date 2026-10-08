@@ -58,6 +58,16 @@ const STAGE_TIMING := AnimationAssignmentManager.Stage.TIMING
 const STAGE_PREVIEW := AnimationAssignmentManager.Stage.PREVIEW
 const STAGE_SUBMIT := AnimationAssignmentManager.Stage.SUBMIT
 
+# The authored starter-scene nodes (Task 1 vertical slice): scenery that lives
+# OUTSIDE the composition registry. `_register_starter_order` pins their render
+# priority; `_set_starter_world_visible` hides them during the guided working
+# stages so the scene the player sees equals the registered composition.
+const _STARTER_PATHS := [
+	"UI/SceneViewportContainer/SceneViewport/World/BackgroundRoot/StarterBackdrop",
+	"UI/SceneViewportContainer/SceneViewport/World/CharacterRoot/StarterCharacter",
+	"UI/SceneViewportContainer/SceneViewport/World/PropRoot/StarterWorkstation",
+]
+
 # Panel scripts are class_name-less on purpose (no global class registry
 # noise); the root types its handles through these preloaded consts.
 const TopBarPanel := preload("res://scripts/animation_production_lab/ui/top_bar.gd")
@@ -234,15 +244,25 @@ func _register_starter_lights() -> void:
 ## layers start at layer_priority(0) = 16, strictly above them. Idempotent:
 ## safe to re-run on every lab boot.
 func _register_starter_order() -> void:
-	var world_root := "UI/SceneViewportContainer/SceneViewport/World"
-	for path in [
-		world_root + "/BackgroundRoot/StarterBackdrop",
-		world_root + "/CharacterRoot/StarterCharacter",
-		world_root + "/PropRoot/StarterWorkstation",
-	]:
+	for path in _STARTER_PATHS:
 		var node := get_node_or_null(path) as Node3D
 		if node != null:
 			RenderOrder.set_layer_priority(node, RenderOrder.STARTER_PRIORITY)
+
+
+## Guided-mode scene mask (round UX fix): the authored starters are scenery,
+## not composition, so during the guided working stages (ASSETS..SUBMIT) they
+## must be hidden — the scene then shows exactly the registered layers the
+## Layers docker, rename, reorder and the STAGING gate operate on, and a
+## player-added character no longer spawns invisibly on top of the starter
+## one. They stay visible at the BRIEF/PLAN intro and in Studio mode (the
+## furnished lab). The nodes stay in the tree either way; only `visible`
+## flips (rows/tests that resolve them still find them).
+func _set_starter_world_visible(visible_: bool) -> void:
+	for path in _STARTER_PATHS:
+		var node := get_node_or_null(path) as Node3D
+		if node != null:
+			node.visible = visible_
 
 
 func _wire_panels() -> void:
@@ -323,6 +343,9 @@ func _wire_panels() -> void:
 func show_stage_ui(stage: int) -> void:
 	score_panel.hide()
 	studio_panel.hide()
+	# The authored starters are intro scenery only: during the guided working
+	# stages the world must show exactly the player's registered composition.
+	_set_starter_world_visible(not (mode == Mode.GUIDED and stage >= STAGE_ASSETS))
 	# Dock toggles are Studio-only: in guided the stage map alone drives
 	# panel visibility, and there is no undo/redo or resizing to unlock.
 	top_bar.set_dock_toggles_visible(false)
@@ -765,6 +788,7 @@ func unlock_creative_studio() -> void:
 ## (spec §5). Guided stage panels drop away; the object/timeline tools and
 ## the studio panel stay so the player can build and save freely.
 func _enter_studio_mode() -> void:
+	_set_starter_world_visible(true)
 	assignment_panel.hide()
 	storyboard_panel.hide()
 	submission_panel.hide()
