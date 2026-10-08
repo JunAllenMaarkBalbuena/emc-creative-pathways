@@ -37,13 +37,13 @@ root handler -> controller op (history push, `*_changed` emit) -> editor
 refresh.
 
 ```
-TimelinePanel (docker, existing root)
+TimelinePanel (docker, existing root — frame-list controls stay)
   ├─ TimelineEditor (new Control; custom _draw ruler + lanes)
   │    └─ TimelineLaneModel (RefCounted, pure — derives lanes)
-  ├─ toolbar (new: snap toggle, zoom in/out, delete selection)
-  └─ fps/duration controls (existing)
+  ├─ editor toolbar (new: snap toggle, zoom in/out, delete selection)
+  └─ frame-list controls (existing: Title/Hint/Scroll/ButtonRow)
         ^ signals up to root; root routes into TimelineController /
-          KeyframeController / WorldController
+          KeyframeController / WorldController / LightingController
 ```
 
 No new autoloads. `TimelineLaneModel` and the editor are `class_name`-less
@@ -54,23 +54,29 @@ matching the LayersPanel / DockResizeStrip convention.
 
 New script `scripts/animation_production_lab/ui/timeline_lane_model.gd`
 (`extends RefCounted`). Consumes `WorldController`, `KeyframeController`,
-`FrameController` via plain properties set by the root (test-injectable, like
-`PreviewController.timeline`). No signals, no nodes, no state beyond the
-inputs' current state.
+`FrameController`, `LightingController` via plain properties set by the root
+(test-injectable, like `PreviewController.timeline`). No signals, no nodes,
+no state beyond the inputs' current state.
+
+Lane-kind constants (single source of truth; the editor's signals and the
+root's handlers match on these ints):
+`const KIND_FRAMES := 0`, `KIND_OBJECT := 1`, `KIND_CAMERA := 2`,
+`KIND_LIGHT := 3`.
 
 - `func lanes() -> Array[Dictionary]` — ordered lanes:
-  1. frame strip lane: `{"id": "frames", "kind": "frames", "label": "Frames",
-     "keys": []}` (frame boundary markers read separately, see below).
+  1. frame strip lane: `{"id": "frames", "kind": KIND_FRAMES,
+     "label": "Frames", "keys": []}`.
   2. one lane per world layer in `world.layer_order()` order (index 0 =
      back of the stack):
-     `{"id": <object_id>, "kind": "object", "label": <display_name or id>,
-     "keys": <Array[Dictionary]>, "locked": <registry locked>}`.
-  3. Camera lane: `{"id": "camera", "kind": "camera", "label": "Camera",
-     "keys": [...]}`.
-  4. one lane per light (`LightingController` must expose the ordered light
-     ids — add a read-only `light_ids() -> Array[String]`, in
-     `lighting_controller.gd`, without changing playback; `_lights` is a
-     Dictionary so `keys()` yields registration order).
+     `{"id": <object_id>, "kind": KIND_OBJECT, "label": <display_name or
+     id>, "keys": <Array[Dictionary]>, "locked": <registry locked>}`.
+  3. Camera lane: `{"id": "camera", "kind": KIND_CAMERA,
+     "label": "Camera", "keys": [...]}`.
+  4. one lane per light (`LightingController` — add a read-only
+     `light_ids() -> Array[String]`, in `lighting_controller.gd`, without
+     changing playback; `_lights` is a Dictionary so `keys()` yields
+     registration order): `{"id": <light_id>, "kind": KIND_LIGHT,
+     "label": <light_id>, "keys": [...]}`.
   Lane membership is by target type: object/light lanes collect keys with
   matching `target_type` **and** `target_id`; the camera lane collects
   `TARGET_CAMERA` keys regardless of the authored `target_id` (playback
@@ -85,9 +91,11 @@ inputs' current state.
   (`roundf(time * fps) / fps`), clamped to `[0, duration]`; `fps`/`duration`
   read from `TimelineController` (injectable property).
 - `func frame_boundaries() -> Array[float]` — the frame channel's start times
-  on the tempo grid at the current `fps` (one entry per frame: `i / fps`),
-  used to draw the strip lane markers. If the frame channel ever supports
-  per-frame durations, this is the single place to change.
+  on the tempo grid at the current `fps` (entry `i` = `i / fps`) — this IS the
+  frame grid: `timeline.frame_index_at()` maps clock time to frames the same
+  way (`floori(fps * time)`), and snap targets this grid. Draw the strip lane
+  markers from it. (Per-frame `AnimationFrameData.duration` is a hold
+  property for the frame controls, not a boundary — do not read it here.)
 - `func range_keys(lane_id: String, start: float, end: float) -> Array[int]`
   — indices into `keyframes.keyframes` for keys of that lane with
   `start <= time <= end`.
@@ -121,15 +129,21 @@ nodes.
   `keyframes[index].time`, sort, emit. False when `index` invalid.
 - `func remove_keys(indices: Array[int]) -> bool` — remove by flat-list
   index (descending sort internally so indices stay valid). False when empty.
-- `func slide_span(lane_id: String, start: float, end: float, delta: float) -> bool` —
-  for every key of `lane_id` in `[start, end]`, add `delta` to its time
-  (clamped to `[0, duration]`, re-sorted after). Keys may pack; no collision
-  rejection this round. False when no keys move.
-- `func duplicate_span(lane_id: String, start: float, end: float, drop_time: float) -> bool` —
-  copy each key in `[start, end]` to `time + (drop_time - start)`, clamped to
-  `[0, duration]`, re-sorted, same `target_id`/`property_path`. `drop_time ==
-  start` duplicates in place (stacked). False only when the span has no keys
+- `func slide_keys(indices: Array[int], delta: float) -> bool` — add `delta`
+  to each key at the given flat-list index (indices captured before the call;
+  the elements stay the same through the re-sort), each clamped to
+  `[0, duration]`, re-sorted. Keys may pack; no collision rejection this
+  round. False when `indices` is empty or any index is invalid.
+- `func duplicate_keys(indices: Array[int], offset: float) -> bool` — copy
+  each key at the given index to `time + offset`, clamped to `[0, duration]`,
+  same `target_id`/`property_path`, re-sorted. `offset == 0` duplicates in
+  place (stacked). False when `indices` is empty or any index is invalid
   (overlap with existing keys is allowed; copies still land on the grid).
+
+Span ops are resolved by the EDITOR, not the controller: the model's
+`range_keys()` turns a lane selection into flat indices, and slide/duplicate
+then work on those — so camera-lane keys (arbitrary authored ids, §3)
+participate in span operations like any other lane's.
 
 Existing `add_keyframe` / `remove_keyframe` / `evaluate` / `keyframes_for`
 keep their signatures; `add_keyframe` and `remove_keyframe` gain the same
@@ -170,14 +184,17 @@ Layout (1280-wide docker reference, all values device-independent px):
 Pure-draw rules: `_draw` re-issues only on refresh requests; nothing runs per
 engine frame except moving the playhead (see §7). No per-frame allocation.
 
-Signals (typed, up to the docker):
-- `lane_pressed(lane_id: String)`
+Signals (typed, up to the docker; `lane_kind` is a TimelineLaneModel KIND_*
+int, §3; every `indices` payload is an Array[int] of flat indices into
+`keyframes.keyframes`, resolved by the editor through the model at gesture
+start):
+- `lane_pressed(lane_id: String, lane_kind: int)`
 - `playhead_requested(time: float)`
-- `key_add_requested(lane_id: String, time: float)`
-- `key_move_requested(lane_id: String, from_time: float, to_time: float)`
-- `keys_remove_requested(lane_ids: Array[String], times: Array[float])`
-- `span_slide_requested(lane_id: String, start: float, end: float, delta: float)`
-- `span_duplicate_requested(lane_id: String, start: float, end: float, drop_time: float)`
+- `key_add_requested(lane_id: String, lane_kind: int, time: float)`
+- `key_move_requested(index: int, from_time: float, to_time: float)`
+- `keys_remove_requested(indices: Array[int])`
+- `span_slide_requested(indices: Array[int], delta: float)`
+- `span_duplicate_requested(indices: Array[int], offset: float)`
 - `snap_toggled(on: bool)`
 
 Public test hooks (structural tests call these directly, like
@@ -189,17 +206,26 @@ threshold; `_gui_input` with `accept_event`):
 - tap a key tick / lane row → `lane_pressed` (root selects the layer).
 - tap the ruler → scrub: `playhead_requested(snap_time(pointer))`.
 - double-tap empty lane area → `key_add_requested(lane_id, snap_time(x))`.
-- drag a key tick horizontally → `key_move_requested(lane_id, from, to)`
-  (live while dragging; `to = snap_time(x)` when snap on, raw otherwise).
+- drag a key tick horizontally → `key_move_requested(model.key_index_at(...),
+  from, to)` (live while dragging; `to = snap_time(x)` when snap on, raw
+  otherwise; index resolved once at drag start).
 - drag empty lane area → range-select (marquee over the lane's span;
-  selection drawn as a tinted band); keys in the band become selected.
-- drag inside a non-empty selection → `span_slide_requested(lane_id,
-  selection_start, selection_end, dx_seconds)`.
+  selection drawn as a tinted band); the band becomes a selection whose keys
+  come from `model.range_keys(lane, start, end)`.
+- drag inside a non-empty selection → `span_slide_requested(indices,
+  dx_seconds)` where `indices` are the selection's resolved flat indices
+  (captured at drag start).
+- copy/duplicate of a selection → `span_duplicate_requested(indices,
+  offset)` with `offset = drop_seconds - selection_start` (0 = in place).
 - a selection toolbar Delete button (and the Delete/Backspace key) →
-  `keys_remove_requested(selected_lane_ids, selected_times)`.
+  `keys_remove_requested(indices)` for the selected keys.
 - mouse wheel over the ruler / pinch → zoom; toolbar in/out buttons → zoom.
+  Zoom anchors: the time under the pointer (playhead time for the buttons)
+  stays at the same x; `pps` ∈ [24, 240]; a draw offset keeps `t = 0` at or
+  left of the canvas left edge (no negative-time region).
 - snap toggle (checkbox in the toolbar) flips all enter-point snapping;
-  snapping never applies to an in-progress pass when toggled mid-drag.
+  snapping never applies to an in-progress pass when toggled mid-drag (the
+  gesture captures snap state at drag start).
 
 Selection state lives in the editor (not the model): one selection per lane =
 `(start, end)` time span; cleared on `refresh()` when the lane set changes.
@@ -207,42 +233,51 @@ Selection state lives in the editor (not the model): one selection per lane =
 ## 6. TimelinePanel + root wiring
 
 `scenes/animation_production_lab/ui/timeline_panel.tscn`: add the editor
-scene as a child above the fps/duration controls, add the toolbar row (snap
+scene as a child above the frame-list controls, add the toolbar row (snap
 toggle CheckButton, zoom in/out buttons, delete-selection button). Existing
-signals (`fps_changed`, `duration_changed`, ...) unchanged. The panel
-**forwards** the editor's signals upward under the same names and the root
-connects to the panel — house convention (every other docker routes through
-panel signals; the panel stays the docker boundary). The editor itself holds
-no knowledge of the root.
+signals (`frame_selected`, `frame_added`, ...) unchanged. The panel
+**forwards** the editor's signals upward under the same names (lambdas in
+`_ready`; the editor emits, the panel re-emits) and the root connects to the
+panel — house convention (every other docker routes through panel signals;
+the panel stays the docker boundary). New panel API
+`bind(world, keyframes, frames, timeline, lighting)` forwards to the editor
+(short-hand for the editor's own `set_sources(...)`).
 
-`animation_production_lab.gd` handlers (one per editor signal):
-- `_on_timeline_lane_pressed(id)` → object lane: `world.select(id)`; light
-  lane: `lighting.select(id)`; camera/frames lanes: no selection target
-  (tap selects nothing there); empty id deselects.
+`animation_production_lab.gd` handlers (one per editor signal, wired in
+`_wire_panels` like the other docks):
+- `_on_timeline_lane_pressed(id, kind)` → by lane kind: KIND_OBJECT →
+  `world.select(id)`; KIND_LIGHT → `lighting.select(id)`; KIND_CAMERA and
+  KIND_FRAMES → nothing (no selection target).
 - `_on_timeline_playhead(t)` → `timeline.scrub(t - timeline.current_time)`.
-- `_on_timeline_key_add(id, t)` → `keyframes.add_keyframe(t, id, <target_type
-  of the lane>, "position", <value>)` where target_type is TARGET_OBJECT /
-  TARGET_CAMERA / TARGET_LIGHT by lane kind (camera keys use the fixed
-  target_id "camera" — display and membership are by target_type, §3), and
-  value = `keyframes.evaluate(id, "position", t)` when the track exists,
-  else the live value (`world.get_object(id).position`).
-- `_on_timeline_key_move(id, from, to)` → `keyframes.move_key(
-  keyframes.key_index_at(id, from, 0.05), to)`.
-- `_on_timeline_keys_remove(ids, times)` → batch `remove_keys` by resolving
-  indices.
-- `_on_timeline_span_slide(...)/_span_duplicate(...)` → the corresponding
-  primitive.
-- `_on_timeline_snap_toggled(on)` → `editor.set_snap(on)`.
+- `_on_timeline_key_add(id, kind, t)` → `keyframes.add_keyframe(t, <target_id
+  by kind>, <target_type by kind>, "position", <value>)` — target_id: the
+  object/light id as given, fixed `"camera"` for the camera lane;
+  target_type: TARGET_OBJECT / TARGET_CAMERA / TARGET_LIGHT by kind; value:
+  the track's evaluated value when it exists
+  (`keyframes.evaluate(target_id, "position", t)`), else the live value —
+  `world.get_object(id).position` for objects, `camera.camera().position`
+  for the camera, the matching light node's position for lights.
+- `_on_timeline_key_move(index, _from, to)` → `keyframes.move_key(index, to)`.
+- `_on_timeline_keys_remove(indices)` → `keyframes.remove_keys(indices)`.
+- `_on_timeline_span_slide(indices, delta)` → `keyframes.slide_keys(indices, delta)`.
+- `_on_timeline_span_duplicate(indices, offset)` →
+  `keyframes.duplicate_keys(indices, offset)`.
+- `_on_timeline_snap_toggled(on)` → `timeline_panel.editor.set_snap(on)`
+  (the root also keeps the value for future per-project persistence;
+  nothing else consumes it this round).
 
 Editor refresh triggers (subscriptions added in `_wire_panels` beside the
 existing ones): `keyframes.keyframes_changed`, `frames.frames_changed`,
 `lights.lights_changed`, `world.objects_changed`, `world.layer_order_changed`
-→ `timeline_editor.refresh()` (rebuild lanes + redraw). `history_changed`
+→ `timeline_panel.editor.refresh()` (rebuild lanes + redraw; rebuilding on
+any of these is cheap at lab scale — no visibility guard). `history_changed`
 stays button-only (existing `_on_history_changed`): keyframe undo/redo
 re-emits `keyframes_changed` from the closures (§4), so the editor refreshes
 on undo/redo through the normal signal path — no root special-casing. Lane
 order changes ride `layer_order_changed` (reorder ops already emit it via
-`_commit_order`).
+`_commit_order`). In `_ready`, wire `keyframes.history = world.history` and
+`keyframes.timeline = timeline`, and call `timeline_panel.bind(...)` to wire
+the editor's sources.
 
 Guided gating: unchanged stage map — the panel (now containing the editor) is
 shown at the FRAMES stage onward and hidden before it; studio always. No new
@@ -279,29 +314,44 @@ where the gate requires it; gate: `tools/verify-project.ps1`):
 - `tests/test_timeline_lane_model.gd` — lanes() mirrors
   `world.layer_order()` (reorder rides through), frame/camera/light lanes
   present and ordered, keys sorted per lane, orphans excluded from lanes but
-  retained in the flat list; snap_time nearest-frame + clamp; range_keys /
-  key_index_at bounds.
+  retained in the flat list; camera lane collects TARGET_CAMERA keys with
+  arbitrary authored ids; snap_time nearest-frame + clamp; frame_boundaries
+  on the fps tempo grid; range_keys / key_index_at bounds.
 - `tests/test_timeline_editor_ops.gd` — move_key clamps + keeps sort + emits;
-  remove_keys by index set; slide_span clamps and packs; duplicate_span is
-  in-lane + clamps; every op pushes history and undo/redo round-trips the
-  time/array state; ops on a duration-bounded timeline never exceed
-  `[0, duration]`; `set_all` (loader path) pushes no history, so undo after a
-  load leaves keyframes untouched.
-- `tests/test_timeline_editor_dock.gd` + `.tscn` — editor + toolbar present
-  inside TimelinePanel; signals wired to root handlers; gesture hooks route
-  to the expected controller mutations (structural, like
-  `test_animation_dock_layout`).
+  remove_keys by index set; slide_keys clamps and packs; duplicate_keys is
+  in-lane + clamps; every op pushes history (only when `history` wired) and
+  undo/redo round-trips the time/array state; ops on a duration-bounded
+  timeline never exceed `[0, duration]`; `set_all` (loader path) pushes no
+  history, so undo after a load leaves keyframes untouched.
+- `tests/test_timeline_editor_gestures.gd` + `.tscn` — scene harness mounting
+  the TimelinePanel docker alone (bare controllers bound via
+  `timeline_panel.bind`): synthesized `_gui_input` events (tap lane, tap
+  ruler, double-tap add, key drag, marquee, selection drag, Delete key, wheel,
+  pinch) produce the §5 signals with resolved indices / snapped times; tap-vs-
+  drag 8px threshold; snap frozen at gesture start; zoom pps clamps to
+  [24, 240] and the t=0 offset never goes positive; delete with no selection
+  emits nothing; many layers clip inside the editor rect.
+- `tests/test_timeline_editor_dock.gd` + `.tscn` — full lab: editor + toolbar
+  present inside TimelinePanel; editor signals → panel → root handlers route
+  to the real controllers (lane tap selects the layer, playhead scrubs, key
+  add/move/remove mutate `keyframes`, span slide/duplicate mutate
+  `keyframes`, snap toggle set on the editor); `keyframes.history` wired
+  (`== world.history`) so undo/redo round-trips a key move through the root
+  buttons; after `_apply_project_data` with a synthetic save,
+  `world.history.can_undo()` is false (loader quiet via `set_all`).
 - Guided gating asserted by the existing stage tests (no new gating logic).
-- Full gate expectation: previous 78 pass + 3 new = **81 pass / 1 known-WARN
+- Full gate expectation: previous 78 pass + 4 new = **82 pass / 1 known-WARN
   / 0 fail**; `test_full_lab_sweep` stays the sole known-WARN.
 - Look/feel proof: throwaway windowed probe (not committed) — lane/rule
   rendering, zoom, snap, drag feel; recorded in the round ledger.
 
 ## 10. Implementation phases (plan outline for writing-plans)
 
-1. KeyframeController primitives + history wiring + `set_all` + loader swap
-   (`_apply_project_data` -> `set_all`; test-first) — model-neutral.
-2. TimelineLaneModel (test-first).
-3. TimelineEditor canvas: ruler/lanes draw, zoom, playhead (probe).
-4. Gestures + selection + toolbar; docker scene wiring + root handlers.
-5. Guided gating pass, full gate, review, commit sequence.
+1. KeyframeController primitives + history wiring + `set_all` (test-first).
+2. TimelineLaneModel + `LightingController.light_ids()` (test-first).
+3. TimelineEditor canvas + gestures + selection; TimelinePanel scene (editor
+   instance + toolbar + forwarded signals) (synthesized-event test; windowed
+   feel probe).
+4. Root wiring: handlers, refresh subscriptions, `keyframes.history` /
+   `timeline` injection, loader swap to `set_all`, guided gating pass.
+5. Full gate, godot-code-review, windowed look probe, fork record + ledger.
