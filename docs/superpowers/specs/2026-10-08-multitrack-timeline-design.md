@@ -355,3 +355,86 @@ where the gate requires it; gate: `tools/verify-project.ps1`):
 4. Root wiring: handlers, refresh subscriptions, `keyframes.history` /
    `timeline` injection, loader swap to `set_all`, guided gating pass.
 5. Full gate, godot-code-review, windowed look probe, fork record + ledger.
+
+---
+
+## 11. Fork record — adjustments made and verification (Task 5 wrap)
+
+### Deviations from the pre-planning spec, settled during planning
+
+1. **Index-based span ops.** `KeyframeController.slide_keys` / `duplicate_keys`
+   take flat-list indices, not `(target_id, range)`: camera-lane keys carry
+   arbitrary authored ids ("cam", …) that cannot be matched by `target_id` on
+   the controller. The editor resolves marquee ranges to flat indices through
+   the lane model (`range_keys` / `key_index_at`); the controller never sees
+   ids.
+2. **Camera lane membership by `target_type` only.** Authored camera ids
+   vary, so the camera lane groups `TARGET_CAMERA` keys by type and ignores
+   `target_id` — verified against playback, which ignores it too.
+3. **Quiet `set_all` loader (Task 1).** The load path rebuilds keyframes with
+   a single quiet `set_all` (no `keyframes_changed` during load), so no
+   commit in the round ever leaves the loader poisoning the freshly-cleared
+   undo stack.
+4. **Editor + toolbar inside the frame-list docker.** The multi-track canvas
+   and its toolbar live in `TimelinePanel` (the existing FRAMES/KEYFRAME/
+   TIMING docker), above the frame-list controls — no new top-level panel.
+5. **Panel signal forwarding.** The panel is the docker boundary: it forwards
+   the editor's eight signals upward under the same names; the root wires only
+   to the panel.
+
+### Verified-code claims from the design review (checked before planning)
+
+- `TimelinePanel` is the frame-list docker; fps/duration live on
+  `AnimationControls`, not the panel (spec corrected during planning).
+- Playback ignores authored camera key target ids (camera-lane membership by
+  type verified in code).
+- `KeyframeController` ops push `EditorHistory` only when `history` is
+  injected (null-safe): bare-controller callers and existing tests keep
+  working unchanged.
+- Times clamp to `[0, timeline.duration]` only when `timeline` is injected;
+  otherwise they floor at 0.
+- `evaluate()` is RF4-safe: an unknown target or missing track returns `null`
+  instead of erroring.
+
+### godot-code-review checklist results (Task 5 Step 2)
+
+No Criticals. Checklist nits — all already triaged as ship in the ledger:
+
+- `_draw` allocates per lane per pass (`_selection.get(str(id), {})`,
+  repeated `str()`) — deferred minor T3-b, sub-editor-scale.
+- `_live_position` reads `lighting._lights` directly — deferred minor T4-a;
+  fix is a public `get_light_node(id)` accessor.
+- The editor subscribes to `keyframes_changed` and the root does too
+  (idempotent double refresh).
+- Delete/Backspace/Ctrl+D are hardcoded keys, not Input Map actions — matches
+  the widget-owned canvas convention (marquee/scrub/pinch are widget events);
+  map to actions if a rebind UI ever lands.
+
+### Final windowed probe (Task 5 Step 3) — verdict
+
+Throwaway probe (deleted, never committed): the real lab scene at the guided
+FRAMES stage from a save-shaped load (`collect_save_data` →
+`_apply_project_data` → `go_to(FRAMES)`), 2 objects + 3 frames + camera +
+light keys; gestures driven through the real wiring (marquee, Ctrl-drag
+duplicate, double-tap add, key drag); Studio mode re-checked. Verified by
+programmatic pixel sampling of the editor rect (no eyeballs on the host):
+
+- 6 lanes render at FRAMES: frames strip + 2 object lanes (regenerated ids)
+  + camera + 2 starter lights.
+- All six key-tick colors render on the right lanes; ruler labels, per-frame
+  ticks and the playhead line draw.
+- Edits through the real signal path changed `keyframes` 8 → 11 (marquee
+  duplicate +2 camera keys, double-tap add +1, drag moved a visible key
+  0.2 → 1.2) and the pixels moved accordingly (camera tick count doubled).
+- Studio: the same editor and lanes with the same 11 keys (the project shelf
+  is a full-rect modal by design; hidden for the canvas shot).
+
+**Discovered, pre-existing, out-of-scope defect (not introduced by this
+round):** `_apply_project_data` regenerates world object ids but copies
+keyframe `target_id`s verbatim, so object keyframes orphan after a Studio
+Load — object lanes render empty and playback stops applying object animation
+until keys are re-added. Camera/light keys survive (their ids are stable).
+Pre-dates this round (`test_animation_save_roundtrip` Part 4 asserts
+field-wise multiset equality with throwaway ids and never tests remapping)
+and touches no task's file list; recorded here and in the ledger. Recommend a
+follow-up: remap `TARGET_OBJECT` keyframe ids through the loader's `id_map`.

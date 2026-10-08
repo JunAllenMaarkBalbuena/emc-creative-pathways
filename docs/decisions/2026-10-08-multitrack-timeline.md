@@ -33,3 +33,19 @@ as the Creative Studio.
 - Timeline layout presets / collapsed lane groups.
 - 2D vs 3D editing-mode UIs; editor-view vs camera-view split (separate round,
   already queueed).
+
+## Task 5 wrap note (2026-10-09)
+
+- **Copy reach is now two-trigger.** The "Copy reach" decision (in-lane
+  duplicate) ships as Ctrl+drag *and* a toolbar Duplicate button (offset = the
+  selection-span length; one-frame fallback) — the button is the touch-reachable
+  path, per the touch-first rule that buttons exist where touch is weak. Final
+  review finding #2 drove the button.
+- **Snap covers span slide/duplicate.** "Tempo grid & snapping" now also
+  applies while a selection span is dragged/duplicated: the selection's left
+  edge lands on the frame grid whenever snap is on (snap state captured at
+  drag activation), snap-off carries the raw pointer delta. Final review
+  finding #1.
+- **Pre-existing loader defect surfaced by the wrap probe** (out of scope):
+  `_apply_project_data` regenerates object ids without remapping object
+  keyframes, orphaning them after a Studio Load. See spec appendix §11.
